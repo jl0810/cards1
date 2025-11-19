@@ -1,140 +1,82 @@
-@layer theme, base, clerk, components, utilities;
-@import "tailwindcss";
-
-@theme {
-  --color-primary-600: #6c47ff;
-  --color-primary-700: #5639cc;
-  --color-primary-50: #f4f2ff;
-  --color-success-700: #027a48;
-  --color-success-50: #ecfdf3;
-
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
-}
-
-/* shadcn/ui CSS variables */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
 @layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
+ 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+ 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+ 
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+ 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 222.2 84% 4.9%;
+ 
     --radius: 0.5rem;
   }
-
+ 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
+ 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
+ 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+ 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
+ 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
+ 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+ 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
-
-.background {
-  overflow: hidden;
-  background: #f8f8f8;
-  background-image: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 11px,
-      #f2f2f2 11px,
-      #f2f2f2 12px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 11px,
-      #f2f2f2 11px,
-      #f2f2f2 12px
-    );
+ 
+@layer base {
 }
 
-.mask {
-  mask-image: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 1) 40px,
-    rgba(0, 0, 0, 1) calc(100% - 20px),
-    rgba(0, 0, 0, 0) 100%
-  );
+/* Hide Scrollbar globally */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
 }
 
-/* === ADD THIS AT THE END === */
-
-@keyframes gradient-move {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.animate-gradient-bg {
-  /* Use CSS custom properties from your theme */
-  background: linear-gradient(
-    -45deg,
-    hsl(var(--primary)),
-    hsl(var(--secondary)),
-    #6366f1, /* Using a hex as an example */
-    #ec4899  /* Using a hex as an example */
-  );
-  background-size: 400% 400%;
-  animation: gradient-move 10s ease infinite;
-}
-
-/* === ADD THIS === */
-.text-gradient-pop {
-  @apply bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent;
-}
+/* 3D Flip Utilities */
+.perspective-1000 { perspective: 1000px; }
+.transform-style-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.rotate-y-180 { transform: rotateY(180deg); }
