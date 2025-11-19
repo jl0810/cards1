@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "6.34.0",
+    "@clerk/themes": "^2.4.37",
     "@novu/api": "^1.8.0",
     "@novu/js": "^3.11.0",
     "@novu/node": "^2.6.6",

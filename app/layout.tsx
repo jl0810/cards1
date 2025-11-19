@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/app/providers/theme-provider";
 import { PostHogProvider } from "@/app/providers/posthog";
 import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from '@clerk/themes';
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -18,13 +19,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: { colorPrimary: '#6366f1' }
+      }}
+    >
       <html lang="en" suppressHydrationWarning>
-        <body className={`${font.className} bg-dark-900 text-white`}>
+        <body className={`${font.className} bg-dark-900 text-white antialiased`}>
           <PostHogProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="dark" // Force dark mode for Velocity theme
+              defaultTheme="dark"
               enableSystem={false}
               disableTransitionOnChange
             >
