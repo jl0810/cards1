@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User profile and settings - extends Clerk authentication
+model UserProfile {
+  id                String   @id @default(cuid())
+  clerkId           String   @unique // Maps to Clerk user ID
+  email             String   @unique
+  name              String?
+  avatar            String?
+  bio               String?  // User biography
+  website           String?  // Personal website
+  location          String?  // User location
+  
+  // UI Preferences
+  theme             String   @default("system") // light, dark, system
+  language          String   @default("en")    // User language preference
+  timezone          String   @default("UTC")   // User timezone
+  
+  // Notification Preferences
+  emailNotifications Boolean @default(true)    // Email notification preferences
+  pushNotifications Boolean  @default(false)   // Push notification preferences
+  marketingEmails   Boolean  @default(false)   // Marketing emails
+  
+  // Dashboard Preferences
+  defaultDashboard  String   @default("main")  // Default dashboard view
+  sidebarCollapsed  Boolean  @default(false)   // Sidebar state
+  compactMode       Boolean  @default(false)   // Compact view mode
+  
+  // Feature Preferences
+  betaFeatures      Boolean  @default(false)   // Beta feature access
+  analyticsSharing  Boolean  @default(true)    // Analytics data sharing
+  crashReporting    Boolean  @default(true)    // Crash reporting
+  
+  // Application Settings
+  autoSave          Boolean  @default(true)    // Auto-save settings
+  keyboardShortcuts Boolean  @default(true)    // Keyboard shortcuts
+  soundEffects      Boolean  @default(false)   // Sound effects
+  
+  // Metadata
+  onboardingCompleted Boolean @default(false)  // Track onboarding progress
+  lastLoginAt       DateTime?                 // Last login timestamp
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  alerts            UserAlert[]
+
+  @@map("user_profiles")
+}
+
+// User alerts from admin
+model UserAlert {
+  id          String      @id @default(cuid())
+  userId      String
+  title       String      // Alert title
+  message     String      // Alert message
+  type        AlertType   @default(INFO) // Alert type
+  priority    Priority    @default(MEDIUM) // Alert priority
+  isRead      Boolean     @default(false) // Read status
+  expiresAt   DateTime?   // Optional expiration
+  actionUrl   String?     // Optional action button URL
+  actionText  String?     // Optional action button text
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  user        UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_alerts")
+}
+
+// Alert types
+enum AlertType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  MAINTENANCE
+  FEATURE
+  BILLING
+  SECURITY
+}
+
+// Alert priorities
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
