@@ -18,7 +18,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'sans-serif'], // Velocity Font
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+        handwriting: ['"Nothing You Could Do"', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -26,6 +27,25 @@ module.exports = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        
+        // --- Velocity Theme Colors (Must be present) ---
+        dark: {
+          900: '#02040a', 
+          800: '#090e1a', 
+          700: '#121826'  
+        },
+        glass: {
+          100: 'rgba(255, 255, 255, 0.03)', 
+          200: 'rgba(255, 255, 255, 0.08)', 
+          300: 'rgba(255, 255, 255, 0.12)'  
+        },
+        brand: {
+          primary: '#6366f1', 
+          accent: '#8b5cf6',  
+          glow: '#a855f7'     
+        },
+        // -----------------------------
+
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -54,23 +74,6 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // --- PointMax Velocity Custom Colors ---
-        dark: {
-          900: '#02040a',
-          800: '#090e1a',
-          700: '#121826'
-        },
-        glass: {
-          100: 'rgba(255, 255, 255, 0.03)',
-          200: 'rgba(255, 255, 255, 0.08)',
-          300: 'rgba(255, 255, 255, 0.12)',
-          nav: 'rgba(255, 255, 255, 0.05)'
-        },
-        brand: {
-          primary: '#6366f1',
-          accent: '#8b5cf6',
-          glow: '#a855f7'
-        }
       },
       backgroundImage: {
         'mesh': 'radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%)',
