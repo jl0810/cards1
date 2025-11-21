@@ -10,7 +10,7 @@ import {
   CreditCard,
   Home,
   Menu,
-  Rocket,
+  Zap,
   Settings,
   X,
 } from "lucide-react";
@@ -57,8 +57,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 border-b px-6">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Rocket className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg text-foreground">SaaS Kit</span>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Zap className="text-white w-5 h-5" />
+            </div>
+            <span className="font-bold text-lg text-foreground tracking-tight">PointMax</span>
           </Link>
           <Button
             variant="ghost"
