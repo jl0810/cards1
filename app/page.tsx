@@ -24,37 +24,37 @@ const features = [
     icon: <ShieldCheck className="h-8 w-8 text-indigo-400" />,
     title: "Secure Authentication",
     description:
-      "Pre-built Clerk integration with sign-in, sign-up, and user profile management.",
+      "Bank-grade security with Clerk authentication to keep your financial data safe.",
   },
   {
     icon: <CreditCard className="h-8 w-8 text-purple-400" />,
-    title: "Stripe Subscriptions",
+    title: "Bank Integration",
     description:
-      "Ready-to-go Stripe payments for subscriptions. Webhooks are pre-configured.",
+      "Connect securely with Plaid to automatically sync transactions and balances.",
   },
   {
     icon: <Send className="h-8 w-8 text-pink-400" />,
-    title: "Transactional Emails",
+    title: "Smart Alerts",
     description:
-      "Beautiful, responsive email templates using Resend for welcome and billing notifications.",
+      "Never miss a payment or a bonus category. Get notified before due dates.",
   },
   {
     icon: <Zap className="h-8 w-8 text-yellow-400" />,
-    title: "High Performance",
+    title: "Real-time Updates",
     description:
-      "Built on Next.js 14 with server components and edge caching for lightning fast loads.",
+      "See your net worth and point valuations update in real-time as you spend.",
   },
   {
     icon: <Layout className="h-8 w-8 text-cyan-400" />,
-    title: "Responsive Design",
+    title: "Mobile First",
     description:
-      "Mobile-first approach ensuring your app looks stunning on all devices.",
+      "Manage your finances on the go with our stunning, responsive mobile interface.",
   },
   {
     icon: <Globe className="h-8 w-8 text-emerald-400" />,
-    title: "Global Scale",
+    title: "Points Optimization",
     description:
-      "Deploy to the edge with Vercel and reach users instantly anywhere in the world.",
+      "Know exactly which card to use for every purchase to maximize your return.",
   },
 ];
 
@@ -89,13 +89,12 @@ export default function Home() {
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
               <h1 className="text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl mb-8">
-                <span className="text-gradient block mb-2">Build, Launch & Scale</span>
-                <span className="text-gradient-primary block">Your SaaS in Days</span>
+                <span className="text-gradient block mb-2">Maximize Your Points</span>
+                <span className="text-gradient-primary block">Optimize Your Wealth</span>
               </h1>
               <p className="mt-6 text-xl max-w-2xl mx-auto leading-relaxed text-gray-300">
-                The all-in-one Next.js starter kit with Clerk authentication, Stripe
-                paywalls, and beautiful UI components. Ship your app in days, not
-                months.
+                The ultimate dashboard for tracking credit card rewards, bank accounts, and financial velocity.
+                Master the game of points and travel for free.
               </p>
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <motion.div
@@ -103,7 +102,7 @@ export default function Home() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <ShimmerButton className="shadow-2xl">
-                    <a href="/sign-up" className="text-lg font-semibold">Get Started for Free</a>
+                    <a href="/sign-up" className="text-lg font-semibold">Start Tracking</a>
                   </ShimmerButton>
                 </motion.div>
                 <motion.div
@@ -111,7 +110,7 @@ export default function Home() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button asChild variant="outline" size="lg" className="text-lg h-14 px-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 backdrop-blur-sm">
-                    <a href="/pricing">View Pricing</a>
+                    <a href="/dashboard">View Demo</a>
                   </Button>
                 </motion.div>
               </div>
@@ -139,47 +138,30 @@ export default function Home() {
               transition={{ duration: 1 }}
             >
               <h2 className="text-center text-sm font-semibold text-gray-400 uppercase tracking-widest mb-8">
-                Powering the best new startups
+                Integrated with top financial institutions
               </h2>
 
               <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-lg bg-background md:shadow-xl">
                 <Marquee pauseOnHover className="[--duration:20s]">
                   {[
-                    "Next.js",
-                    "Clerk",
-                    "Stripe",
-                    "Vercel",
-                    "Prisma",
-                    "Resend",
-                    "React",
-                    "Tailwind",
-                    "Framer",
+                    "Chase",
+                    "American Express",
+                    "Citi",
+                    "Capital One",
+                    "Wells Fargo",
+                    "Bank of America",
+                    "Discover",
+                    "US Bank",
+                    "Barclays",
+                    "Goldman Sachs"
                   ].map((name) => (
                     <div
                       key={name}
-                      className="mx-8 flex items-center justify-center text-xl font-bold text-white/50 hover:text-white transition-colors cursor-default"
+                      className="mx-8 flex items-center justify-center"
                     >
-                      {name}
-                    </div>
-                  ))}
-                </Marquee>
-                <Marquee reverse pauseOnHover className="[--duration:20s] mt-8">
-                  {[
-                    "TypeScript",
-                    "Postgres",
-                    "Redis",
-                    "AWS",
-                    "Google Cloud",
-                    "Docker",
-                    "Kubernetes",
-                    "Graphql",
-                    "Node.js",
-                  ].map((name) => (
-                    <div
-                      key={name}
-                      className="mx-8 flex items-center justify-center text-xl font-bold text-white/50 hover:text-white transition-colors cursor-default"
-                    >
-                      {name}
+                      <span className="text-xl font-bold text-white/20 hover:text-white/40 transition-colors cursor-default">
+                        {name}
+                      </span>
                     </div>
                   ))}
                 </Marquee>
@@ -195,14 +177,13 @@ export default function Home() {
           <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl lg:text-center mb-16">
               <h2 className="text-base font-semibold leading-7 text-indigo-400">
-                Everything Included
+                Powerful Features
               </h2>
               <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-                All the tools you need, pre-configured
+                Everything you need to maximize rewards
               </p>
               <p className="mt-6 text-lg leading-8 text-gray-400">
-                Stop wasting time on boilerplate. We've handled user auth,
-                payments, emails, and more so you can focus on your product.
+                Track balances, monitor transactions, and optimize your spending across all your cards.
               </p>
             </div>
 
@@ -248,10 +229,10 @@ export default function Home() {
               <div className="absolute top-1/2 left-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 opacity-50 blur-[120px]"></div>
 
               <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl mb-6">
-                Ready to build your masterpiece?
+                Ready to maximize your wealth?
               </h2>
               <p className="mx-auto max-w-xl text-lg leading-8 text-gray-300 mb-10">
-                Start building for free. No credit card required. Join thousands of developers shipping faster.
+                Start tracking for free. Connect your accounts and see the difference immediately.
               </p>
               <div className="flex items-center justify-center gap-x-6">
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -270,7 +251,7 @@ export default function Home() {
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} SaaS Kit. All rights reserved.
+              &copy; {new Date().getFullYear()} PointMax. All rights reserved.
             </p>
             <div className="flex gap-6">
               <Link href="#" className="text-sm text-gray-500 hover:text-white transition-colors">
