@@ -21,12 +21,6 @@ Link.displayName = "Link";
 // Feature data for the new grid
 const features = [
   {
-    icon: <ShieldCheck className="h-8 w-8 text-indigo-400" />,
-    title: "Secure Authentication",
-    description:
-      "Bank-grade security with Clerk authentication to keep your financial data safe.",
-  },
-  {
     icon: <CreditCard className="h-8 w-8 text-purple-400" />,
     title: "Bank Integration",
     description:
@@ -43,12 +37,6 @@ const features = [
     title: "Real-time Updates",
     description:
       "See your net worth and point valuations update in real-time as you spend.",
-  },
-  {
-    icon: <Layout className="h-8 w-8 text-cyan-400" />,
-    title: "Mobile First",
-    description:
-      "Manage your finances on the go with our stunning, responsive mobile interface.",
   },
   {
     icon: <Globe className="h-8 w-8 text-emerald-400" />,
@@ -81,7 +69,7 @@ export default function Home() {
 
       <main className="flex-1 relative z-10">
         {/* === 1. Hero Section === */}
-        <section className="relative w-full pt-32 pb-24 md:pt-48 md:pb-32 min-h-screen flex flex-col justify-center">
+        <section className="relative w-full pt-20 pb-12 md:pt-32 md:pb-24 min-h-[60vh] flex flex-col justify-center">
           <div className="container max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -117,19 +105,10 @@ export default function Home() {
             </motion.div>
           </div>
 
-          {/* Scroll Indicator */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, y: [0, 10, 0] }}
-            transition={{ delay: 1, duration: 2, repeat: Infinity }}
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/50"
-          >
-            <ChevronDown className="h-8 w-8" />
-          </motion.div>
         </section>
 
         {/* === 2. Social Proof Section === */}
-        <section className="py-12 border-y border-white/5 bg-black/20 backdrop-blur-sm overflow-hidden">
+        <section className="py-8 border-y border-white/5 bg-black/20 backdrop-blur-sm overflow-hidden">
           <div className="container max-w-7xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0 }}
@@ -173,9 +152,9 @@ export default function Home() {
         </section>
 
         {/* === 3. Feature Grid Section === */}
-        <section id="features" className="py-24 sm:py-32">
+        <section id="features" className="py-12 sm:py-24">
           <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl lg:text-center mb-16">
+            <div className="mx-auto max-w-2xl lg:text-center mb-8">
               <h2 className="text-base font-semibold leading-7 text-indigo-400">
                 Powerful Features
               </h2>
@@ -217,13 +196,13 @@ export default function Home() {
         </section>
 
         {/* === 4. Final CTA Section === */}
-        <section className="py-24 sm:py-32">
+        <section className="py-12 sm:py-24">
           <div className="container max-w-7xl px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="relative isolate overflow-hidden bg-gradient-to-b from-indigo-500/20 to-purple-500/20 border border-white/10 shadow-2xl rounded-3xl px-6 py-24 text-center sm:px-16"
+              className="relative isolate overflow-hidden bg-gradient-to-b from-indigo-500/20 to-purple-500/20 border border-white/10 shadow-2xl rounded-3xl px-6 py-16 text-center sm:px-16"
             >
               {/* Glow effect */}
               <div className="absolute top-1/2 left-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 opacity-50 blur-[120px]"></div>
