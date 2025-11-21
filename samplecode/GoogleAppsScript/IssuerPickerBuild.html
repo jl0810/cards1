@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; padding: 12px; }
+      label { display:block; margin-bottom: 6px; font-weight: 600; }
+      select, button { font-size: 14px; }
+      .actions { margin-top: 12px; display:flex; gap:8px; }
+    </style>
+  </head>
+  <body>
+    <label for="issuer">Choose issuer</label>
+    <select id="issuer">
+      <option value="">-- Select one issuer --</option>
+      <option>American Express</option>
+      <option>Chase</option>
+      <option>Citi</option>
+      <option>Barclays</option>
+      <option>Wells Fargo</option>
+      <option>Bank of America</option>
+      <option>Capital One</option>
+      <option>U.S. Bank</option>
+      <option>Discover</option>
+    </select>
+    <div class="actions">
+      <button id="buildBtn" onclick="run()">Build</button>
+      <button onclick="google.script.host.close()">Cancel</button>
+    </div>
+    <div id="status" style="margin-top:8px;color:#555;display:none;">Running… this may take up to a minute.</div>
+
+    <script>
+      function run() {
+        const issuer = document.getElementById('issuer').value.trim();
+        if (!issuer) { alert('Please select an issuer.'); return; }
+        const btn = document.getElementById('buildBtn');
+        const status = document.getElementById('status');
+        btn.disabled = true; btn.textContent = 'Running…';
+        status.style.display = 'block';
+        google.script.run
+          .withSuccessHandler(function(){
+            google.script.host.close();
+          })
+          .withFailureHandler(function(err){
+            alert('Build failed: ' + (err && err.message ? err.message : err));
+            btn.disabled = false; btn.textContent = 'Build';
+            status.style.display = 'none';
+          })
+          .buildCardCatalogAI_Run(issuer);
+      }
+    </script>
+  </body>
+</html>

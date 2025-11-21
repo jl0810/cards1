@@ -8,6 +8,24 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model FamilyMember {
+  id        String   @id @default(cuid())
+  userId    String
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  avatar    String?
+  color     String?
+  role      String? @default("Member")
+  isPrimary Boolean  @default(false)
+  plaidItems   PlaidItem[]
+  plaidAccounts PlaidAccount[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("family_members")
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -17,8 +35,7 @@ datasource db {
 model UserProfile {
   id                String   @id @default(cuid())
   clerkId           String   @unique // Maps to Clerk user ID
-  email             String   @unique
-  name              String?
+  name              String?  // First name (optional, can be maintained locally)
   avatar            String?
   bio               String?  // User biography
   website           String?  // Personal website
@@ -57,6 +74,8 @@ model UserProfile {
 
   // Relations
   alerts            UserAlert[]
+  plaidItems        PlaidItem[]
+  familyMembers     FamilyMember[]
 
   @@map("user_profiles")
 }
@@ -100,4 +119,230 @@ enum Priority {
   MEDIUM
   HIGH
   URGENT
+}
+
+// --- Plaid Integration ---
+
+model PlaidItem {
+  id              String   @id @default(cuid())
+  userId          String
+  user            UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyMemberId  String
+  familyMember    FamilyMember @relation(fields: [familyMemberId], references: [id], onDelete: Restrict)
+  
+  itemId          String   @unique
+  accessTokenId   String   @unique
+  institutionId   String?
+  institutionName String?
+  
+  status          String   @default("active") // active, disconnected, error, needs_reauth
+  lastSyncedAt    DateTime?
+  
+  // Cursor for transactions /sync endpoint
+  nextCursor      String?
+  
+  accounts        PlaidAccount[]
+  transactions    PlaidTransaction[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plaid_items")
+}
+
+model PlaidAccount {
+  id              String   @id @default(cuid())
+  plaidItemId     String
+  plaidItem       PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  familyMemberId  String
+  familyMember    FamilyMember @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+  
+  accountId       String   @unique
+  name            String
+  mask            String?
+  type            String?
+  subtype         String?
+  
+  // Balances
+  currentBalance  Float?
+  availableBalance Float?
+  limit           Float?
+  isoCurrencyCode String?
+  
+  // Liability Data (Credit Cards)
+  apr               Float?
+  aprType           String?
+  aprBalanceSubjectToApr Float?
+  aprInterestChargeAmount Float?
+  minPaymentAmount  Float?
+  lastStatementBalance Float?
+  nextPaymentDueDate DateTime?
+  lastStatementIssueDate DateTime?
+  lastPaymentAmount Float?
+  lastPaymentDate   DateTime?
+  isOverdue         Boolean?
+
+  // Our enrichments (1-to-1)
+  extended        AccountExtended?
+
+  transactions    PlaidTransaction[]
+  benefitUsage    BenefitUsage[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plaid_accounts")
+}
+
+// Account enrichments - survives Plaid re-syncs
+model AccountExtended {
+  id                String @id @default(cuid())
+  plaidAccountId    String @unique
+  plaidAccount      PlaidAccount @relation(fields: [plaidAccountId], references: [id], onDelete: Cascade)
+  
+  // Card Product Matching
+  cardProductId     String?
+  cardProduct       CardProduct? @relation(fields: [cardProductId], references: [id], onDelete: SetNull)
+  
+  // User Enrichments
+  nickname          String?  // User's custom name for the account
+  isFavorite        Boolean @default(false)
+  sortOrder         Int?     // Custom sort order
+  color             String?  // Custom color for UI
+  notes             String?  // User notes
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@map("account_extended")
+}
+
+model PlaidTransaction {
+  id              String   @id @default(cuid())
+  plaidItemId     String
+  plaidItem       PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  
+  transactionId   String   @unique
+  accountId       String
+  account         PlaidAccount @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+  
+  amount          Float
+  date            DateTime
+  name            String
+  merchantName    String?
+  
+  // Storing categories as JSON or simple string array if supported, 
+  // but Prisma + Postgres supports String[]
+  category        String[] 
+  
+  pending         Boolean  @default(false)
+  
+  // Our enrichments (1-to-1)
+  extended        TransactionExtended?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plaid_transactions")
+}
+
+// Transaction enrichments - survives Plaid re-syncs
+model TransactionExtended {
+  id                  String @id @default(cuid())
+  plaidTransactionId  String @unique
+  plaidTransaction    PlaidTransaction @relation(fields: [plaidTransactionId], references: [id], onDelete: Cascade)
+  
+  // Benefit Tracking
+  matchedBenefitId    String?
+  matchedBenefit      CardBenefit? @relation(fields: [matchedBenefitId], references: [id], onDelete: SetNull)
+  benefitUsageId      String?
+  benefitUsage        BenefitUsage? @relation(fields: [benefitUsageId], references: [id], onDelete: SetNull)
+  coveredAmount       Float?  // How much was covered by the benefit
+  
+  // User Enrichments
+  customCategory      String?  // User or AI override category
+  notes               String?  // User notes
+  tags                String[] // User tags
+  isExcludedFromBudget Boolean @default(false)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@map("transaction_extended")
+}
+
+// --- Card Catalog & Benefits ---
+
+model CardProduct {
+  id              String   @id @default(cuid())
+  issuer          String   // Chase, Amex, Citi, etc.
+  productName     String   // Sapphire Reserve, Platinum Card, etc.
+  cardType        String?  // Points, Co-brand, Cashback
+  annualFee       Float?
+  signupBonus     String?
+  imageUrl        String?
+  
+  active          Boolean  @default(true)
+  
+  benefits          CardBenefit[]
+  accountExtensions AccountExtended[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([issuer, productName])
+  @@map("card_products")
+}
+
+enum BenefitType {
+  STATEMENT_CREDIT  // Trackable via transactions (e.g. Saks, Airline Fee)
+  EXTERNAL_CREDIT   // Pushed to external account (e.g. Uber Cash)
+  INSURANCE         // Purchase protection, etc.
+  PERK              // Lounge access, status, etc.
+}
+
+model CardBenefit {
+  id              String   @id @default(cuid())
+  cardProductId   String
+  cardProduct     CardProduct @relation(fields: [cardProductId], references: [id], onDelete: Cascade)
+  
+  benefitName     String   // "Resy Credit", "Airline Fee Reimbursement"
+  type            BenefitType @default(STATEMENT_CREDIT)
+  description     String?  // Detailed description
+  timing          String   // "Monthly", "Quarterly", "Annually", "SemiAnnually"
+  maxAmount       Float?   // 100, 200, etc. (null if no limit)
+  keywords        String[] // ["resy", "restaurant"], ["airline", "baggage"]
+  
+  isApproved      Boolean  @default(true) // False = Draft (AI), True = Live
+  
+  active          Boolean  @default(true)
+  
+  usageTracking         BenefitUsage[]
+  transactionExtensions TransactionExtended[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("card_benefits")
+}
+
+model BenefitUsage {
+  id              String   @id @default(cuid())
+  cardBenefitId   String
+  cardBenefit     CardBenefit @relation(fields: [cardBenefitId], references: [id], onDelete: Cascade)
+  plaidAccountId  String
+  plaidAccount    PlaidAccount @relation(fields: [plaidAccountId], references: [id], onDelete: Cascade)
+  
+  periodStart     DateTime // Start of period (e.g., 2024-01-01 for Q1)
+  periodEnd       DateTime // End of period (e.g., 2024-03-31 for Q1)
+  maxAmount       Float    // Copied from benefit for historical tracking
+  usedAmount      Float    @default(0)
+  remainingAmount Float    // Calculated: maxAmount - usedAmount
+  
+  transactionExtensions TransactionExtended[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([cardBenefitId, plaidAccountId, periodStart])
+  @@map("benefit_usage")
 }

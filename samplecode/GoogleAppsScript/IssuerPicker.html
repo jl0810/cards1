@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; padding: 12px; }
+      label { display:block; margin-bottom: 6px; font-weight: 600; }
+      select, button { font-size: 14px; }
+      .actions { margin-top: 12px; display:flex; gap:8px; }
+    </style>
+  </head>
+  <body>
+    <label for="issuer">Choose issuer</label>
+    <select id="issuer">
+      <option value="">-- Select one issuer --</option>
+      <option>American Express</option>
+      <option>Chase</option>
+      <option>Citi</option>
+      <option>Barclays</option>
+      <option>Wells Fargo</option>
+      <option>Bank of America</option>
+      <option>Capital One</option>
+      <option>U.S. Bank</option>
+      <option>Discover</option>
+    </select>
+    <div class="actions">
+      <button onclick="run()">Run</button>
+      <button onclick="google.script.host.close()">Cancel</button>
+    </div>
+
+    <script>
+      function run() {
+        const issuer = document.getElementById('issuer').value.trim();
+        if (!issuer) { alert('Please select an issuer.'); return; }
+        google.script.run.withSuccessHandler(function(){
+          google.script.host.close();
+        }).updateCardUniverseAI_Run(issuer);
+      }
+    </script>
+  </body>
+</html>

@@ -3,6 +3,14 @@ const { withSentryConfig } = require('@sentry/nextjs')
 
 const nextConfig = {
   transpilePackages: ['lucide-react'],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'img.logo.dev',
+      },
+    ],
+  },
 }
 
 module.exports = withSentryConfig(nextConfig, {

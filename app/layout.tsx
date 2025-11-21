@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/app/providers/theme-provider";
 import { PostHogProvider } from "@/app/providers/posthog";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from '@clerk/themes';
+import { Toaster } from "sonner";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -26,15 +27,14 @@ export default function RootLayout({
       }}
     >
       <html lang="en" suppressHydrationWarning>
-        <body className={`${font.className} bg-dark-900 text-white antialiased`}>
+        <body className={`${font.className} antialiased`}>
           <PostHogProvider>
             <ThemeProvider
-              attribute="class"
               defaultTheme="dark"
-              enableSystem={false}
-              disableTransitionOnChange
+              storageKey="ui-theme"
             >
               {children}
+              <Toaster />
             </ThemeProvider>
           </PostHogProvider>
         </body>

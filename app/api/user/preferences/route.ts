@@ -26,7 +26,6 @@ export async function GET() {
       const defaultProfile = await prisma.userProfile.create({
         data: {
           clerkId: userId,
-          email: '', // Will be updated by webhook
         },
       });
 
@@ -86,7 +85,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -107,7 +106,6 @@ export async function PUT(request: NextRequest) {
       },
       create: {
         clerkId: userId,
-        email: '', // Will be updated by webhook
         theme: preferences.theme,
         language: preferences.language,
         timezone: preferences.timezone,
@@ -142,7 +140,7 @@ export async function PUT(request: NextRequest) {
 
   } catch (error) {
     console.error('Error updating user preferences:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to update preferences',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });

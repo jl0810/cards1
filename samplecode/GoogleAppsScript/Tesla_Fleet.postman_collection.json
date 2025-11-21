@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "Tesla Fleet Setup",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Tesla Auth Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials",
+              "type": "text"
+            },
+            {
+              "key": "client_id",
+              "value": "{{client_id}}",
+              "type": "text"
+            },
+            {
+              "key": "client_secret",
+              "value": "{{client_secret}}",
+              "type": "text"
+            },
+            {
+              "key": "audience",
+              "value": "fleet-api.prd.fleet-api.prd.us-east-1.vn.cloud.tesla.com",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://auth.tesla.com/oauth2/v3/token",
+          "protocol": "https",
+          "host": ["auth", "tesla", "com"],
+          "path": ["oauth2", "v3", "token"]
+        }
+      }
+    },
+    {
+      "name": "Tesla Partner Account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"domain\": \"{{domain}}\"\n}"
+        },
+        "url": {
+          "raw": "https://fleet-api.prd.fleet-api.prd.us-east-1.vn.cloud.tesla.com/partner_accounts",
+          "protocol": "https",
+          "host": ["fleet-api", "prd", "fleet-api", "prd", "us-east-1", "vn", "cloud", "tesla", "com"],
+          "path": ["partner_accounts"]
+        }
+      }
+    }
+  ]
+}
+

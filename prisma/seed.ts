@@ -11,19 +11,18 @@ async function main() {
     update: {},
     create: {
       clerkId: 'demo-user-clerk-id',
-      email: 'demo@example.com',
       name: 'Demo User',
       bio: 'Passionate developer exploring modern SaaS architectures',
       website: 'https://demo.example.com',
       location: 'San Francisco, CA',
-      
+
       // Settings
       theme: 'dark',
       language: 'en',
       timezone: 'America/Los_Angeles',
       emailNotifications: true,
       pushNotifications: false,
-      
+
       // Metadata
       onboardingCompleted: true,
       lastLoginAt: new Date(),
@@ -32,7 +31,6 @@ async function main() {
 
   console.log('✅ User profile seeded successfully!')
   console.log(`👤 Demo profile: ${demoProfile.name}`)
-  console.log(`📧 Email: ${demoProfile.email}`)
   console.log(`🎨 Theme: ${demoProfile.theme}`)
   console.log(`🌍 Location: ${demoProfile.location}`)
   console.log(`📧 Email notifications: ${demoProfile.emailNotifications}`)

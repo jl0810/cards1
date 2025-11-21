@@ -1,65 +1,267 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, BellRing, Wallet, Activity, Settings, LayoutGrid } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
+import { toast } from "sonner";
+import { useIsAdmin } from "@/hooks/use-admin";
 import { WalletView } from "@/components/velocity/wallet-view";
 import { ActivityView } from "@/components/velocity/activity-view";
 import { SettingsView } from "@/components/velocity/settings-view";
-
-// --- INITIAL DATA ---
-const INITIAL_USERS = [
-  { id: 'u1', name: 'Alex', avatar: 'A', role: 'Admin', color: 'bg-blue-500' },
-  { id: 'u2', name: 'Sarah', avatar: 'S', role: 'Member', color: 'bg-purple-500' },
-];
-
-const INITIAL_ACCOUNTS = [
-  {
-    id: 'a1', userId: 'u1', bank: 'Chase', name: 'Sapphire Reserve', balance: 2450.20, due: '2d', type: 'Visa', color: 'from-blue-900 to-slate-900',
-    liabilities: { apr: '22.49%', limit: '$15,000', min_due: '$45.00', last_statement: '$2,100.00' }
-  },
-  {
-    id: 'a2', userId: 'u1', bank: 'Amex', name: 'Platinum', balance: 890.50, due: 'Overdue', type: 'Amex', color: 'from-slate-200 to-slate-400 text-black',
-    liabilities: { apr: 'N/A (Charge)', limit: 'No Preset', min_due: '$890.50', last_statement: '$890.50' }
-  },
-  {
-    id: 'a3', userId: 'u2', bank: 'Citi', name: 'Custom Cash', balance: 45.00, due: '14d', type: 'Master', color: 'from-teal-900 to-slate-900',
-    liabilities: { apr: '19.99%', limit: '$5,000', min_due: '$25.00', last_statement: '$45.00' }
-  }
-];
+import { BankAccountsView } from "@/components/velocity/bank-accounts-view";
+import { AppHeader } from "@/components/layout/app-header";
+import { NavDock } from "@/components/layout/nav-dock";
 
 export default function DashboardPage() {
+  // Force rebuild
+  const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState('wallet');
   const [activeUser, setActiveUser] = useState('all');
-  const [users, setUsers] = useState(INITIAL_USERS);
-  const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
+  const [users, setUsers] = useState<any[]>([]); // TODO: Fetch real users
+  const [accounts, setAccounts] = useState<any[]>([]); // TODO: Fetch real accounts from Plaid
   const [loading, setLoading] = useState(true);
 
+  const formatCurrency = (value: number | null | undefined, currency?: string | null) => {
+    if (value === null || value === undefined) return 'N/A';
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD'
+      }).format(value);
+    } catch {
+      return `$${value.toLocaleString()}`;
+    }
+  };
+
+  const formatPercent = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `${value.toFixed(2)}%`;
+  };
+
+  const formatDate = (value: string | null | undefined) => {
+    if (!value) return 'N/A';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/user/family');
+      if (res.ok) {
+        const data = await res.json();
+        // Transform to UI format
+        const formattedUsers = data.map((u: any, index: number) => {
+          const colors = ['bg-pink-500', 'bg-orange-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-purple-500'];
+          return {
+            id: u.id,
+            name: u.name,
+            avatar: u.avatar || u.name[0],
+            role: u.role || (u.isPrimary ? 'Owner' : 'Member'),
+            color: colors[index % colors.length]
+          };
+        });
+        setUsers(formattedUsers);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
   // Handlers for Settings Actions
-  const addMember = (name: string) => {
-    const newId = `u${users.length + 1}`;
-    const colors = ['bg-pink-500', 'bg-orange-500', 'bg-cyan-500'];
-    const newColor = colors[users.length % colors.length];
-    setUsers([...users, { id: newId, name, avatar: name[0], role: 'Member', color: newColor }]);
+  const addMember = async (name: string) => {
+    try {
+      const res = await fetch('/api/user/family', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+
+      if (res.ok) {
+        const newMember = await res.json();
+        const colors = ['bg-pink-500', 'bg-orange-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-purple-500'];
+        const newColor = colors[users.length % colors.length];
+
+        setUsers([...users, {
+          id: newMember.id,
+          name: newMember.name,
+          avatar: newMember.name[0],
+          role: 'Member',
+          color: newColor
+        }]);
+
+        toast.success(`${name} has been added to your family`);
+      } else {
+        const text = await res.text();
+        toast.error(text || 'Failed to add family member');
+      }
+    } catch (error) {
+      console.error("Error adding member:", error);
+      toast.error("Failed to add family member");
+    }
   };
 
-  const linkBank = (bankName: string, userId: string) => {
-    const newId = `a${accounts.length + 1}`;
-    const newCard = {
-      id: newId,
-      userId: userId,
-      bank: bankName,
-      name: 'New Card',
-      balance: 0.00,
-      due: '30d',
-      type: 'Visa',
-      color: 'from-slate-800 to-black',
-      liabilities: { apr: '20%', limit: '$5,000', min_due: '$0.00', last_statement: '$0.00' }
-    };
-    setAccounts([...accounts, newCard]);
+  const deleteMember = async (id: string) => {
+    const memberToDelete = users.find(u => u.id === id);
+    if (!memberToDelete) return;
+
+    // Pre-check: Can this member be deleted?
+    try {
+      const checkRes = await fetch(`/api/user/family/${id}/check-delete`);
+      if (!checkRes.ok) {
+        const errorText = await checkRes.text();
+        toast.error(errorText, { duration: 5000 });
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking delete eligibility:", error);
+      toast.error("Failed to verify deletion eligibility");
+      return;
+    }
+
+    // Show confirmation toast with action buttons
+    toast.custom((t) => (
+      <div className="bg-dark-800 border border-white/10 rounded-xl p-4 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-start gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-bold text-white mb-1">Remove {memberToDelete.name}?</p>
+            <p className="text-xs text-slate-400">This action cannot be undone.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => {
+              toast.dismiss(t);
+              performDelete(id, memberToDelete.name);
+            }}
+            className="flex-1 px-3 py-1.5 text-xs font-bold bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+          >
+            Remove
+          </button>
+          <button
+            onClick={() => toast.dismiss(t)}
+            className="flex-1 px-3 py-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: Infinity });
   };
 
-  useEffect(() => { setTimeout(() => setLoading(false), 1000); }, []);
+  const performDelete = async (id: string, name: string) => {
+    try {
+      const res = await fetch(`/api/user/family/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setUsers(users.filter(u => u.id !== id));
+        toast.success(`${name} has been removed`);
+      } else {
+        const text = await res.text();
+        toast.error(text);
+      }
+    } catch (error) {
+      console.error("Error deleting member:", error);
+      toast.error("Failed to remove family member");
+    }
+  };
+
+  const updateMember = async (id: string, name: string) => {
+    try {
+      const res = await fetch(`/api/user/family/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+
+      if (res.ok) {
+        const updatedMember = await res.json();
+        setUsers(users.map(u => u.id === id ? { ...u, name: updatedMember.name } : u));
+        toast.success(`Renamed to ${updatedMember.name}`);
+      } else {
+        const text = await res.text();
+        toast.error(text);
+      }
+    } catch (error) {
+      console.error("Error updating member:", error);
+      toast.error("Failed to update family member");
+    }
+  };
+
+  const linkBank = () => {
+    setActiveTab('banks');
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch('/api/plaid/items');
+      if (!res.ok) {
+        const text = await res.text();
+        // If 404 (User profile not found), just return empty list
+        if (res.status === 404) {
+          setAccounts([]);
+          return;
+        }
+        throw new Error(text || 'Failed to fetch items');
+      }
+      const items = await res.json();
+
+      // Transform Plaid items/accounts into WalletView format
+      const allAccounts = items.flatMap((item: any) =>
+        item.accounts.map((acc: any) => ({
+          id: acc.id,
+          userId: 'current-user', // Placeholder as we don't have multi-user auth context in frontend yet
+          bank: item.institutionName || 'Unknown Bank',
+          name: acc.name,
+          balance: acc.currentBalance || 0,
+          due: acc.nextPaymentDueDate
+            ? (() => {
+              const diffDays = Math.ceil((new Date(acc.nextPaymentDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              if (diffDays < 0) return 'Overdue';
+              if (diffDays === 0) return 'Today';
+              if (diffDays === 1) return 'Tomorrow';
+              return `${diffDays} days`;
+            })()
+            : 'N/A',
+          type: acc.subtype || acc.type,
+          color: 'from-slate-800 to-slate-900', // Default color
+          liabilities: {
+            apr: formatPercent(acc.apr),
+            aprType: acc.aprType || 'N/A',
+            aprBalanceSubjectToApr: formatCurrency(acc.aprBalanceSubjectToApr, acc.isoCurrencyCode),
+            aprInterestChargeAmount: formatCurrency(acc.aprInterestChargeAmount, acc.isoCurrencyCode),
+            limit: formatCurrency(acc.limit, acc.isoCurrencyCode),
+            min_due: formatCurrency(acc.minPaymentAmount, acc.isoCurrencyCode),
+            last_statement: formatCurrency(acc.lastStatementBalance, acc.isoCurrencyCode),
+            next_due_date: formatDate(acc.nextPaymentDueDate),
+            last_statement_date: formatDate(acc.lastStatementIssueDate),
+            last_payment_amount: formatCurrency(acc.lastPaymentAmount, acc.isoCurrencyCode),
+            last_payment_date: formatDate(acc.lastPaymentDate),
+            status: acc.isOverdue ? 'Overdue' : (acc.nextPaymentDueDate ? 'Current' : 'N/A')
+          }
+        }))
+      );
+
+      setAccounts(allAccounts);
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccounts();
+    fetchUsers();
+  }, []);
 
   if (loading) return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-dark-900 text-white">
@@ -72,53 +274,29 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-mesh bg-cover bg-fixed text-slate-200 font-sans selection:bg-brand-primary/30 bg-dark-900">
 
       {/* HEADER */}
-      <header className="pt-6 pb-4 px-5 sticky top-0 z-20 bg-dark-900/80 backdrop-blur-xl border-b border-white/5">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Zap className="text-white w-5 h-5" />
-            </div>
-            <h1 className="text-lg font-bold tracking-tight text-white">PointMax</h1>
-          </div>
-          <button className="relative p-2 hover:bg-white/5 rounded-full transition-colors">
-            <BellRing className="text-slate-400 w-5 h-5" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-dark-900"></span>
+      <AppHeader>
+        <button onClick={() => setActiveUser('all')} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeUser === 'all' ? 'bg-white text-black border-white shadow-lg' : 'bg-glass-100 text-slate-400 border-transparent'}`}>
+          <LayoutGrid className="w-4 h-4" /> All
+        </button>
+        {users.map(user => (
+          <button key={user.id} onClick={() => setActiveUser(user.id)} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeUser === user.id ? 'bg-white text-black border-white shadow-lg' : 'bg-glass-100 text-slate-400 border-transparent'}`}>
+            <div className={`w-2 h-2 rounded-full ${user.color}`} /> {user.name}
           </button>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-          <button onClick={() => setActiveUser('all')} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeUser === 'all' ? 'bg-white text-black border-white shadow-lg' : 'bg-glass-100 text-slate-400 border-transparent'}`}>
-            <LayoutGrid className="w-4 h-4" /> All
-          </button>
-          {users.map(user => (
-            <button key={user.id} onClick={() => setActiveUser(user.id)} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeUser === user.id ? 'bg-white text-black border-white shadow-lg' : 'bg-glass-100 text-slate-400 border-transparent'}`}>
-              <div className={`w-2 h-2 rounded-full ${user.color}`} /> {user.name}
-            </button>
-          ))}
-        </div>
-      </header>
+        ))}
+      </AppHeader>
 
       {/* MAIN CONTENT */}
       <main className="px-5 pt-4">
         <AnimatePresence mode="wait">
           {activeTab === 'wallet' && <motion.div key="wallet" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><WalletView users={users} accounts={accounts} activeUser={activeUser} /></motion.div>}
           {activeTab === 'activity' && <motion.div key="activity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><ActivityView /></motion.div>}
-          {activeTab === 'settings' && <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><SettingsView users={users} accounts={accounts} onAddMember={addMember} onLinkBank={linkBank} /></motion.div>}
+          {activeTab === 'banks' && <motion.div key="banks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><BankAccountsView /></motion.div>}
+          {activeTab === 'settings' && <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><SettingsView users={users} accounts={accounts} onAddMember={addMember} onUpdateMember={updateMember} onDeleteMember={deleteMember} onLinkBank={linkBank} /></motion.div>}
         </AnimatePresence>
       </main>
 
       {/* NAVIGATION DOCK */}
-      <nav className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-glass-nav backdrop-blur-2xl rounded-full px-2 py-2 flex items-center gap-1 shadow-2xl z-50">
-        {[
-          { id: 'wallet', icon: Wallet },
-          { id: 'activity', icon: Activity },
-          { id: 'settings', icon: Settings }
-        ].map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative px-6 py-3 rounded-full transition-all duration-300 flex items-center justify-center ${activeTab === tab.id ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-            {activeTab === tab.id && <motion.div layoutId="nav-pill" className="absolute inset-0 bg-white/10 rounded-full" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
-            <div className="relative z-10 flex flex-col items-center gap-1"><tab.icon className={`w-6 h-6 ${activeTab === tab.id ? 'text-white' : ''}`} strokeWidth={activeTab === tab.id ? 2.5 : 2} /></div>
-          </button>
-        ))}
-      </nav>
+      <NavDock activeTab={activeTab} onTabChange={setActiveTab} isAdmin={isAdmin} />
     </div>
   );
 }

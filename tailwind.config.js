@@ -27,22 +27,22 @@ module.exports = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
-        
+
         // --- Velocity Theme Colors (Must be present) ---
         dark: {
-          900: '#02040a', 
-          800: '#090e1a', 
-          700: '#121826'  
+          900: '#02040a',
+          800: '#090e1a',
+          700: '#121826'
         },
         glass: {
-          100: 'rgba(255, 255, 255, 0.03)', 
-          200: 'rgba(255, 255, 255, 0.08)', 
-          300: 'rgba(255, 255, 255, 0.12)'  
+          100: 'rgba(255, 255, 255, 0.03)',
+          200: 'rgba(255, 255, 255, 0.08)',
+          300: 'rgba(255, 255, 255, 0.12)'
         },
         brand: {
-          primary: '#6366f1', 
-          accent: '#8b5cf6',  
-          glow: '#a855f7'     
+          primary: '#6366f1',
+          accent: '#8b5cf6',
+          glow: '#a855f7'
         },
         // -----------------------------
 
@@ -92,10 +92,35 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        shimmer: {
+          from: {
+            backgroundPosition: "0 0",
+          },
+          to: {
+            backgroundPosition: "-200% 0",
+          },
+        },
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(calc(-100% - var(--gap)))" },
+        },
+        "marquee-vertical": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(calc(-100% - var(--gap)))" },
+        },
+        "border-beam": {
+          "100%": {
+            "offset-distance": "100%",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        shimmer: "shimmer 2s linear infinite",
+        marquee: "marquee var(--duration) linear infinite",
+        "marquee-vertical": "marquee-vertical var(--duration) linear infinite",
+        "border-beam": "border-beam calc(var(--duration)*1s) infinite linear",
       },
     },
   },

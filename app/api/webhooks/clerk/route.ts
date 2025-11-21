@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { clerkClient } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   // Get the headers (await in Next.js 15)
@@ -42,14 +43,27 @@ export async function POST(req: NextRequest) {
 
   // Handle the event
   const eventType = evt.type;
-  
+
   if (eventType === 'user.created') {
     // Handle new user creation
     const userId = evt.data.id;
+    const email = evt.data.email_addresses[0]?.email_address;
+    const firstName = evt.data.first_name;
+    const lastName = evt.data.last_name;
+    const avatar = evt.data.image_url;
+
     console.log(`New user created: ${userId}`);
-    
-    // You can initialize user metadata here
+
     try {
+      // Create UserProfile in DB
+      await prisma.userProfile.create({
+        data: {
+          clerkId: userId,
+          name: firstName || '',
+          avatar: avatar,
+        }
+      });
+
       const client = await clerkClient();
       await client.users.updateUserMetadata(userId, {
         publicMetadata: {
@@ -59,7 +73,27 @@ export async function POST(req: NextRequest) {
         }
       });
     } catch (error) {
-      console.error('Error updating user metadata:', error);
+      console.error('Error creating user profile:', error);
+    }
+  }
+
+  if (eventType === 'user.updated') {
+    const userId = evt.data.id;
+    const email = evt.data.email_addresses[0]?.email_address;
+    const firstName = evt.data.first_name;
+    const lastName = evt.data.last_name;
+    const avatar = evt.data.image_url;
+
+    try {
+      await prisma.userProfile.update({
+        where: { clerkId: userId },
+        data: {
+          name: firstName || '',
+          avatar: avatar,
+        }
+      });
+    } catch (error) {
+      console.error('Error updating user profile:', error);
     }
   }
 
@@ -67,7 +101,7 @@ export async function POST(req: NextRequest) {
     // Handle user updates (including subscription changes)
     const userId = evt.data.id;
     const publicMetadata = evt.data.public_metadata;
-    
+
     console.log(`User updated: ${userId}`, publicMetadata);
   }
 

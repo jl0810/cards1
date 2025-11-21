@@ -15,11 +15,28 @@ interface Account {
   color: string;
   liabilities: {
     apr: string;
+    aprType: string;
+    aprBalanceSubjectToApr: string;
+    aprInterestChargeAmount: string;
     limit: string;
     min_due: string;
     last_statement: string;
+    next_due_date: string;
+    last_statement_date: string;
+    last_payment_amount: string;
+    last_payment_date: string;
+    status: string;
   };
 }
+
+const LiabilityStat = ({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) => (
+  <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+    <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">{label}</p>
+    <p className={`text-sm font-mono font-bold ${accent ? 'text-brand-accent' : 'text-white'}`}>
+      {value || 'N/A'}
+    </p>
+  </div>
+);
 
 export function CreditCard({ acc, layout }: { acc: Account; layout: string }) {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -40,7 +57,7 @@ export function CreditCard({ acc, layout }: { acc: Account; layout: string }) {
         <div className="text-right">
           <p className="text-sm font-mono font-bold text-white">${acc.balance.toLocaleString()}</p>
           <p className={`text-[10px] font-bold ${acc.due === 'Overdue' ? 'text-red-400' : 'text-slate-500'}`}>
-            {acc.due === 'Overdue' ? 'Overdue' : `Due in ${acc.due}`}
+            {acc.due === 'Overdue' ? 'Overdue' : acc.due === 'N/A' ? 'Due date unavailable' : `Due in ${acc.due}`}
           </p>
         </div>
       </div>
@@ -101,22 +118,23 @@ export function CreditCard({ acc, layout }: { acc: Account; layout: string }) {
               <span className="text-xs font-mono font-bold text-white/70">923</span>
             </div>
           </div>
-          <div className="px-6 pb-6 grid grid-cols-2 gap-3">
-            <div className="bg-white/5 p-2 rounded-lg">
-              <p className="text-[9px] text-slate-500 uppercase font-bold">Min Payment</p>
-              <p className="text-sm font-mono font-bold text-white">{acc.liabilities.min_due}</p>
+          <div className="px-6 pb-6 space-y-3">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-400">
+              <span className="font-bold">Status: <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${acc.liabilities.status === 'Overdue' ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white'}`}>{acc.liabilities.status || 'N/A'}</span></span>
+              <span className="font-mono text-white/70">Due: {acc.liabilities.next_due_date || 'N/A'}</span>
             </div>
-            <div className="bg-white/5 p-2 rounded-lg">
-              <p className="text-[9px] text-slate-500 uppercase font-bold">Statement Bal</p>
-              <p className="text-sm font-mono font-bold text-white">{acc.liabilities.last_statement}</p>
-            </div>
-            <div className="bg-white/5 p-2 rounded-lg">
-              <p className="text-[9px] text-slate-500 uppercase font-bold">Purchase APR</p>
-              <p className="text-sm font-mono font-bold text-brand-accent">{acc.liabilities.apr}</p>
-            </div>
-            <div className="bg-white/5 p-2 rounded-lg">
-              <p className="text-[9px] text-slate-500 uppercase font-bold">Credit Limit</p>
-              <p className="text-sm font-mono font-bold text-white">{acc.liabilities.limit}</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <LiabilityStat label="Min Payment" value={acc.liabilities.min_due} />
+              <LiabilityStat label="Statement Bal" value={acc.liabilities.last_statement} />
+              <LiabilityStat label="Credit Limit" value={acc.liabilities.limit} />
+              <LiabilityStat label="APR" value={`${acc.liabilities.apr}${acc.liabilities.aprType !== 'N/A' ? ` • ${acc.liabilities.aprType}` : ''}`} accent />
+              <LiabilityStat label="APR Balance" value={acc.liabilities.aprBalanceSubjectToApr} />
+              <LiabilityStat label="APR Interest" value={acc.liabilities.aprInterestChargeAmount} />
+              <LiabilityStat label="Last Statement" value={acc.liabilities.last_statement_date} />
+              <LiabilityStat label="Next Due Date" value={acc.liabilities.next_due_date} />
+              <LiabilityStat label="Last Payment" value={acc.liabilities.last_payment_amount} />
+              <LiabilityStat label="Last Payment Date" value={acc.liabilities.last_payment_date} />
             </div>
           </div>
         </div>

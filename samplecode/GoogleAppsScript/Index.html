@@ -1,0 +1,130 @@
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 10px;
+        background-color: #f8f9fa;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        box-sizing: border-box;
+        margin: 0;
+      }
+      #container {
+        text-align: center;
+      }
+      h2 {
+        color: #0d112b; /* Plaid dark blue */
+      }
+      p {
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 20px;
+      }
+      #link-button {
+        background-color: #000;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      #link-button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      #link-button:hover:not(:disabled) {
+        background-color: #333;
+      }
+      #status {
+        margin-top: 20px;
+        font-weight: bold;
+      }
+      .success {
+        color: #28a745;
+      }
+      .error {
+        color: #dc3545;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <h2>Link Your Bank Account</h2>
+      <p>Click the button below to securely connect your account through Plaid. Your credentials are not shared with this sheet.</p>
+      
+      <button id="link-button">Connect an Account</button>
+      
+      <div id="status"></div>
+    </div>
+
+    <!-- Plaid's official Link SDK -->
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+    
+    <script>
+      // The link_token is passed from the server-side Apps Script code.
+      const linkToken = "<?= linkToken ?>";
+      const button = document.getElementById('link-button');
+      const statusDiv = document.getElementById('status');
+      
+      const handler = Plaid.create({
+        token: linkToken,
+        onSuccess: (public_token, metadata) => {
+          // Send the public_token to your server-side function to be exchanged.
+          statusDiv.textContent = 'Processing... Please wait.';
+          button.disabled = true;
+          
+          google.script.run
+            .withSuccessHandler(onServerSuccess)
+            .withFailureHandler(onServerFailure)
+            .exchangePublicTokenForAccessToken(public_token);
+        },
+        onLoad: () => {
+          // Optional: Enable the button when Plaid Link is fully loaded.
+          button.disabled = false;
+        },
+        onExit: (err, metadata) => {
+          if (err != null) {
+            statusDiv.textContent = 'Plaid Link exited with an error.';
+            statusDiv.className = 'error';
+          }
+        },
+        onEvent: (eventName, metadata) => {
+          // Log events to the console for debugging.
+          console.log("Plaid Event:", eventName, metadata);
+        }
+      });
+      
+      // Trigger the Plaid Link flow when the button is clicked.
+      button.addEventListener('click', () => {
+        handler.open();
+      });
+      
+      // Callback function for when the server successfully exchanges the token.
+      function onServerSuccess(message) {
+        statusDiv.textContent = message;
+        if (message.toLowerCase().startsWith('success')) {
+            statusDiv.className = 'success';
+            // Close the sidebar automatically after a few seconds on success.
+            setTimeout(() => google.script.host.close(), 3000);
+        } else {
+            statusDiv.className = 'error';
+        }
+      }
+      
+      // Callback function for when the server fails to exchange the token.
+      function onServerFailure(error) {
+        statusDiv.textContent = 'Server error: ' + error.message;
+        statusDiv.className = 'error';
+        button.disabled = false;
+      }
+    </script>
+  </body>
+</html>
