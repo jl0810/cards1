@@ -6,32 +6,13 @@ import { Building2, CreditCard, Plus, Trash2, RefreshCw, Users } from 'lucide-re
 import PlaidLink from '@/components/plaid-link';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { useBankLogo } from '@/hooks/use-bank-logo';
+import { useBankBrand } from '@/hooks/use-bank-brand';
 import { FamilyMemberSelector } from './family-member-selector';
 
 // ... (BankLogo component remains the same)
-function BankLogo({ name }: { name: string | null }) {
-    const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-    const logoUrl = useBankLogo(name, {
-        size: 128,
-        format: 'webp',
-        theme: theme,
-    });
+function BankLogo({ name, bankId }: { name: string | null, bankId?: string | null }) {
+    const { brand, loading } = useBankBrand(bankId || null);
     const [error, setError] = useState(false);
-    const [isVisible, setIsVisible] = useState(false);
-
-    // Detect theme from system/user preference
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        setTheme(mediaQuery.matches ? 'dark' : 'light');
-
-        const handler = (e: MediaQueryListEvent) => {
-            setTheme(e.matches ? 'dark' : 'light');
-        };
-
-        mediaQuery.addEventListener('change', handler);
-        return () => mediaQuery.removeEventListener('change', handler);
-    }, []);
 
     // Get initials from bank name
     const getInitials = (bankName: string | null) => {
@@ -43,20 +24,27 @@ function BankLogo({ name }: { name: string | null }) {
 
     // Get a color based on bank name (consistent hash)
     const getColor = (bankName: string | null) => {
-        if (!bankName) return 'bg-blue-600';
+        if (!bankName) return 'bg-brand-primary';
+        // Use brand-aligned colors
         const colors = [
-            'bg-blue-600', 'bg-purple-600', 'bg-pink-600',
-            'bg-red-600', 'bg-orange-600', 'bg-yellow-600',
-            'bg-green-600', 'bg-teal-600', 'bg-cyan-600'
+            'bg-blue-600', 'bg-indigo-600', 'bg-violet-600',
+            'bg-purple-600', 'bg-fuchsia-600', 'bg-pink-600',
+            'bg-rose-600', 'bg-orange-600', 'bg-amber-600',
+            'bg-emerald-600', 'bg-teal-600', 'bg-cyan-600',
+            'bg-sky-600'
         ];
         const hash = bankName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         return colors[hash % colors.length];
     };
 
-    if (!logoUrl || error) {
+    if (loading || !brand?.logoUrl || error) {
         return (
-            <div className={`w-10 h-10 rounded-lg ${getColor(name)} flex items-center justify-center`}>
-                <span className="text-white text-xs font-bold">{getInitials(name)}</span>
+            <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center relative`}
+                style={{ backgroundColor: brand?.brandColor || undefined }}
+            >
+                {!brand?.brandColor && <div className={`absolute inset-0 rounded-lg ${getColor(name)} opacity-100`} />}
+                <span className="text-white text-xs font-bold relative z-10">{getInitials(name)}</span>
             </div>
         );
     }
@@ -64,7 +52,7 @@ function BankLogo({ name }: { name: string | null }) {
     return (
         <div className="w-10 h-10 rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden">
             <img
-                src={logoUrl}
+                src={brand.logoUrl}
                 alt={name || 'Bank Logo'}
                 className="w-full h-full object-contain"
                 loading="lazy"
@@ -90,7 +78,8 @@ interface PlaidItem {
     institutionName: string | null;
     status: string;
     accounts: PlaidAccount[];
-    familyMemberId: string; // Added familyMemberId
+    familyMemberId: string;
+    bankId?: string | null;
 }
 
 interface FamilyMember {
@@ -100,7 +89,7 @@ interface FamilyMember {
     isPrimary: boolean;
 }
 
-export function BankAccountsView() {
+export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }) {
     const [items, setItems] = useState<PlaidItem[]>([]);
     const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
     const [loading, setLoading] = useState(true);
@@ -128,15 +117,26 @@ export function BankAccountsView() {
         }
     };
 
-    const syncTransactions = async (itemId: string) => {
+    // Filter items by active user
+    const filteredItems = activeUser === 'all'
+        ? items
+        : items.filter(item => item.familyMemberId === activeUser);
+
+    const syncTransactions = async (itemId?: string) => {
+        const itemsToSync = itemId ? items.filter(i => i.itemId === itemId) : items;
+
+        if (itemsToSync.length === 0) return;
+
         toast.promise(
-            fetch('/api/plaid/sync-transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ itemId, cursor: null }),
-            }),
+            Promise.all(itemsToSync.map(item =>
+                fetch('/api/plaid/sync-transactions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itemId: item.itemId, cursor: null }),
+                })
+            )),
             {
-                loading: 'Syncing transactions...',
+                loading: itemId ? 'Syncing transactions...' : `Syncing ${itemsToSync.length} connections...`,
                 success: 'Transactions synced!',
                 error: 'Failed to sync transactions',
             }
@@ -167,6 +167,27 @@ export function BankAccountsView() {
         }
     };
 
+    const deleteItem = async (itemId: string) => {
+        if (!confirm('Are you sure you want to disconnect this bank? This will remove all associated accounts and transactions.')) return;
+
+        // Optimistic update
+        const originalItems = [...items];
+        setItems(items.filter(i => i.id !== itemId));
+
+        try {
+            const res = await fetch(`/api/plaid/items/${itemId}`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) throw new Error('Failed to delete item');
+            toast.success('Bank disconnected');
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to disconnect bank');
+            setItems(originalItems);
+        }
+    };
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -180,10 +201,7 @@ export function BankAccountsView() {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                                toast.info("Syncing for first item");
-                                syncTransactions(items[0].itemId);
-                            }}
+                            onClick={() => syncTransactions()}
                         >
                             <RefreshCw className="w-4 h-4 mr-2" /> Sync All
                         </Button>
@@ -208,7 +226,7 @@ export function BankAccountsView() {
                 </div>
             ) : (
                 <div className="grid gap-6">
-                    {items.map((item) => (
+                    {filteredItems.map((item) => (
                         <motion.div
                             key={item.id}
                             initial={{ opacity: 0, y: 20 }}
@@ -216,8 +234,8 @@ export function BankAccountsView() {
                             className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
                         >
                             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5">
-                                <div className="flex items-center gap-3">
-                                    <BankLogo name={item.institutionName} />
+                                <div className="flex items-center gap-4">
+                                    <BankLogo name={item.institutionName} bankId={item.bankId} />
                                     <div>
                                         <h3 className="font-semibold text-white">{item.institutionName || 'Unknown Bank'}</h3>
                                         <p className="text-xs text-slate-400 capitalize">{item.status}</p>

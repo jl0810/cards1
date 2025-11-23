@@ -26,6 +26,23 @@ model FamilyMember {
   @@map("family_members")
 }
 
+model Bank {
+  id          String   @id @default(cuid())
+  plaidId     String   @unique // Plaid institution ID (or custom ID for non‑Plaid issuers)
+  name        String   // Human readable name, e.g. "Chase"
+  logoUrl     String?  // CDN‑hosted logo image URL
+  brandColor  String?  // Hex colour like "#1A73E8"
+
+  // Relations (optional but useful for queries)
+  plaidItems   PlaidItem[]   @relation("BankPlaidItems")
+  cardProducts CardProduct[] @relation("BankCardProducts")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banks")
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -134,6 +151,8 @@ model PlaidItem {
   accessTokenId   String   @unique
   institutionId   String?
   institutionName String?
+  bankId          String? @map("bank_id")
+  bank            Bank?   @relation("BankPlaidItems", fields: [bankId], references: [id])
   
   status          String   @default("active") // active, disconnected, error, needs_reauth
   lastSyncedAt    DateTime?
@@ -277,6 +296,8 @@ model TransactionExtended {
 model CardProduct {
   id              String   @id @default(cuid())
   issuer          String   // Chase, Amex, Citi, etc.
+  bankId          String? @map("bank_id")
+  bank            Bank?   @relation("BankCardProducts", fields: [bankId], references: [id])
   productName     String   // Sapphire Reserve, Platinum Card, etc.
   cardType        String?  // Points, Co-brand, Cashback
   annualFee       Float?

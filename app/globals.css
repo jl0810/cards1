@@ -81,11 +81,21 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/5 backdrop-blur-lg border border-white/10 shadow-xl;
+    background-color: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    @apply border border-white/10 shadow-xl;
   }
 
   .glass-card {
-    @apply bg-black/20 backdrop-blur-md border border-white/10 shadow-lg transition-all duration-300 hover:bg-black/30 hover:scale-[1.02] hover:shadow-primary/20;
+    background-color: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    @apply border border-white/10 shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-primary/20;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.3);
+    }
   }
 
   .text-gradient {

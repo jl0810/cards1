@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, RefreshCw, Unplug, UserCheck, AlertCircle, CheckCircle, Clock, ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
-import { useBankLogo } from "@/hooks/use-bank-logo";
+import { useBankBrand } from "@/hooks/use-bank-brand";
 import { FamilyMemberDropdown } from "./family-member-dropdown";
 import { LinkedCardDisplay } from "./linked-card-display";
 import { CardProductMatcher } from "./card-product-matcher";
@@ -18,6 +18,7 @@ interface PlaidItem {
     institutionName: string | null;
     status: string;
     lastSyncedAt: string | null;
+    bankId?: string | null;
     familyMember: {
         id: string;
         name: string;
@@ -62,7 +63,7 @@ function BankConnectionCard({ item, familyMembers, onReassign, onRefresh, onDisc
     const [isExpanded, setIsExpanded] = useState(false);
     const [isReassigning, setIsReassigning] = useState(false);
     const [linkingAccountId, setLinkingAccountId] = useState<string | null>(null);
-    const logoUrl = useBankLogo(item.institutionName || '');
+    const { brand } = useBankBrand(item.bankId || null);
 
     const statusConfig = {
         active: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: CheckCircle, label: 'Active' },
@@ -93,10 +94,15 @@ function BankConnectionCard({ item, familyMembers, onReassign, onRefresh, onDisc
                     {/* Bank Logo */}
                     <div className="relative">
                         <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                            {logoUrl ? (
-                                <img src={logoUrl} alt={item.institutionName || ''} className="w-10 h-10 object-contain" />
+                            {brand?.logoUrl ? (
+                                <img src={brand.logoUrl} alt={item.institutionName || ''} className="w-10 h-10 object-contain" />
                             ) : (
-                                <Building2 className="w-6 h-6 text-slate-400" />
+                                <div
+                                    className="w-full h-full flex items-center justify-center"
+                                    style={{ backgroundColor: brand?.brandColor || undefined }}
+                                >
+                                    <Building2 className="w-6 h-6 text-slate-400" />
+                                </div>
                             )}
                         </div>
                         {/* Status Badge */}

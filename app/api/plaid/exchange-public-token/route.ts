@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
 import { assertFamilyMemberOwnership, ensurePrimaryFamilyMember } from '@/lib/family';
+import { ensureBankExists } from '@/lib/plaid-bank';
 
 /**
  * Exchanges a Plaid public token for an access token and creates a new PlaidItem.
@@ -162,6 +163,9 @@ export async function POST(req: Request) {
                 },
             },
         });
+
+        // Ensure Bank exists and link it
+        await ensureBankExists(plaidItem).catch(err => console.error("Failed to ensure bank exists", err));
 
         let plaidItemDbId = plaidItem.id;
 

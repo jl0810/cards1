@@ -13,7 +13,7 @@ const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode, delay?: nu
   </motion.div>
 );
 
-export function ActivityView() {
+export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -36,10 +36,16 @@ export function ActivityView() {
     fetchTransactions();
   }, []);
 
-  const filteredTransactions = transactions.filter(t =>
-    t.merchantName?.toLowerCase().includes(search.toLowerCase()) ||
-    t.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTransactions = transactions.filter(t => {
+    // Filter by search term
+    const matchesSearch = t.merchantName?.toLowerCase().includes(search.toLowerCase()) ||
+      t.name.toLowerCase().includes(search.toLowerCase());
+
+    // Filter by active user
+    const matchesUser = activeUser === 'all' || t.plaidItem?.familyMemberId === activeUser;
+
+    return matchesSearch && matchesUser;
+  });
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

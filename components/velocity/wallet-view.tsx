@@ -54,7 +54,7 @@ export function WalletView({ users, accounts, activeUser }: { users: any[], acco
         </div>
       </div>
 
-      <div className={`grid gap-4 ${layout === 'grid' ? 'grid-cols-1' : 'grid-cols-1'}`}>
+      <div className={`grid gap-4 ${layout === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3' : 'grid-cols-1'}`}>
         <AnimatePresence>
           {filteredAccounts.map((acc, i) => (
             <FadeIn key={acc.id} delay={i * 0.05}>

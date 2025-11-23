@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, CreditCard, Check } from "lucide-react";
 import { toast } from "sonner";
 
+import { useBankBrand } from "@/hooks/use-bank-brand";
+
 interface CardProduct {
     id: string;
     issuer: string;
@@ -12,10 +14,45 @@ interface CardProduct {
     cardType: string | null;
     annualFee: number | null;
     imageUrl: string | null;
+    bankId?: string | null;
     benefits: Array<{
         id: string;
         benefitName: string;
     }>;
+}
+
+function CardProductLogo({ product }: { product: CardProduct }) {
+    const { brand, loading } = useBankBrand(product.bankId || null);
+
+    if (loading || !brand?.logoUrl) {
+        if (product.imageUrl) {
+            return (
+                <img
+                    src={product.imageUrl}
+                    alt={product.productName}
+                    className="w-12 h-12 rounded-lg object-cover"
+                />
+            );
+        }
+        return (
+            <div
+                className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center"
+                style={{ backgroundColor: brand?.brandColor || undefined }}
+            >
+                <CreditCard className="w-6 h-6 text-slate-400" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-12 h-12 rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden">
+            <img
+                src={brand.logoUrl}
+                alt={product.issuer}
+                className="w-full h-full object-contain"
+            />
+        </div>
+    );
 }
 
 interface CardProductMatcherProps {
@@ -189,22 +226,12 @@ export function CardProductMatcher({
                                                 onClick={() => linkProduct(product.id)}
                                                 disabled={saving}
                                                 className={`w-full p-3 rounded-lg transition-all text-left ${isSelected
-                                                        ? 'bg-brand-primary/20 border-brand-primary'
-                                                        : 'bg-white/5 hover:bg-white/10 border-white/10'
+                                                    ? 'bg-brand-primary/20 border-brand-primary'
+                                                    : 'bg-white/5 hover:bg-white/10 border-white/10'
                                                     } border`}
                                             >
                                                 <div className="flex items-start gap-3">
-                                                    {product.imageUrl ? (
-                                                        <img
-                                                            src={product.imageUrl}
-                                                            alt={product.productName}
-                                                            className="w-12 h-12 rounded-lg object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center">
-                                                            <CreditCard className="w-6 h-6 text-slate-400" />
-                                                        </div>
-                                                    )}
+                                                    <CardProductLogo product={product} />
                                                     <div className="flex-1">
                                                         <div className="flex items-start justify-between">
                                                             <div>

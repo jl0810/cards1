@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useIsAdmin } from "@/hooks/use-admin";
 import { WalletView } from "@/components/velocity/wallet-view";
@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [users, setUsers] = useState<any[]>([]); // TODO: Fetch real users
   const [accounts, setAccounts] = useState<any[]>([]); // TODO: Fetch real accounts from Plaid
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const formatCurrency = (value: number | null | undefined, currency?: string | null) => {
     if (value === null || value === undefined) return 'N/A';
@@ -71,6 +72,55 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching users:", error);
+    }
+  };
+
+  // Refresh all Plaid data
+  const refreshAll = async () => {
+    setRefreshing(true);
+    try {
+      // Fetch all items first
+      const itemsRes = await fetch('/api/plaid/items');
+      if (!itemsRes.ok) throw new Error('Failed to fetch items');
+      const items = await itemsRes.json();
+
+      // Sync each item
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const item of items) {
+        try {
+          const syncRes = await fetch('/api/plaid/sync-transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId: item.itemId })
+          });
+
+          if (syncRes.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (e) {
+          console.error(`Failed to sync item ${item.institutionName}:`, e);
+          failCount++;
+        }
+      }
+
+      // Reload account data
+      await fetchAccounts();
+
+      if (successCount > 0) {
+        toast.success(`Refreshed ${successCount} account${successCount > 1 ? 's' : ''}`);
+      }
+      if (failCount > 0) {
+        toast.error(`Failed to refresh ${failCount} account${failCount > 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      console.error('Error refreshing accounts:', error);
+      toast.error('Failed to refresh accounts');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -220,7 +270,8 @@ export default function DashboardPage() {
           id: acc.id,
           userId: 'current-user', // Placeholder as we don't have multi-user auth context in frontend yet
           bank: item.institutionName || 'Unknown Bank',
-          name: acc.name,
+          bankId: item.bankId, // Pass through the bankId from PlaidItem
+          name: acc.extended?.nickname ?? acc.officialName ?? acc.name,
           balance: acc.currentBalance || 0,
           due: acc.nextPaymentDueDate
             ? (() => {
@@ -283,14 +334,22 @@ export default function DashboardPage() {
             <div className={`w-2 h-2 rounded-full ${user.color}`} /> {user.name}
           </button>
         ))}
+        <button
+          onClick={refreshAll}
+          disabled={refreshing}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border bg-glass-100 text-slate-400 border-transparent hover:bg-glass-200 disabled:opacity-50`}
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Syncing...' : 'Refresh'}
+        </button>
       </AppHeader>
 
       {/* MAIN CONTENT */}
       <main className="px-5 pt-4">
         <AnimatePresence mode="wait">
           {activeTab === 'wallet' && <motion.div key="wallet" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><WalletView users={users} accounts={accounts} activeUser={activeUser} /></motion.div>}
-          {activeTab === 'activity' && <motion.div key="activity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><ActivityView /></motion.div>}
-          {activeTab === 'banks' && <motion.div key="banks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><BankAccountsView /></motion.div>}
+          {activeTab === 'activity' && <motion.div key="activity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><ActivityView activeUser={activeUser} /></motion.div>}
+          {activeTab === 'banks' && <motion.div key="banks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><BankAccountsView activeUser={activeUser} /></motion.div>}
           {activeTab === 'settings' && <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}><SettingsView users={users} accounts={accounts} onAddMember={addMember} onUpdateMember={updateMember} onDeleteMember={deleteMember} onLinkBank={linkBank} /></motion.div>}
         </AnimatePresence>
       </main>

@@ -27,6 +27,7 @@ interface CardBenefit {
 interface CardProduct {
     id: string;
     issuer: string;
+    bankId?: string | null;
     productName: string;
     cardType: string | null;
     annualFee: number | null;
@@ -188,8 +189,10 @@ export default function AdminCardCatalogPage() {
                         <CollapsibleIssuer
                             key={group.issuer}
                             issuer={group.issuer}
+                            bankId={group.products[0]?.bankId}
                             count={group.products.length}
                             defaultOpen={searchTerm.length > 0} // Auto-expand when searching
+                            onRefresh={fetchProducts}
                         >
                             {group.products.map((product) => (
                                 <ProductRow
