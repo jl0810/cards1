@@ -51,9 +51,9 @@ export function CollapsibleIssuer({ issuer, bankId, count, children, defaultOpen
     return (
         <div className="mb-3 rounded-xl bg-slate-900/50 border border-white/5 overflow-hidden">
             {/* Header / Trigger */}
-            <button
+            <div
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors cursor-pointer"
             >
                 <div className="flex items-center gap-4">
                     {/* Logo */}
@@ -95,7 +95,7 @@ export function CollapsibleIssuer({ issuer, bankId, count, children, defaultOpen
                         <ChevronDown className="w-4 h-4 text-slate-400" />
                     </div>
                 </div>
-            </button>
+            </div>
 
             {/* Content / Accordion Body */}
             <AnimatePresence initial={false}>

@@ -57,8 +57,8 @@ export const RATE_LIMITS = {
     write: { max: 20, window: '1 m' },
     /** Sensitive operations (e.g., delete): 5 requests per minute */
     sensitive: { max: 5, window: '1 m' },
-    /** Plaid sync operations: 10 requests per hour */
-    plaidSync: { max: 10, window: '1 h' },
+    /** Plaid sync operations: 100 requests per hour */
+    plaidSync: { max: 100, window: '1 h' },
 } as const;
 
 // Initialize Redis client (only if Upstash credentials are available)

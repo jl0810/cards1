@@ -18,13 +18,7 @@ if (process.env.NODE_ENV === 'development' && devUrl) {
   }
 }
 
-// If we are in development and reloading this module, disconnect the old client
-if (process.env.NODE_ENV === 'development' && globalForPrisma.prisma) {
-  globalForPrisma.prisma.$disconnect().catch(console.error)
-}
-
-// Always create a new client to ensure config changes are applied
-export const prisma = new PrismaClient({
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   datasources: {
     db: {
       url: process.env.NODE_ENV === 'development' ? devUrl : url,

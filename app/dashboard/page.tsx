@@ -87,6 +87,7 @@ export default function DashboardPage() {
       // Sync each item
       let successCount = 0;
       let failCount = 0;
+      let rateLimitHit = false;
 
       for (const item of items) {
         try {
@@ -99,7 +100,12 @@ export default function DashboardPage() {
           if (syncRes.ok) {
             successCount++;
           } else {
-            failCount++;
+            if (syncRes.status === 429) {
+              rateLimitHit = true;
+              console.warn(`Rate limit hit for item ${item.institutionName}`);
+            } else {
+              failCount++;
+            }
           }
         } catch (e) {
           console.error(`Failed to sync item ${item.institutionName}:`, e);
@@ -110,11 +116,14 @@ export default function DashboardPage() {
       // Reload account data
       await fetchAccounts();
 
-      if (successCount > 0) {
-        toast.success(`Refreshed ${successCount} account${successCount > 1 ? 's' : ''}`);
-      }
-      if (failCount > 0) {
-        toast.error(`Failed to refresh ${failCount} account${failCount > 1 ? 's' : ''}`);
+      if (rateLimitHit) {
+        toast.warning(`Rate limit reached. Some accounts may not have updated. Please wait a while before refreshing again.`);
+      } else if (successCount > 0 && failCount === 0) {
+        toast.success(`Successfully refreshed all ${successCount} connections`);
+      } else if (successCount > 0 && failCount > 0) {
+        toast.info(`Refreshed ${successCount} connections. ${failCount} failed to update.`);
+      } else if (failCount > 0) {
+        toast.error(`Failed to refresh connections. Please try again later.`);
       }
     } catch (error) {
       console.error('Error refreshing accounts:', error);
@@ -268,7 +277,7 @@ export default function DashboardPage() {
       const allAccounts = items.flatMap((item: any) =>
         item.accounts.map((acc: any) => ({
           id: acc.id,
-          userId: 'current-user', // Placeholder as we don't have multi-user auth context in frontend yet
+          userId: acc.familyMemberId || item.familyMemberId,
           bank: item.institutionName || 'Unknown Bank',
           bankId: item.bankId, // Pass through the bankId from PlaidItem
           name: acc.extended?.nickname ?? acc.officialName ?? acc.name,
@@ -317,7 +326,6 @@ export default function DashboardPage() {
   if (loading) return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-dark-900 text-white">
       <div className="w-12 h-12 border-t-2 border-brand-primary rounded-full mb-6 animate-spin"></div>
-      <p className="text-xs font-bold tracking-widest uppercase text-slate-500 animate-pulse">Loading Velocity</p>
     </div>
   );
 

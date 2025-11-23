@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Trash2, Save, Loader2, CheckCircle, AlertTriangle, FileJson, CreditCard, List, Sparkles } from "lucide-react";
+import { X, Plus, Trash2, Loader2, CheckCircle, AlertTriangle, FileJson, CreditCard, List, Sparkles } from 'lucide-react';
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,8 @@ interface Benefit {
     timing: string;
     maxAmount: number | null;
     keywords: string[];
-    isApproved?: boolean;
+    isApproved: boolean;
+    changeNotes?: string;
 }
 
 interface CardProduct {
@@ -35,14 +36,13 @@ interface ProductDrawerProps {
     cardId: string | null;
     onSuccess: () => void;
     onDelete?: (id: string) => void;
-    onAIImport?: (issuer: string) => void;
+    onAIImport?: (cardId: string, cardName: string) => void;
 }
 
 type Tab = 'details' | 'benefits' | 'raw';
 
 export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, onAIImport }: ProductDrawerProps) {
     const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
     const [card, setCard] = useState<CardProduct | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('details');
 
@@ -72,29 +72,6 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
         }
     };
 
-    const handleSave = async () => {
-        if (!card) return;
-        setSaving(true);
-        try {
-            const res = await fetch(`/api/admin/card-catalog/${card.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(card)
-            });
-
-            if (!res.ok) throw new Error('Failed to update card');
-
-            toast.success('Card updated successfully');
-            onSuccess();
-            onClose();
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to save changes');
-        } finally {
-            setSaving(false);
-        }
-    };
-
     const handleDelete = () => {
         if (!card || !onDelete) return;
         if (confirm('Are you sure you want to delete this product?')) {
@@ -105,17 +82,45 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
 
     const handleAIImport = () => {
         if (!card || !onAIImport) return;
-        if (confirm(`Refresh data for ${card.issuer} using AI? This will update all cards for this issuer.`)) {
-            onAIImport(card.issuer);
+        if (confirm(`Refresh benefits for ${card.productName} using AI? This will update all benefits for this card.`)) {
+            onAIImport(card.id, card.productName);
             onClose();
         }
     };
 
-    const updateBenefit = (index: number, field: keyof Benefit, value: any) => {
+    const updateBenefit = async (index: number, field: keyof Benefit, value: any) => {
         if (!card) return;
-        const newBenefits = [...card.benefits];
-        newBenefits[index] = { ...newBenefits[index], [field]: value };
-        setCard({ ...card, benefits: newBenefits });
+        
+        // If updating isApproved, save to database immediately
+        if (field === 'isApproved') {
+            const benefit = card.benefits[index];
+            if (!benefit.id) return;
+            
+            try {
+                const res = await fetch(`/api/admin/benefits/${benefit.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [field]: value })
+                });
+                
+                if (!res.ok) throw new Error('Failed to update benefit');
+                
+                // Update local state
+                const newBenefits = [...card.benefits];
+                newBenefits[index] = { ...newBenefits[index], [field]: value };
+                setCard({ ...card, benefits: newBenefits });
+                
+                toast.success(value ? 'Benefit approved' : 'Benefit marked as draft');
+            } catch (error) {
+                console.error(error);
+                toast.error('Failed to update benefit');
+            }
+        } else {
+            // For other fields, just update local state
+            const newBenefits = [...card.benefits];
+            newBenefits[index] = { ...newBenefits[index], [field]: value };
+            setCard({ ...card, benefits: newBenefits });
+        }
     };
 
     const removeBenefit = (index: number) => {
@@ -132,7 +137,9 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
             description: '',
             timing: 'Annually',
             maxAmount: 0,
-            keywords: []
+            keywords: [],
+            isApproved: false,
+            changeNotes: undefined
         };
         setCard({ ...card, benefits: [...card.benefits, newBenefit] });
         setActiveTab('benefits'); // Switch to benefits tab
@@ -186,14 +193,6 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
                                         <Trash2 className="w-5 h-5" />
                                     </button>
                                 )}
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving || loading}
-                                    className="px-4 py-2 bg-brand-primary hover:bg-brand-primary/80 text-white rounded-lg font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-50"
-                                >
-                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                    Save
-                                </button>
                                 <button
                                     onClick={onClose}
                                     className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
@@ -413,6 +412,15 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
                                                                     placeholder="Description of the benefit..."
                                                                 />
                                                             </div>
+
+                                                            {benefit.changeNotes && (
+                                                                <div>
+                                                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Change Notes</label>
+                                                                    <div className="mt-1 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-xs text-yellow-300 whitespace-pre-line">
+                                                                        {benefit.changeNotes}
+                                                                    </div>
+                                                                </div>
+                                                            )}
 
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div>

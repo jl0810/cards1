@@ -49,10 +49,10 @@ export async function requireAdmin(): Promise<AdminUser> {
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
 
-    // Check privateMetadata instead of publicMetadata for security
-    // privateMetadata is only accessible server-side, not exposed to client
+    // Check publicMetadata first (client-side accessible), then privateMetadata for server-only security
+    const publicMetadata = user.publicMetadata as { role?: string } | undefined;
     const privateMetadata = user.privateMetadata as { role?: string } | undefined;
-    const role = privateMetadata?.role;
+    const role = privateMetadata?.role || publicMetadata?.role;
     const isAdmin = role === 'admin';
 
     // Update cache
@@ -92,8 +92,9 @@ export async function checkIsAdmin(): Promise<boolean> {
         const client = await clerkClient();
         const user = await client.users.getUser(userId);
 
+        const publicMetadata = user.publicMetadata as { role?: string } | undefined;
         const privateMetadata = user.privateMetadata as { role?: string } | undefined;
-        const isAdmin = privateMetadata?.role === 'admin';
+        const isAdmin = (privateMetadata?.role || publicMetadata?.role) === 'admin';
 
         // Update cache
         adminCache.set(userId, { isAdmin, timestamp: now });

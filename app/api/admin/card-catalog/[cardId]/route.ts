@@ -39,7 +39,7 @@ export async function PATCH(
         const { cardId } = await params;
         const data = await request.json();
 
-        // Update Card Product
+        // Update Card Product Only (not benefits)
         const updatedCard = await prisma.cardProduct.update({
             where: { id: cardId },
             data: {
@@ -53,34 +53,8 @@ export async function PATCH(
             }
         });
 
-        // Handle Benefits Update (Full Sync for simplicity in this edit mode)
-        // 1. Delete existing benefits (or we could be smarter and update by ID)
-        // For now, we'll assume the UI sends the "complete" list of desired benefits.
-
-        if (data.benefits && Array.isArray(data.benefits)) {
-            // Transaction to ensure consistency
-            await prisma.$transaction(async (tx) => {
-                // Delete all existing benefits
-                await tx.cardBenefit.deleteMany({
-                    where: { cardProductId: cardId }
-                });
-
-                // Create new ones
-                if (data.benefits.length > 0) {
-                    await tx.cardBenefit.createMany({
-                        data: data.benefits.map((b: any) => ({
-                            cardProductId: cardId,
-                            benefitName: b.benefitName,
-                            type: b.type || 'STATEMENT_CREDIT',
-                            description: b.description,
-                            timing: b.timing || 'Annually',
-                            maxAmount: b.maxAmount,
-                            keywords: b.keywords || []
-                        }))
-                    });
-                }
-            });
-        }
+        // Note: Benefits are NOT updated here - they should be managed individually
+        // This prevents accidentally approving draft benefits when saving card details
 
         return NextResponse.json({ success: true, card: updatedCard });
 

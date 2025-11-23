@@ -336,6 +336,7 @@ model CardBenefit {
   keywords        String[] // ["resy", "restaurant"], ["airline", "baggage"]
   
   isApproved      Boolean  @default(true) // False = Draft (AI), True = Live
+  changeNotes     String?  // AI reasoning and change detection notes
   
   active          Boolean  @default(true)
   

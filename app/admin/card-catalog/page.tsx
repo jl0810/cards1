@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIsAdmin } from '@/hooks/use-admin';
-import { Plus, Sparkles, CreditCard } from 'lucide-react';
+import { Plus, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddProductModal } from '@/components/admin/add-product-modal';
 import { ProductDrawer } from '@/components/admin/product-drawer';
-import { AIImportModal } from '@/components/admin/ai-import-modal';
 import { CollapsibleIssuer } from '@/components/admin/collapsible-issuer';
 import { ProductRow } from '@/components/admin/product-row';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,8 +45,6 @@ export default function AdminCardCatalogPage() {
     const [products, setProducts] = useState<CardProduct[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
-    const [isAIImportOpen, setIsAIImportOpen] = useState(false);
     const [editingProductId, setEditingProductId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -66,7 +63,11 @@ export default function AdminCardCatalogPage() {
     const fetchProducts = async () => {
         try {
             const res = await fetch('/api/admin/card-catalog');
-            if (!res.ok) throw new Error('Failed to fetch products');
+            console.log("Fetch response status:", res.status);
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Failed to fetch products: ${res.status} - ${text || res.statusText}`);
+            }
             const data = await res.json();
             setProducts(data);
         } catch (error) {
@@ -77,32 +78,31 @@ export default function AdminCardCatalogPage() {
         }
     };
 
-    const startAIImport = async (issuer: string) => {
-        setIsImporting(true);
-        setIsAIImportOpen(false); // Close modal
-
-        const toastId = toast.loading(`Starting AI import for ${issuer}...`);
+    const startAIImport = async (cardId: string, cardName: string) => {
+        const toastId = toast.loading(`Importing benefits for ${cardName}...`);
 
         try {
-            const res = await fetch('/api/admin/card-catalog/ai-import', {
+            const res = await fetch(`/api/admin/card-catalog/${cardId}/ai-import`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ issuer })
+                body: JSON.stringify({})
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Import failed');
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Import failed');
             }
 
-            toast.success(`Successfully imported/updated ${data.imported} cards!`, { id: toastId });
+            const message = data.draft > 0 
+                ? `Updated ${cardName}: ${data.imported} new, ${data.updated} updated, ${data.draft} marked as draft, ${data.removed} removed`
+                : `Updated ${cardName}: ${data.imported} new, ${data.updated} updated, ${data.removed} removed benefits`;
+            toast.success(message, { id: toastId });
             fetchProducts();
         } catch (error: any) {
             console.error('AI Import error:', error);
-            toast.error(error.message || 'Failed to import cards', { id: toastId });
-        } finally {
-            setIsImporting(false);
+            toast.error(error.message || 'Failed to import benefits', { id: toastId });
         }
     };
 
@@ -151,21 +151,12 @@ export default function AdminCardCatalogPage() {
                 <div className="flex flex-col gap-4 mb-6">
                     <div className="flex items-center justify-between">
                         <h1 className="text-2xl font-bold text-white">Card Catalog</h1>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setIsAIImportOpen(true)}
-                                disabled={isImporting}
-                                className="p-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-lg transition-colors"
-                            >
-                                <Sparkles className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={() => setIsAddingProduct(true)}
-                                className="p-2 bg-brand-primary hover:bg-brand-primary/80 rounded-lg transition-colors shadow-lg shadow-brand-primary/20"
-                            >
-                                <Plus className="w-5 h-5" />
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setIsAddingProduct(true)}
+                            className="p-2 bg-brand-primary hover:bg-brand-primary/80 rounded-lg transition-colors shadow-lg shadow-brand-primary/20"
+                        >
+                            <Plus className="w-5 h-5" />
+                        </button>
                     </div>
 
                     {/* Search Bar */}
@@ -228,12 +219,6 @@ export default function AdminCardCatalogPage() {
                     onSuccess={fetchProducts}
                     onDelete={deleteProduct}
                     onAIImport={startAIImport}
-                />
-
-                <AIImportModal
-                    isOpen={isAIImportOpen}
-                    onClose={() => setIsAIImportOpen(false)}
-                    onImport={startAIImport}
                 />
             </div>
             <NavDock activeTab="admin" isAdmin={true} />

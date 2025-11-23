@@ -59,65 +59,51 @@ export async function fetchInstitutionInfo(institutionId: string, institutionNam
 
     // Fallback to Logo.dev if no logo found and we have a name
     if (!logoUrl && institutionName) {
-        // Try to construct a domain from the name
-        const cleanName = institutionName.toLowerCase()
-            .replace(/ bank/g, '')
-            .replace(/ credit union/g, '')
-            .replace(/ federal/g, '')
-            .replace(/[^a-z0-9]/g, '');
+        // 1. Try to get the official URL from Plaid to find the domain
+        let domain: string | null = null;
 
-        // Use Logo.dev (formerly Clearbit)
-        // Format: https://img.logo.dev/{domain}?token={public_key}
-        // Since we don't have a domain, we can try to guess it.
-        // If we have a URL from Plaid (fetched below), we use that.
-        // Otherwise, we can try a best-guess domain.
-
-        const domain = `${cleanName}.com`; // Naive guess
-        // We need a public key for Logo.dev. If not present, this might fail or show a placeholder.
-        // Assuming the user might have one or we use the free tier if available (Clearbit was free, Logo.dev requires token).
-        // If the user meant "Clearbit was bought by Logo.dev" implies we should use the new endpoint.
-        // However, without a token, img.logo.dev might not work.
-        // Let's try to use the old clearbit endpoint if it still redirects or works, OR use the new one if we had a token.
-        // Given the user's comment, let's try to use the most standard way.
-
-        // Actually, let's wait for the re-fetch below which gets the real URL from Plaid.
-    }
-
-    // Re-fetch to get the URL if we missed it
-    if (!logoUrl) {
+        // Check if we already fetched the full institution object above (likely not full details in getById if fetched elsewhere, but let's re-fetch to be safe if we didn't get it)
+        // Actually, we fetched it above in the try/catch block. Let's check if we can extract the URL from the first call if possible, or re-fetch.
+        // The first call was `institutionsGetById`. Plaid's `Institution` object has a `url` field.
+        
         try {
-            const resp = await plaidClient.institutionsGetById({
+             // We need to re-fetch or use the data if we stored it. The variable `inst` above is scoped to the try block.
+             // Let's do a clean fetch here if we didn't get a logo, specifically for the URL.
+             const resp = await plaidClient.institutionsGetById({
+                client_id: process.env.PLAID_CLIENT_ID!,
+                secret: process.env.PLAID_SECRET!,
                 institution_id: institutionId,
                 country_codes: [CountryCode.Us],
+                options: { include_optional_metadata: true }
             });
-            const inst = resp.data.institution;
-            if (inst.url) {
-                try {
-                    const domain = new URL(inst.url).hostname;
-                    // Use Logo.dev
-                    // Note: This requires a token in production usually.
-                    // If the user has a token, it should be in env.
-                    // For now, we will use the format: https://img.logo.dev/{domain}?token=pk_...
-                    // If no token, we might fall back to a placeholder or the old clearbit URL if it still works (it often redirects).
-
-                    const logoDevToken = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN || process.env.LOGO_DEV_TOKEN;
-
-                    // Logo.dev is the official replacement for Clearbit Logo API
-                    if (logoDevToken) {
-                        logoUrl = `https://img.logo.dev/${domain}?token=${logoDevToken}`;
-                    } else {
-                        // Without a token, we can try the legacy Clearbit URL which often still works/redirects
-                        // or we can leave it null. But since the user mentioned "definitive replacement",
-                        // we should really encourage setting the token.
-                        // For now, we'll try the legacy URL as a last resort.
-                        logoUrl = `https://logo.clearbit.com/${domain}`;
-                    }
-                } catch (e) {
-                    // invalid url
-                }
+            if (resp.data.institution.url) {
+                domain = new URL(resp.data.institution.url).hostname.replace('www.', '');
             }
         } catch (e) {
-            // ignore
+            // ignore fetch error
+        }
+
+        // 2. If no domain from Plaid, try to guess it from the name
+        if (!domain) {
+            const cleanName = institutionName.toLowerCase()
+                .replace(/ bank/g, '')
+                .replace(/ credit union/g, '')
+                .replace(/ federal/g, '')
+                .replace(/[^a-z0-9]/g, '');
+            domain = `${cleanName}.com`;
+        }
+
+        // 3. Construct Logo URL
+        if (domain) {
+            const logoDevToken = process.env.LOGO_DEV_TOKEN;
+            if (logoDevToken) {
+                // Use Logo.dev (authenticated)
+                logoUrl = `https://img.logo.dev/${domain}?token=${logoDevToken}&size=128&format=png`;
+            } else {
+                // Fallback to public Clearbit (unauthenticated, might be rate limited or deprecated)
+                // Since user asked for backend storage, this is fine as a fallback.
+                logoUrl = `https://logo.clearbit.com/${domain}`;
+            }
         }
     }
 

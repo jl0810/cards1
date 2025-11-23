@@ -155,6 +155,8 @@ export async function POST(req: Request) {
                     lastSyncedAt: new Date()
                 },
             });
+        }, {
+            timeout: 20000 // Increase timeout to 20s for large batches
         });
 
         // --- UPDATE ACCOUNT BALANCES ---

@@ -46,6 +46,9 @@ async function listUsers() {
 async function makeAdmin(userId: string) {
     try {
         await clerk.users.updateUser(userId, {
+            publicMetadata: {
+                role: 'admin'
+            },
             privateMetadata: {
                 role: 'admin'
             }
