@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { Errors, successResponse } from '@/lib/api-errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export async function GET(req: Request) {
         const { userId } = await auth();
 
         if (!userId) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            return Errors.unauthorized();
         }
 
         let userProfile = await prisma.userProfile.findUnique({
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
         }
 
         if (!userProfile) {
-            return new NextResponse("User profile not found and could not be created", { status: 404 });
+            return Errors.notFound('User profile');
         }
 
         const items = await prisma.plaidItem.findMany({
@@ -70,9 +71,9 @@ export async function GET(req: Request) {
             },
         });
 
-        return NextResponse.json(items);
+        return successResponse(items);
     } catch (error) {
         console.error('Error fetching Plaid items:', error);
-        return new NextResponse(`Internal Server Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
+        return Errors.internal(error instanceof Error ? error.message : 'Unknown error');
     }
 }

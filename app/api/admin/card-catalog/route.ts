@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/admin';
 
-// GET /api/admin/card-products
-export async function GET() {
+// GET /api/admin/card-catalog
+export async function GET(req: Request) {
     return withAdmin(async () => {
         const products = await prisma.cardProduct.findMany({
             include: {

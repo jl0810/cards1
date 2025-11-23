@@ -43,14 +43,16 @@ export async function requireAdmin(): Promise<AdminUser> {
         };
     }
 
-    // Fetch full user data from Clerk to get publicMetadata
+    // Fetch full user data from Clerk to get privateMetadata (server-only, more secure)
     console.log('[Admin Check] Fetching from Clerk API for', userId);
     const { clerkClient } = await import('@clerk/nextjs/server');
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
 
-    const publicMetadata = user.publicMetadata as { role?: string } | undefined;
-    const role = publicMetadata?.role;
+    // Check privateMetadata instead of publicMetadata for security
+    // privateMetadata is only accessible server-side, not exposed to client
+    const privateMetadata = user.privateMetadata as { role?: string } | undefined;
+    const role = privateMetadata?.role;
     const isAdmin = role === 'admin';
 
     // Update cache
@@ -90,8 +92,8 @@ export async function checkIsAdmin(): Promise<boolean> {
         const client = await clerkClient();
         const user = await client.users.getUser(userId);
 
-        const publicMetadata = user.publicMetadata as { role?: string } | undefined;
-        const isAdmin = publicMetadata?.role === 'admin';
+        const privateMetadata = user.privateMetadata as { role?: string } | undefined;
+        const isAdmin = privateMetadata?.role === 'admin';
 
         // Update cache
         adminCache.set(userId, { isAdmin, timestamp: now });

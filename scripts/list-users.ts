@@ -1,36 +1,21 @@
-/**
- * List all Clerk users to find your user ID
- * Usage: npx tsx scripts/list-users.ts
- */
+import { PrismaClient } from '@prisma/client';
+import * as dotenv from 'dotenv';
 
-import { config } from 'dotenv';
-import { resolve } from 'path';
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 
-// Load environment variables from .env.local
-config({ path: resolve(process.cwd(), '.env.local') });
-config({ path: resolve(process.cwd(), '.env') });
+const prisma = new PrismaClient();
 
-import { clerkClient } from '@clerk/nextjs/server';
-
-async function listUsers() {
-    try {
-        const client = await clerkClient();
-        const response = await client.users.getUserList();
-
-        console.log('\n📋 Clerk Users:\n');
-
-        for (const user of response.data) {
-            console.log(`👤 ${user.firstName || ''} ${user.lastName || ''}`.trim() || 'No name');
-            console.log(`   Email: ${user.emailAddresses[0]?.emailAddress || 'No email'}`);
-            console.log(`   User ID: ${user.id}`);
-            console.log(`   Role: ${(user.publicMetadata as any)?.role || 'user'}`);
-            console.log('');
-        }
-
-        console.log(`Total users: ${response.data.length}\n`);
-    } catch (error: any) {
-        console.error('❌ Error listing users:', error.message);
-    }
+async function main() {
+    const members = await prisma.familyMember.findMany({
+        include: { user: true }
+    });
+    console.log('--- Family Members ---');
+    members.forEach(m => {
+        console.log(`Name: ${m.name}, Email: ${m.email}, UserID: ${m.userId}, ClerkID: ${m.user.clerkId}`);
+    });
 }
 
-listUsers();
+main()
+    .catch(console.error)
+    .finally(() => prisma.$disconnect());

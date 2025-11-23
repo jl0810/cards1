@@ -25,11 +25,18 @@ export default function PlaidLink() {
                 }),
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
                 throw new Error('Failed to exchange token');
             }
 
-            toast.success('Bank account linked successfully!');
+            if (data.duplicate) {
+                toast.info('This bank account is already linked.');
+            } else {
+                toast.success('Bank account linked successfully!');
+            }
+
             router.refresh();
         } catch (error) {
             console.error(error);

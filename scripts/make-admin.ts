@@ -30,7 +30,7 @@ async function listUsers() {
     for (const user of response.data) {
         const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'No name';
         const email = user.emailAddresses[0]?.emailAddress || 'No email';
-        const role = (user.publicMetadata as any)?.role || 'user';
+        const role = (user.privateMetadata as any)?.role || 'user';
         const isAdmin = role === 'admin';
 
         console.log(`${isAdmin ? '👑' : '👤'} ${name}`);
@@ -46,7 +46,7 @@ async function listUsers() {
 async function makeAdmin(userId: string) {
     try {
         await clerk.users.updateUser(userId, {
-            publicMetadata: {
+            privateMetadata: {
                 role: 'admin'
             }
         });

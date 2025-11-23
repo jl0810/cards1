@@ -159,6 +159,7 @@ model PlaidAccount {
   
   accountId       String   @unique
   name            String
+  officialName    String?  // Official name from Plaid
   mask            String?
   type            String?
   subtype         String?
@@ -209,6 +210,7 @@ model AccountExtended {
   sortOrder         Int?     // Custom sort order
   color             String?  // Custom color for UI
   notes             String?  // User notes
+  dateOpened        DateTime? // Date the user opened the account (manually entered)
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

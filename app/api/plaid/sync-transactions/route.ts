@@ -3,8 +3,27 @@ import { auth } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
+    // Apply rate limiting: max 10 syncs per hour per user
+    const limited = await rateLimit(req, RATE_LIMITS.plaidSync);
+    if (limited) {
+        return new Response(
+            JSON.stringify({
+                error: 'Too many sync requests',
+                message: 'Please wait before syncing again. Limit: 10 syncs per hour.'
+            }),
+            {
+                status: 429,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Retry-After': '3600'
+                }
+            }
+        );
+    }
+
     try {
         const { userId } = await auth();
 
@@ -43,80 +62,99 @@ export async function POST(req: Request) {
         }
 
         // --- SYNC TRANSACTIONS ---
+        const MAX_SYNC_ITERATIONS = 50; // Prevent infinite loops
         let hasMore = true;
         let nextCursor = cursor || item.nextCursor; // Use stored cursor if not provided
         let added: any[] = [];
         let modified: any[] = [];
         let removed: any[] = [];
+        let iterations = 0;
 
-        // Fetch all updates since cursor
-        while (hasMore) {
-            const response = await plaidClient.transactionsSync({
-                access_token: accessToken,
-                cursor: nextCursor,
-            });
+        // Fetch all updates since cursor (with safety limits)
+        while (hasMore && iterations < MAX_SYNC_ITERATIONS) {
+            try {
+                const response = await plaidClient.transactionsSync({
+                    access_token: accessToken,
+                    cursor: nextCursor,
+                });
 
-            const data = response.data;
-            added = added.concat(data.added);
-            modified = modified.concat(data.modified);
-            removed = removed.concat(data.removed);
-            hasMore = data.has_more;
-            nextCursor = data.next_cursor;
+                const data = response.data;
+                added = added.concat(data.added);
+                modified = modified.concat(data.modified);
+                removed = removed.concat(data.removed);
+                hasMore = data.has_more;
+                nextCursor = data.next_cursor;
+                iterations++;
+            } catch (syncError) {
+                console.error(`Error on sync iteration ${iterations}:`, syncError);
+                // Stop syncing but don't fail completely - partial sync is better than nothing
+                hasMore = false;
+            }
         }
 
-        // 1. Handle Added Transactions
-        for (const txn of added) {
-            // Upsert transaction to avoid duplicates if sync runs multiple times
-            await prisma.plaidTransaction.upsert({
-                where: { transactionId: txn.transaction_id },
-                update: {
-                    amount: txn.amount,
-                    date: new Date(txn.date),
-                    name: txn.name,
-                    merchantName: txn.merchant_name,
-                    category: txn.category || [],
-                    pending: txn.pending,
-                },
-                create: {
-                    transactionId: txn.transaction_id,
-                    plaidItem: { connect: { itemId: itemId } },
-                    account: { connect: { accountId: txn.account_id } },
-                    amount: txn.amount,
-                    date: new Date(txn.date),
-                    name: txn.name,
-                    merchantName: txn.merchant_name,
-                    category: txn.category || [],
-                    pending: txn.pending,
-                }
-            });
+        if (iterations >= MAX_SYNC_ITERATIONS) {
+            console.warn(`Transaction sync hit maximum iterations (${MAX_SYNC_ITERATIONS})`);
         }
 
-        // 2. Handle Modified Transactions
-        for (const txn of modified) {
-            await prisma.plaidTransaction.update({
-                where: { transactionId: txn.transaction_id },
+        // Wrap all database operations in a transaction for atomicity
+        await prisma.$transaction(async (tx) => {
+            // 1. Handle Added Transactions
+            for (const txn of added) {
+                // Upsert transaction to avoid duplicates if sync runs multiple times
+                await tx.plaidTransaction.upsert({
+                    where: { transactionId: txn.transaction_id },
+                    update: {
+                        amount: txn.amount,
+                        date: new Date(txn.date),
+                        name: txn.name,
+                        merchantName: txn.merchant_name,
+                        category: txn.category || [],
+                        pending: txn.pending,
+                    },
+                    create: {
+                        transactionId: txn.transaction_id,
+                        plaidItem: { connect: { itemId: itemId } },
+                        account: { connect: { accountId: txn.account_id } },
+                        amount: txn.amount,
+                        date: new Date(txn.date),
+                        name: txn.name,
+                        merchantName: txn.merchant_name,
+                        category: txn.category || [],
+                        pending: txn.pending,
+                    }
+                });
+            }
+
+            // 2. Handle Modified Transactions
+            for (const txn of modified) {
+                await tx.plaidTransaction.update({
+                    where: { transactionId: txn.transaction_id },
+                    data: {
+                        amount: txn.amount,
+                        date: new Date(txn.date),
+                        name: txn.name,
+                        merchantName: txn.merchant_name,
+                        category: txn.category || [],
+                        pending: txn.pending,
+                    }
+                }).catch(e => console.log("Transaction not found for update, skipping", e));
+            }
+
+            // 3. Handle Removed Transactions
+            for (const txn of removed) {
+                await tx.plaidTransaction.delete({
+                    where: { transactionId: txn.transaction_id },
+                }).catch(e => console.log("Transaction already deleted or not found", e));
+            }
+
+            // 4. Update Cursor on PlaidItem
+            await tx.plaidItem.update({
+                where: { itemId: itemId },
                 data: {
-                    amount: txn.amount,
-                    date: new Date(txn.date),
-                    name: txn.name,
-                    merchantName: txn.merchant_name,
-                    category: txn.category || [],
-                    pending: txn.pending,
-                }
+                    nextCursor: nextCursor,
+                    lastSyncedAt: new Date()
+                },
             });
-        }
-
-        // 3. Handle Removed Transactions
-        for (const txn of removed) {
-            await prisma.plaidTransaction.delete({
-                where: { transactionId: txn.transaction_id },
-            }).catch(e => console.log("Transaction already deleted or not found", e));
-        }
-
-        // 4. Update Cursor on PlaidItem
-        await prisma.plaidItem.update({
-            where: { itemId: itemId },
-            data: { nextCursor: nextCursor },
         });
 
         // --- UPDATE ACCOUNT BALANCES ---
@@ -133,6 +171,7 @@ export async function POST(req: Request) {
                         availableBalance: account.balances.available,
                         limit: account.balances.limit,
                         name: account.name,
+                        officialName: account.official_name,
                         mask: account.mask,
                         type: account.type,
                         subtype: account.subtype,

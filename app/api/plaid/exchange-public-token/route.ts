@@ -4,6 +4,21 @@ import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
 import { assertFamilyMemberOwnership, ensurePrimaryFamilyMember } from '@/lib/family';
 
+/**
+ * Exchanges a Plaid public token for an access token and creates a new PlaidItem.
+ * 
+ * This endpoint handles:
+ * 1. User authentication and profile retrieval.
+ * 2. Family member assignment (defaulting to primary if not specified).
+ * 3. Duplicate item detection (checking institution ID and account masks).
+ * 4. Token exchange with Plaid.
+ * 5. Secure storage of the access token in Supabase Vault.
+ * 6. Creation of PlaidItem and PlaidAccount records in the database.
+ * 7. Triggering an initial transaction sync.
+ * 
+ * @param {Request} req - The request object containing public_token, metadata, and optional familyMemberId.
+ * @returns {NextResponse} JSON response with success status and itemId, or error message.
+ */
 export async function POST(req: Request) {
     try {
         const { userId } = await auth();
@@ -13,14 +28,6 @@ export async function POST(req: Request) {
         }
 
         const { public_token, metadata, familyMemberId } = await req.json();
-
-        // 1. Exchange public token
-        const exchangeResponse = await plaidClient.itemPublicTokenExchange({
-            public_token,
-        });
-
-        const accessToken = exchangeResponse.data.access_token;
-        const itemId = exchangeResponse.data.item_id;
 
         // 2. Get UserProfile
         const userProfile = await prisma.userProfile.findUnique({
@@ -43,9 +50,45 @@ export async function POST(req: Request) {
             });
         }
 
-        // 4. Get Accounts info
+        const institutionId = metadata?.institution?.institution_id;
+        const institutionName = metadata?.institution?.name || "Unknown Institution";
+        const newAccounts = metadata?.accounts || [];
+
+        // 1. Check for Duplicate / Existing Item BEFORE exchange
+        // "Do not exchange a public token for an access token if you detect a duplicate Item."
+        if (institutionId) {
+            const existingItem = await prisma.plaidItem.findFirst({
+                where: {
+                    userId: userProfile.id,
+                    institutionId: institutionId,
+                },
+                include: { accounts: true },
+            });
+
+            if (existingItem) {
+                // Check for matching accounts (mask + subtype)
+                const matchCount = newAccounts.filter((na: any) =>
+                    existingItem.accounts.some(ea => ea.mask === na.mask && ea.subtype === na.subtype)
+                ).length;
+
+                if (matchCount > 0) {
+                    console.log(`Duplicate item detected (${existingItem.id}). Skipping token exchange.`);
+                    // Return success but indicate it was a duplicate. We return the existing item ID.
+                    return NextResponse.json({ ok: true, itemId: existingItem.id, duplicate: true });
+                }
+            }
+        }
+
+        // 2. Exchange public token (Only if not a duplicate)
+        const exchangeResponse = await plaidClient.itemPublicTokenExchange({
+            public_token,
+        });
+
+        const accessToken = exchangeResponse.data.access_token;
+        const itemId = exchangeResponse.data.item_id;
+
+        // 3. Get Accounts info (Fetch from Plaid since metadata might be incomplete for full details like balances)
         let accounts;
-        let itemInfo;
         let liabilitiesData: Record<string, any> = {};
 
         try {
@@ -53,8 +96,7 @@ export async function POST(req: Request) {
                 access_token: accessToken,
             });
             accounts = liabilitiesResponse.data.accounts;
-            itemInfo = liabilitiesResponse.data.item;
-            
+
             // Map liabilities by account_id for easy lookup
             if (liabilitiesResponse.data.liabilities?.credit) {
                 liabilitiesResponse.data.liabilities.credit.forEach((l: any) => {
@@ -67,19 +109,13 @@ export async function POST(req: Request) {
                 access_token: accessToken,
             });
             accounts = accountsResponse.data.accounts;
-            itemInfo = accountsResponse.data.item;
         }
 
-        const institutionId = itemInfo.institution_id;
-
-        // Get institution name from metadata or fetch it
-        const institutionName = metadata?.institution?.name || "Unknown Institution";
-
-        // 5. Save to Vault
+        // 4. Save to Vault
         // We use a raw query to insert into the vault.secrets table via the create_secret function
         const vaultResult = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT vault.create_secret(${accessToken}, ${itemId}, 'Plaid Access Token') as id;
-    `;
+            SELECT vault.create_secret(${accessToken}, ${itemId}, 'Plaid Access Token') as id;
+        `;
 
         const secretId = vaultResult[0]?.id;
 
@@ -87,7 +123,7 @@ export async function POST(req: Request) {
             throw new Error("Failed to store access token in vault");
         }
 
-        // 6. Save to DB
+        // 5. Save to DB
         const plaidItem = await prisma.plaidItem.create({
             data: {
                 userId: userProfile.id,
@@ -97,15 +133,16 @@ export async function POST(req: Request) {
                 institutionId: institutionId,
                 institutionName: institutionName,
                 accounts: {
-                    create: accounts.map((acc) => {
+                    create: accounts.map((acc: any) => {
                         const creditLiability = liabilitiesData[acc.account_id];
                         // Find purchase APR or take the first one
-                        const apr = creditLiability?.aprs?.find((a: any) => a.apr_type === 'purchase_apr')?.apr_percentage 
+                        const apr = creditLiability?.aprs?.find((a: any) => a.apr_type === 'purchase_apr')?.apr_percentage
                             || creditLiability?.aprs?.[0]?.apr_percentage;
 
                         return {
                             accountId: acc.account_id,
                             name: acc.name,
+                            officialName: acc.official_name,
                             mask: acc.mask,
                             type: acc.type,
                             subtype: acc.subtype,
@@ -126,15 +163,19 @@ export async function POST(req: Request) {
             },
         });
 
+        let plaidItemDbId = plaidItem.id;
+
         // 7. Trigger Initial Transaction Sync (Async)
-        // We pass the itemId (Plaid ID) or our DB ID. Let's pass our DB ID for better lookup.
+        // We pass the itemId (Plaid ID) or our DB ID. The sync endpoint expects 'itemId' which usually refers to the Plaid Item ID string in this codebase context, 
+        // but let's check the sync endpoint. If it takes DB ID, great. 
+        // Actually, let's just pass the itemId string which we have in 'itemId' variable.
         fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/plaid/sync-transactions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ itemId: plaidItem.itemId, cursor: null }), // Changed to send itemId
+            body: JSON.stringify({ itemId: itemId, cursor: null }),
         }).catch(err => console.error("Failed to trigger initial sync", err));
 
-        return NextResponse.json({ ok: true, itemId: plaidItem.id });
+        return NextResponse.json({ ok: true, itemId: plaidItemDbId });
     } catch (error) {
         console.error('Error exchanging public token:', error);
         return new NextResponse("Internal Server Error", { status: 500 });

@@ -79,7 +79,7 @@ export function CreditCard({ acc, layout }: { acc: Account; layout: string }) {
           <div className={`absolute inset-0 bg-gradient-to-br ${acc.color} opacity-90`} />
           {/* Noise texture overlay */}
           <div className="absolute inset-0 opacity-20 mix-blend-overlay bg-no-repeat bg-cover" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
-          
+
           <div className="relative z-10 p-6 flex flex-col justify-between h-full">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-2">
@@ -108,33 +108,31 @@ export function CreditCard({ acc, layout }: { acc: Account; layout: string }) {
         </div>
 
         {/* --- BACK OF CARD (Liabilities Data) --- */}
-        <div className="absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden bg-dark-800 border border-white/10 shadow-2xl rotate-y-180">
-          <div className="w-full h-10 bg-black mt-4 mb-4"></div>
-          <div className="px-6 flex gap-4 mb-4">
-            <div className="flex-1 h-8 bg-white/10 rounded flex items-center px-2">
-              <span className="text-[10px] font-serif text-white/50 italic transform -rotate-2">Authorized Signature</span>
+        <div
+          className="absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden bg-dark-800 border border-white/10 shadow-2xl"
+          style={{ transform: 'rotateY(180deg)' }}
+        >
+          <div className="w-full h-8 bg-black mt-4 mb-2"></div>
+          <div className="px-6 flex gap-4 mb-2">
+            <div className="flex-1 h-6 bg-white/10 rounded flex items-center px-2">
+              <span className="text-[8px] font-serif text-white/50 italic transform -rotate-2">Authorized Signature</span>
             </div>
-            <div className="w-12 h-8 bg-white/10 rounded flex items-center justify-center">
-              <span className="text-xs font-mono font-bold text-white/70">923</span>
+            <div className="w-8 h-6 bg-white/10 rounded flex items-center justify-center">
+              <span className="text-[10px] font-mono font-bold text-white/70">923</span>
             </div>
           </div>
-          <div className="px-6 pb-6 space-y-3">
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-400">
-              <span className="font-bold">Status: <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${acc.liabilities.status === 'Overdue' ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white'}`}>{acc.liabilities.status || 'N/A'}</span></span>
+
+          <div className="px-6 pb-4 flex flex-col h-full">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-400 mb-2">
+              <span className="font-bold">Status: <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${acc.liabilities.status === 'Overdue' ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white'}`}>{acc.liabilities.status || 'N/A'}</span></span>
               <span className="font-mono text-white/70">Due: {acc.liabilities.next_due_date || 'N/A'}</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 overflow-y-auto no-scrollbar pb-2">
               <LiabilityStat label="Min Payment" value={acc.liabilities.min_due} />
               <LiabilityStat label="Statement Bal" value={acc.liabilities.last_statement} />
-              <LiabilityStat label="Credit Limit" value={acc.liabilities.limit} />
-              <LiabilityStat label="APR" value={`${acc.liabilities.apr}${acc.liabilities.aprType !== 'N/A' ? ` • ${acc.liabilities.aprType}` : ''}`} accent />
-              <LiabilityStat label="APR Balance" value={acc.liabilities.aprBalanceSubjectToApr} />
-              <LiabilityStat label="APR Interest" value={acc.liabilities.aprInterestChargeAmount} />
-              <LiabilityStat label="Last Statement" value={acc.liabilities.last_statement_date} />
-              <LiabilityStat label="Next Due Date" value={acc.liabilities.next_due_date} />
-              <LiabilityStat label="Last Payment" value={acc.liabilities.last_payment_amount} />
-              <LiabilityStat label="Last Payment Date" value={acc.liabilities.last_payment_date} />
+              <LiabilityStat label="APR" value={`${acc.liabilities.apr}${acc.liabilities.aprType && acc.liabilities.aprType !== 'N/A' ? ` • ${acc.liabilities.aprType}` : ''}`} accent />
+              <LiabilityStat label="Limit" value={acc.liabilities.limit} />
             </div>
           </div>
         </div>
