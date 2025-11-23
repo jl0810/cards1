@@ -29,7 +29,7 @@
  * ```
  */
 
-import { Ratelimit } from '@upstash/ratelimit';
+import { Ratelimit, type Duration } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { auth } from '@clerk/nextjs/server';
 
@@ -114,7 +114,7 @@ export async function rateLimit(
         const limiter = options.max && options.window
             ? new Ratelimit({
                 redis,
-                limiter: Ratelimit.slidingWindow(options.max, options.window),
+                limiter: Ratelimit.slidingWindow(options.max, options.window as Duration),
                 analytics: true,
                 prefix: options.prefix || '@upstash/ratelimit',
             })
