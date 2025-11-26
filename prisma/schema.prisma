@@ -47,7 +47,6 @@ model Bank {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // User profile and settings - extends Clerk authentication
