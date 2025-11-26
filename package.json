@@ -12,6 +12,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:integration": "ENABLE_REAL_PLAID_TESTS=true jest __tests__/integration",
+    "test:lighthouse": "lhci autorun",
+    "test:mobile": "open http://localhost:3000 && echo 'Testing mobile: Open DevTools (Cmd+Opt+I) > Toggle Device Toolbar (Cmd+Shift+M)'",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
@@ -60,6 +63,7 @@
     "@upstash/ratelimit": "^2.0.7",
     "@upstash/redis": "^1.35.6",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -89,6 +93,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "concurrently": "^9.2.1",

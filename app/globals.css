@@ -130,3 +130,16 @@
 .rotate-y-180 {
   transform: rotateY(180deg);
 }
+
+/* Mobile touch target optimization - ensure 44x44px minimum for accessibility */
+@layer base {
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
