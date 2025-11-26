@@ -4,15 +4,20 @@ import { Pool } from 'pg'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
+  pool: Pool | undefined
 }
 
-// Create a PostgreSQL connection pool
-const pool = new Pool({
+// Create or reuse PostgreSQL connection pool
+const pool = globalForPrisma.pool ?? new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false, // Required for Supabase connection pooler
   },
 })
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.pool = pool
+}
 
 // Create the Prisma adapter
 const adapter = new PrismaPg(pool)
