@@ -6,7 +6,6 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
 
 /**
  * Custom error types for better error handling

@@ -13,8 +13,7 @@ const nextConfig = {
   // Better caching
   generateEtags: true,
   
-  // Performance: Modern JavaScript output
-  swcMinify: true,
+  // Performance: Remove console logs in production
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],
@@ -24,17 +23,7 @@ const nextConfig = {
   // Performance: Optimize bundles
   experimental: {
     optimizePackageImports: ['lucide-react', '@mantine/core', 'framer-motion'],
-    // Modern output for better performance
-    modernBuild: true,
   },
-  
-  // Reduce bundle size - target modern browsers
-  browserslist: [
-    'last 2 Chrome versions',
-    'last 2 Firefox versions',
-    'last 2 Safari versions',
-    'last 2 Edge versions',
-  ],
   
   // Optimize images  
   images: {

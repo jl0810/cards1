@@ -78,19 +78,19 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const validation = safeValidateSchema(CreateFamilyMemberSchema, body);
+        const validationResult = safeValidateSchema(CreateFamilyMemberSchema, body);
 
-        if (!validation.valid) {
-            return Errors.badRequest(validation.errors?.[0]?.message || 'Validation failed');
+        if (!validationResult.success) {
+            return Errors.badRequest(validationResult.error?.errors?.[0]?.message || 'Validation failed');
         }
 
-        const { name, email, avatar, role } = validation.data;
+        const { name, email, avatar, role } = validationResult.data;
 
         // Pure business logic call - easily testable separately
         const familyMember = await createFamilyMember(userId, {
             name,
-            email,
-            avatar,
+            email: email ?? undefined,
+            avatar: avatar ?? undefined,
             role,
         });
 
