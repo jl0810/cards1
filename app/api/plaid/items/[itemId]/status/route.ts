@@ -63,26 +63,20 @@ export async function GET(
         if (!plaidItem) return new NextResponse("Item not found", { status: 404 });
 
         // Get access token from Supabase Vault
-        const { data: vaultData, error: vaultError } = await fetch(
-            `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_plaid_access_token`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
-                },
-                body: JSON.stringify({ token_id: plaidItem.accessTokenId })
-            }
-        ).then(r => r.json());
+        // Use Prisma $queryRaw to query vault.decrypted_secrets view
+        const secretId = plaidItem.accessTokenId;
+        const vaultResult = await prisma.$queryRaw<Array<{ decrypted_secret: string }>>`
+            SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
+        `;
 
-        if (vaultError || !vaultData) {
+        const accessToken = vaultResult[0]?.decrypted_secret;
+        if (!accessToken) {
             return new NextResponse("Access token not found", { status: 404 });
         }
 
         // Call Plaid's /item/get endpoint
         const itemResponse = await plaidClient.itemGet({
-            access_token: vaultData
+            access_token: accessToken
         });
 
         const item = itemResponse.data.item;

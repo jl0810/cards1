@@ -37,9 +37,13 @@ global.fetch = jest.fn();
  * Tests BR-008 (Duplicate Detection), BR-009 (Vault Storage), BR-010 (Family Assignment)
  * 
  * @implements BR-008 - Duplicate item detection
- * @implements BR-009 - Secure token storage in Vault
+ * @implements BR-009 - Secure token storage in Vault (MOCKED - see supabase-vault.test.ts for real Vault tests)
  * @implements BR-010 - Family member assignment
  * @satisfies US-006 - Link Bank Account
+ * 
+ * NOTE: This is a UNIT TEST that mocks Vault operations.
+ * Real Vault encryption/decryption is tested in __tests__/integration/supabase-vault.test.ts
+ * This test focuses on business logic: duplicate detection and family assignment.
  */
 describe('US-006: Link Bank Account', () => {
   const mockUserId = 'user_123';
@@ -72,6 +76,8 @@ describe('US-006: Link Bank Account', () => {
     (prisma.familyMember.findFirst as jest.Mock).mockResolvedValue(mockFamilyMember);
     (prisma.familyMember.create as jest.Mock).mockResolvedValue(mockFamilyMember);
     (prisma.plaidItem.findFirst as jest.Mock).mockResolvedValue(null);
+    
+    // Mock Vault storage (UNIT TEST ONLY - real Vault tested in supabase-vault.test.ts)
     (prisma.$queryRaw as jest.Mock).mockResolvedValue([{ id: mockSecretId }]);
     
     // Default Plaid mocks

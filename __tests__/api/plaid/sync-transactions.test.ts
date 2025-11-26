@@ -37,13 +37,17 @@ jest.mock('next/cache', () => ({
 const { auth } = require('@clerk/nextjs/server');
 
 /**
- * US-007: Sync Transactions Tests
- * Tests BR-011 (Sync Limits), BR-012 (Rate Limiting), BR-013 (Atomic Processing)
+ * US-007: Sync Transactions Integration Tests
+ * Tests BR-011 (Transaction Sync Limits), BR-012 (Rate Limiting), BR-013 (Atomic Processing)
  * 
- * @implements BR-011 - Transaction sync limits
- * @implements BR-012 - Rate limiting (10/hour)
+ * @implements BR-011 - Transaction sync pagination limits
+ * @implements BR-012 - Rate limiting for sync operations
  * @implements BR-013 - Atomic transaction processing
  * @satisfies US-007 - Sync Transactions
+ * 
+ * NOTE: This is a UNIT TEST that mocks Vault token retrieval.
+ * Real Vault encryption/decryption is tested in __tests__/integration/supabase-vault.test.ts
+ * This test focuses on business logic: pagination, rate limiting, and atomic processing.
  */
 describe('US-007: Sync Transactions', () => {
   const mockUserId = 'user_123';
