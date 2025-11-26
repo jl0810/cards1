@@ -3,6 +3,9 @@ const { withSentryConfig } = require('@sentry/nextjs')
 
 const nextConfig = {
   transpilePackages: ['lucide-react'],
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+  },
   images: {
     remotePatterns: [
       {
