@@ -1,8 +1,24 @@
+/**
+ * Admin Card Catalog API
+ * Manages credit card products and benefits (admin-only)
+ * 
+ * @module app/api/admin/card-catalog
+ */
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/admin';
 
-// GET /api/admin/card-catalog
+/**
+ * Get all card products with benefits (admin only)
+ * 
+ * @route GET /api/admin/card-catalog
+ * @implements BR-031 - Admin Role Required
+ * @satisfies US-019 - Card Catalog Management
+ * @tested None (admin endpoints need tests)
+ * 
+ * @returns {Promise<NextResponse>} Array of card products with benefits and usage counts
+ */
 export async function GET(req: Request) {
     return withAdmin(async () => {
         const products = await prisma.cardProduct.findMany({

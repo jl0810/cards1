@@ -6,6 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LayoutGrid, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useIsAdmin } from "@/hooks/use-admin";
+import { logger } from "@/lib/logger";
+import { USER_AVATAR_COLORS, DEFAULT_CURRENCY, DATE_FORMATS } from "@/lib/constants";
+import type { FamilyMember, Account } from "@/types/dashboard";
 import { WalletView } from "@/components/velocity/wallet-view";
 import { ActivityView } from "@/components/velocity/activity-view";
 import { SettingsView } from "@/components/velocity/settings-view";
@@ -14,13 +17,12 @@ import { AppHeader } from "@/components/layout/app-header";
 import { NavDock } from "@/components/layout/nav-dock";
 
 export default function DashboardPage() {
-  // Force rebuild
   const router = useRouter();
   const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState('wallet');
   const [activeUser, setActiveUser] = useState('all');
-  const [users, setUsers] = useState<any[]>([]); // TODO: Fetch real users
-  const [accounts, setAccounts] = useState<any[]>([]); // TODO: Fetch real accounts from Plaid
+  const [users, setUsers] = useState<FamilyMember[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -29,7 +31,7 @@ export default function DashboardPage() {
     try {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: currency || 'USD'
+        currency: currency || DEFAULT_CURRENCY
       }).format(value);
     } catch {
       return `$${value.toLocaleString()}`;
@@ -45,11 +47,7 @@ export default function DashboardPage() {
     if (!value) return 'N/A';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'N/A';
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return date.toLocaleDateString('en-US', DATE_FORMATS.SHORT);
   };
 
   const fetchUsers = async () => {
@@ -58,20 +56,17 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         // Transform to UI format
-        const formattedUsers = data.map((u: any, index: number) => {
-          const colors = ['bg-pink-500', 'bg-orange-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-purple-500'];
-          return {
-            id: u.id,
-            name: u.name,
-            avatar: u.avatar || u.name[0],
-            role: u.role || (u.isPrimary ? 'Owner' : 'Member'),
-            color: colors[index % colors.length]
-          };
-        });
+        const formattedUsers: FamilyMember[] = data.map((u: { id: string; name: string; avatar?: string; role?: string; isPrimary?: boolean }, index: number) => ({
+          id: u.id,
+          name: u.name,
+          avatar: u.avatar || u.name[0],
+          role: u.role || (u.isPrimary ? 'Owner' : 'Member'),
+          color: USER_AVATAR_COLORS[index % USER_AVATAR_COLORS.length]
+        }));
         setUsers(formattedUsers);
       }
     } catch (error) {
-      console.error("Error fetching users:", error);
+      logger.error('Error fetching users', error);
     }
   };
 
@@ -102,13 +97,13 @@ export default function DashboardPage() {
           } else {
             if (syncRes.status === 429) {
               rateLimitHit = true;
-              console.warn(`Rate limit hit for item ${item.institutionName}`);
+              logger.warn('Rate limit hit for item', { institutionName: item.institutionName });
             } else {
               failCount++;
             }
           }
         } catch (e) {
-          console.error(`Failed to sync item ${item.institutionName}:`, e);
+          logger.error('Failed to sync item', e, { institutionName: item.institutionName });
           failCount++;
         }
       }
@@ -126,7 +121,7 @@ export default function DashboardPage() {
         toast.error(`Failed to refresh connections. Please try again later.`);
       }
     } catch (error) {
-      console.error('Error refreshing accounts:', error);
+      logger.error('Error refreshing accounts', error);
       toast.error('Failed to refresh accounts');
     } finally {
       setRefreshing(false);
@@ -144,8 +139,7 @@ export default function DashboardPage() {
 
       if (res.ok) {
         const newMember = await res.json();
-        const colors = ['bg-pink-500', 'bg-orange-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-purple-500'];
-        const newColor = colors[users.length % colors.length];
+        const newColor = USER_AVATAR_COLORS[users.length % USER_AVATAR_COLORS.length];
 
         setUsers([...users, {
           id: newMember.id,
@@ -161,7 +155,7 @@ export default function DashboardPage() {
         toast.error(text || 'Failed to add family member');
       }
     } catch (error) {
-      console.error("Error adding member:", error);
+      logger.error('Error adding member', error);
       toast.error("Failed to add family member");
     }
   };
@@ -179,7 +173,7 @@ export default function DashboardPage() {
         return;
       }
     } catch (error) {
-      console.error("Error checking delete eligibility:", error);
+      logger.error('Error checking delete eligibility', error);
       toast.error("Failed to verify deletion eligibility");
       return;
     }
@@ -228,7 +222,7 @@ export default function DashboardPage() {
         toast.error(text);
       }
     } catch (error) {
-      console.error("Error deleting member:", error);
+      logger.error('Error deleting member', error);
       toast.error("Failed to remove family member");
     }
   };
@@ -250,7 +244,7 @@ export default function DashboardPage() {
         toast.error(text);
       }
     } catch (error) {
-      console.error("Error updating member:", error);
+      logger.error('Error updating member', error);
       toast.error("Failed to update family member");
     }
   };
@@ -312,7 +306,7 @@ export default function DashboardPage() {
 
       setAccounts(allAccounts);
     } catch (error) {
-      console.error("Error fetching accounts:", error);
+      logger.error('Error fetching accounts', error);
     } finally {
       setLoading(false);
     }
@@ -326,6 +320,7 @@ export default function DashboardPage() {
   if (loading) return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-dark-900 text-white">
       <div className="w-12 h-12 border-t-2 border-brand-primary rounded-full mb-6 animate-spin"></div>
+
     </div>
   );
 

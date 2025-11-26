@@ -1,0 +1,1187 @@
+
+> nextjs-clerk-starter@0.1.0 test
+> jest
+
+PASS __tests__/lib/validations.test.ts
+FAIL __tests__/lib/logger.test.ts
+  ● Logger › Basic Logging › should log info messages
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+      27 |     it('should log info messages', () => {
+      28 |       logger.info('Test info message');
+    > 29 |       expect(console.log).toHaveBeenCalled();
+         |                           ^
+      30 |     });
+      31 |
+      32 |     it('should log warning messages', () => {
+
+      at Object.toHaveBeenCalled (__tests__/lib/logger.test.ts:29:27)
+
+  ● Logger › Basic Logging › should log warning messages
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+      32 |     it('should log warning messages', () => {
+      33 |       logger.warn('Test warning');
+    > 34 |       expect(console.warn).toHaveBeenCalled();
+         |                            ^
+      35 |     });
+      36 |
+      37 |     it('should log error messages', () => {
+
+      at Object.toHaveBeenCalled (__tests__/lib/logger.test.ts:34:28)
+
+  ● Logger › Basic Logging › should log error messages
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+      37 |     it('should log error messages', () => {
+      38 |       logger.error('Test error', new Error('Test'));
+    > 39 |       expect(console.error).toHaveBeenCalled();
+         |                             ^
+      40 |     });
+      41 |
+      42 |     it('should include metadata in logs', () => {
+
+      at Object.toHaveBeenCalled (__tests__/lib/logger.test.ts:39:29)
+
+  ● Logger › Basic Logging › should include metadata in logs
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "User action", ObjectContaining {"action": "login", "userId": "123"}
+
+    Number of calls: 0
+
+      42 |     it('should include metadata in logs', () => {
+      43 |       logger.info('User action', { userId: '123', action: 'login' });
+    > 44 |       expect(console.log).toHaveBeenCalledWith(
+         |                           ^
+      45 |         expect.stringContaining('User action'),
+      46 |         expect.objectContaining({
+      47 |           userId: '123',
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/logger.test.ts:44:27)
+
+  ● Logger › Error Logging › should handle Error objects
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "Error occurred", ObjectContaining {"error": ObjectContaining {"message": "Test error"}}
+
+    Number of calls: 0
+
+      56 |       const error = new Error('Test error');
+      57 |       logger.error('Error occurred', error);
+    > 58 |       expect(console.error).toHaveBeenCalledWith(
+         |                             ^
+      59 |         expect.stringContaining('Error occurred'),
+      60 |         expect.objectContaining({
+      61 |           error: expect.objectContaining({
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/logger.test.ts:58:29)
+
+  ● Logger › Error Logging › should handle non-Error objects
+
+    expect(jest.fn()).toHaveBeenCalled()
+
+    Expected number of calls: >= 1
+    Received number of calls:    0
+
+      68 |     it('should handle non-Error objects', () => {
+      69 |       logger.error('Error occurred', { message: 'Custom error' });
+    > 70 |       expect(console.error).toHaveBeenCalled();
+         |                             ^
+      71 |     });
+      72 |
+      73 |     it('should include metadata with errors', () => {
+
+      at Object.toHaveBeenCalled (__tests__/lib/logger.test.ts:70:29)
+
+  ● Logger › Error Logging › should include metadata with errors
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: Anything, ObjectContaining {"userId": "123"}
+
+    Number of calls: 0
+
+      74 |       const error = new Error('Test');
+      75 |       logger.error('Error with context', error, { userId: '123' });
+    > 76 |       expect(console.error).toHaveBeenCalledWith(
+         |                             ^
+      77 |         expect.anything(),
+      78 |         expect.objectContaining({
+      79 |           userId: '123',
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/logger.test.ts:76:29)
+
+  ● Logger › Context Logger › should create context logger with module name
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "[TestModule]", Anything
+
+    Number of calls: 0
+
+      87 |       const contextLogger = createContextLogger('TestModule');
+      88 |       contextLogger.info('Test message');
+    > 89 |       expect(console.log).toHaveBeenCalledWith(
+         |                           ^
+      90 |         expect.stringContaining('[TestModule]'),
+      91 |         expect.anything()
+      92 |       );
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/logger.test.ts:89:27)
+
+  ● Logger › Context Logger › should include context in all logs
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "[Auth]", ObjectContaining {"userId": "123"}
+
+    Number of calls: 0
+
+       96 |       const contextLogger = createContextLogger('Auth');
+       97 |       contextLogger.warn('Warning message', { userId: '123' });
+    >  98 |       expect(console.warn).toHaveBeenCalledWith(
+          |                            ^
+       99 |         expect.stringContaining('[Auth]'),
+      100 |         expect.objectContaining({ userId: '123' })
+      101 |       );
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/logger.test.ts:98:28)
+
+  ● Logger › Log Levels › should have correct log level values
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: "DEBUG"
+
+      105 |   describe('Log Levels', () => {
+      106 |     it('should have correct log level values', () => {
+    > 107 |       expect(LogLevel.DEBUG).toBe(0);
+          |                              ^
+      108 |       expect(LogLevel.INFO).toBe(1);
+      109 |       expect(LogLevel.WARN).toBe(2);
+      110 |       expect(LogLevel.ERROR).toBe(3);
+
+      at Object.toBe (__tests__/lib/logger.test.ts:107:30)
+
+  ● Logger › Message Formatting › should include timestamp
+
+    TypeError: Cannot read properties of undefined (reading '0')
+
+      116 |       logger.info('Test');
+      117 |       const calls = (console.log as jest.Mock).mock.calls;
+    > 118 |       expect(calls[0][0]).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+          |                      ^
+      119 |     });
+      120 |
+      121 |     it('should include log level', () => {
+
+      at Object.<anonymous> (__tests__/lib/logger.test.ts:118:22)
+
+  ● Logger › Message Formatting › should include log level
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "[INFO]", Anything
+
+    Number of calls: 0
+
+      121 |     it('should include log level', () => {
+      122 |       logger.info('Test');
+    > 123 |       expect(console.log).toHaveBeenCalledWith(
+          |                           ^
+      124 |         expect.stringContaining('[INFO]'),
+      125 |         expect.anything()
+      126 |       );
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/logger.test.ts:123:27)
+
+  ● Logger › Message Formatting › should format error level correctly
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: StringContaining "[ERROR]", Anything
+
+    Number of calls: 0
+
+      129 |     it('should format error level correctly', () => {
+      130 |       logger.error('Test', new Error('test'));
+    > 131 |       expect(console.error).toHaveBeenCalledWith(
+          |                             ^
+      132 |         expect.stringContaining('[ERROR]'),
+      133 |         expect.anything()
+      134 |       );
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/logger.test.ts:131:29)
+
+FAIL __tests__/api/plaid/items/disconnect.test.ts
+  ● Console
+
+    console.error
+      Error disconnecting item: Error: Database connection failed
+          at Object.<anonymous> (/Users/jeff/Projects/Cards/__tests__/api/plaid/items/disconnect.test.ts:220:17)
+          at Promise.finally.completed (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
+          at _callCircusTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
+          at processTicksAndRejections (node:internal/process/task_queues:103:5)
+          at _runTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
+          at /Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:849:7
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at run (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
+          at runAndTransformResultsToJestFormat (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
+          at jestAdapter (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/runner.js:101:19)
+          at runTestInternal (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:275:16)
+          at runTest (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:343:7)
+          at Object.worker (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:497:12)
+
+      62 |
+      63 |     } catch (error) {
+    > 64 |         console.error('Error disconnecting item:', error);
+         |                 ^
+      65 |         return new NextResponse("Internal Server Error", { status: 500 });
+      66 |     }
+      67 | }
+
+      at error (app/api/plaid/items/[itemId]/disconnect/route.ts:64:17)
+      at Object.<anonymous> (__tests__/api/plaid/items/disconnect.test.ts:228:30)
+
+  ● US-020 & US-006: Bank Connection Disconnect › Error Handling › should handle missing itemId parameter
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 400
+    Received:    200
+
+      241 |
+      242 |             // Should fail validation or return 404 for empty itemId
+    > 243 |             expect(response.status).toBeGreaterThanOrEqual(400);
+          |                                     ^
+      244 |         });
+      245 |     });
+      246 |
+
+      at Object.toBeGreaterThanOrEqual (__tests__/api/plaid/items/disconnect.test.ts:243:37)
+
+FAIL __tests__/lib/constants.test.ts
+  ● Constants › USER_AVATAR_COLORS › should be readonly array
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      22 |
+      23 |     it('should be readonly array', () => {
+    > 24 |       expect(Object.isFrozen(USER_AVATAR_COLORS)).toBe(true);
+         |                                                   ^
+      25 |     });
+      26 |   });
+      27 |
+
+      at Object.toBe (__tests__/lib/constants.test.ts:24:51)
+
+  ● Constants › DATE_FORMATS › should format dates correctly
+
+    expect(received).toMatch(expected)
+
+    Expected pattern: /\d{1,2}\/\d{1,2}\/\d{4}/
+    Received string:  "Jan 14, 2025"
+
+      80 |       const testDate = new Date('2025-01-15');
+      81 |       const shortFormat = new Intl.DateTimeFormat('en-US', DATE_FORMATS.SHORT).format(testDate);
+    > 82 |       expect(shortFormat).toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/);
+         |                           ^
+      83 |     });
+      84 |   });
+      85 |
+
+      at Object.toMatch (__tests__/lib/constants.test.ts:82:27)
+
+  ● Constants › Type Safety › should prevent modification of constants
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      141 |       // This test ensures constants are properly typed as const
+      142 |       // TypeScript will catch any attempts to modify them at compile time
+    > 143 |       expect(Object.isFrozen(USER_AVATAR_COLORS)).toBe(true);
+          |                                                   ^
+      144 |     });
+      145 |   });
+      146 | });
+
+      at Object.toBe (__tests__/lib/constants.test.ts:143:51)
+
+FAIL __tests__/api/plaid/items/status.test.ts
+  ● Console
+
+    console.error
+      Error checking item status: TypeError: Cannot destructure property 'data' of '(intermediate value)' as it is null.
+          at vaultData (/Users/jeff/Projects/Cards/app/api/plaid/items/[itemId]/status/route.ts:65:23)
+          at processTicksAndRejections (node:internal/process/task_queues:103:5)
+          at Object.<anonymous> (/Users/jeff/Projects/Cards/__tests__/api/plaid/items/status.test.ts:330:30)
+
+      114 |
+      115 |     } catch (error) {
+    > 116 |         console.error('Error checking item status:', error);
+          |                 ^
+      117 |         return new NextResponse("Internal Server Error", { status: 500 });
+      118 |     }
+      119 | }
+
+      at error (app/api/plaid/items/[itemId]/status/route.ts:116:17)
+      at Object.<anonymous> (__tests__/api/plaid/items/status.test.ts:330:30)
+
+  ● US-020: Monitor Bank Connection Health › BR-033: Active Connection Detection › should detect active/healthy connection
+
+    SyntaxError: Unexpected token 'A', "Access tok"... is not valid JSON
+        at JSON.parse (<anonymous>)
+
+      28 |     async json() {
+      29 |         if (typeof this.body === 'string') {
+    > 30 |             return JSON.parse(this.body);
+         |                         ^
+      31 |         }
+      32 |         return this.body;
+      33 |     }
+
+      at NextResponse.parse [as json] (jest.setup.js:30:25)
+      at Object.json (__tests__/api/plaid/items/status.test.ts:111:41)
+
+  ● US-020: Monitor Bank Connection Health › BR-033: ITEM_LOGIN_REQUIRED Detection › should detect ITEM_LOGIN_REQUIRED and set needs_reauth status
+
+    SyntaxError: Unexpected token 'A', "Access tok"... is not valid JSON
+        at JSON.parse (<anonymous>)
+
+      28 |     async json() {
+      29 |         if (typeof this.body === 'string') {
+    > 30 |             return JSON.parse(this.body);
+         |                         ^
+      31 |         }
+      32 |         return this.body;
+      33 |     }
+
+      at NextResponse.parse [as json] (jest.setup.js:30:25)
+      at Object.json (__tests__/api/plaid/items/status.test.ts:156:41)
+
+  ● US-020: Monitor Bank Connection Health › BR-033: Error Status Detection › should detect other Plaid errors and set error status
+
+    SyntaxError: Unexpected token 'A', "Access tok"... is not valid JSON
+        at JSON.parse (<anonymous>)
+
+      28 |     async json() {
+      29 |         if (typeof this.body === 'string') {
+    > 30 |             return JSON.parse(this.body);
+         |                         ^
+      31 |         }
+      32 |         return this.body;
+      33 |     }
+
+      at NextResponse.parse [as json] (jest.setup.js:30:25)
+      at Object.json (__tests__/api/plaid/items/status.test.ts:199:41)
+
+  ● US-020: Monitor Bank Connection Health › BR-033: Consent Expiration Tracking › should return consent expiration time when available
+
+    SyntaxError: Unexpected token 'A', "Access tok"... is not valid JSON
+        at JSON.parse (<anonymous>)
+
+      28 |     async json() {
+      29 |         if (typeof this.body === 'string') {
+    > 30 |             return JSON.parse(this.body);
+         |                         ^
+      31 |         }
+      32 |         return this.body;
+      33 |     }
+
+      at NextResponse.parse [as json] (jest.setup.js:30:25)
+      at Object.json (__tests__/api/plaid/items/status.test.ts:238:41)
+
+  ● US-020: Monitor Bank Connection Health › BR-009: Secure Token Retrieval › should retrieve access token from Vault securely
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"access_token": "access-sandbox-token-123"}
+
+    Number of calls: 0
+
+      314 |
+      315 |             // Verify token used with Plaid
+    > 316 |             expect(mockItemGet).toHaveBeenCalledWith({
+          |                                 ^
+      317 |                 access_token: mockAccessToken,
+      318 |             });
+      319 |         });
+
+      at Object.toHaveBeenCalledWith (__tests__/api/plaid/items/status.test.ts:316:33)
+
+  ● US-020: Monitor Bank Connection Health › BR-009: Secure Token Retrieval › should handle vault token retrieval failure
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 500
+
+      330 |             const response = await GET(mockRequest, { params: mockParams });
+      331 |
+    > 332 |             expect(response.status).toBe(404);
+          |                                     ^
+      333 |         });
+      334 |     });
+      335 |
+
+      at Object.toBe (__tests__/api/plaid/items/status.test.ts:332:37)
+
+  ● US-020: Monitor Bank Connection Health › Database Persistence › should persist status and timestamp to database
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: {"data": {"lastSyncedAt": Any<Date>, "status": "active"}, "where": {"id": "item_test123"}}
+
+    Number of calls: 0
+
+      361 |
+      362 |             // Verify database update with correct fields
+    > 363 |             expect(prisma.plaidItem.update).toHaveBeenCalledWith({
+          |                                             ^
+      364 |                 where: { id: mockItemId },
+      365 |                 data: {
+      366 |                     status: 'active',
+
+      at Object.toHaveBeenCalledWith (__tests__/api/plaid/items/status.test.ts:363:45)
+
+  ● US-020: Monitor Bank Connection Health › Error Handling › should handle Plaid API errors gracefully
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 500
+    Received: 404
+
+      392 |             const response = await GET(mockRequest, { params: mockParams });
+      393 |
+    > 394 |             expect(response.status).toBe(500);
+          |                                     ^
+      395 |         });
+      396 |
+      397 |         it('should handle database errors gracefully', async () => {
+
+      at Object.toBe (__tests__/api/plaid/items/status.test.ts:394:37)
+
+  ● US-020: Monitor Bank Connection Health › Error Handling › should handle database errors gracefully
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 500
+    Received: 404
+
+      420 |             const response = await GET(mockRequest, { params: mockParams });
+      421 |
+    > 422 |             expect(response.status).toBe(500);
+          |                                     ^
+      423 |         });
+      424 |     });
+      425 | });
+
+      at Object.toBe (__tests__/api/plaid/items/status.test.ts:422:37)
+
+  ● Integration: Status Check Flow › should complete full status check workflow
+
+    SyntaxError: Unexpected token 'A', "Access tok"... is not valid JSON
+        at JSON.parse (<anonymous>)
+
+      28 |     async json() {
+      29 |         if (typeof this.body === 'string') {
+    > 30 |             return JSON.parse(this.body);
+         |                         ^
+      31 |         }
+      32 |         return this.body;
+      33 |     }
+
+      at NextResponse.parse [as json] (jest.setup.js:30:25)
+      at Object.json (__tests__/api/plaid/items/status.test.ts:468:37)
+
+FAIL __tests__/lib/api-errors.test.ts
+  ● API Errors › Errors.unauthorized() › should use custom message if provided
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Custom unauthorized message"
+    Received string:    "Unauthorized"
+
+      35 |       const response = Errors.unauthorized('Custom unauthorized message');
+      36 |       const data = await response.json();
+    > 37 |       expect(data.error).toContain('Custom unauthorized message');
+         |                          ^
+      38 |     });
+      39 |   });
+      40 |
+
+      at Object.toContain (__tests__/lib/api-errors.test.ts:37:26)
+
+  ● API Errors › Errors.forbidden() › should use custom message if provided
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "No access"
+    Received string:    "Forbidden"
+
+      51 |       const response = Errors.forbidden('No access');
+      52 |       const data = await response.json();
+    > 53 |       expect(data.error).toContain('No access');
+         |                          ^
+      54 |     });
+      55 |   });
+      56 |
+
+      at Object.toContain (__tests__/lib/api-errors.test.ts:53:26)
+
+  ● API Errors › Response Headers › should have Content-Type header
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: undefined
+
+      151 |     it('should have Content-Type header', () => {
+      152 |       const response = Errors.badRequest();
+    > 153 |       expect(response.headers.get('Content-Type')).toContain('application/json');
+          |                                                    ^
+      154 |     });
+      155 |
+      156 |     it('should have correct Content-Type for success', () => {
+
+      at Object.toContain (__tests__/lib/api-errors.test.ts:153:52)
+
+  ● API Errors › Response Headers › should have correct Content-Type for success
+
+    expect(received).toContain(expected) // indexOf
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: undefined
+
+      156 |     it('should have correct Content-Type for success', () => {
+      157 |       const response = successResponse({ test: true });
+    > 158 |       expect(response.headers.get('Content-Type')).toContain('application/json');
+          |                                                    ^
+      159 |     });
+      160 |   });
+      161 |
+
+      at Object.toContain (__tests__/lib/api-errors.test.ts:158:52)
+
+  ● API Errors › Error Response Format › should not expose sensitive information
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected substring: not "secret123"
+    Received string:        "Database password: secret123"
+
+      174 |       
+      175 |       // Internal errors should use generic message, not expose details
+    > 176 |       expect(data.error).not.toContain('secret123');
+          |                              ^
+      177 |     });
+      178 |   });
+      179 |
+
+      at Object.toContain (__tests__/lib/api-errors.test.ts:176:30)
+
+FAIL __tests__/api/benefits/usage.test.ts
+  ● Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     • If you are trying to use ECMAScript Modules, see https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     • If you are trying to use TypeScript, see https://jestjs.io/docs/getting-started#using-typescript
+     • To have some of your "node_modules" files transformed, you can specify a custom "transformIgnorePatterns" in your config.
+     • If you need a custom transformation, specify a "transform" option in your config.
+     • If you simply want to mock your non-JS modules (e.g. binary assets) you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    /Users/jeff/Projects/Cards/node_modules/@clerk/backend/dist/runtime/browser/crypto.mjs:1
+    export const webcrypto = crypto;
+    ^^^^^^
+
+    SyntaxError: Unexpected token 'export'
+
+      15 |  * Get benefit usage for user's cards
+      16 |  * 
+    > 17 |  * @route GET /api/benefits/usage?period=month&accountId=xxx
+         |                  ^
+      18 |  * @implements BR-021 - Benefit Period Calculation
+      19 |  * @implements BR-022 - Usage Percentage Calculation
+      20 |  * @implements BR-023 - Urgency-Based Sorting
+
+      at Runtime.createScriptFromCode (node_modules/jest-runtime/build/index.js:1318:40)
+      at Object.<anonymous> (node_modules/@clerk/backend/src/runtime.ts:16:37)
+      at Object.<anonymous> (node_modules/@clerk/nextjs/src/server/index.ts:6:48)
+      at Object.<anonymous> (app/api/benefits/usage/route.ts:17:18)
+      at Object.<anonymous> (__tests__/api/benefits/usage.test.ts:6:16)
+
+FAIL __tests__/api/user/family.test.ts
+  ● Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     • If you are trying to use ECMAScript Modules, see https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     • If you are trying to use TypeScript, see https://jestjs.io/docs/getting-started#using-typescript
+     • To have some of your "node_modules" files transformed, you can specify a custom "transformIgnorePatterns" in your config.
+     • If you need a custom transformation, specify a "transform" option in your config.
+     • If you simply want to mock your non-JS modules (e.g. binary assets) you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    /Users/jeff/Projects/Cards/node_modules/@clerk/backend/dist/runtime/browser/crypto.mjs:1
+    export const webcrypto = crypto;
+    ^^^^^^
+
+    SyntaxError: Unexpected token 'export'
+
+      26 |  * 
+      27 |  * @returns {Promise<NextResponse>} Array of family members
+    > 28 |  */
+         |    ^
+      29 | export async function GET(req: Request) {
+      30 |     try {
+      31 |         const { userId } = await auth();
+
+      at Runtime.createScriptFromCode (node_modules/jest-runtime/build/index.js:1318:40)
+      at Object.<anonymous> (node_modules/@clerk/backend/src/runtime.ts:16:37)
+      at Object.<anonymous> (node_modules/@clerk/nextjs/src/server/index.ts:6:48)
+      at Object.<anonymous> (app/api/user/family/route.ts:28:18)
+      at Object.<anonymous> (__tests__/api/user/family.test.ts:6:16)
+
+PASS __tests__/button.test.tsx
+FAIL __tests__/lib/benefit-matcher.test.ts
+  ● Test suite failed to run
+
+    ReferenceError: TextEncoder is not defined
+
+      17 |
+      18 | const config: runtime.GetPrismaClientConfig = {
+    > 19 |   "previewFeatures": [],
+         |                         ^
+      20 |   "clientVersion": "7.0.1",
+      21 |   "engineVersion": "f09f2815f091dbba658cdcd2264306d88bb5bda6",
+      22 |   "activeProvider": "postgresql",
+
+      at ks (node_modules/node_modules/.pnpm/@noble+hashes@1.7.1/node_modules/@noble/hashes/src/utils.ts:153:48)
+      at hr (node_modules/node_modules/.pnpm/@noble+hashes@1.7.1/node_modules/@noble/hashes/src/utils.ts:154:29)
+      at t (node_modules/node_modules/.pnpm/@noble+hashes@1.7.1/node_modules/@noble/hashes/src/utils.ts:234:60)
+      at js (node_modules/node_modules/.pnpm/@paralleldrive+cuid2@2.2.2/node_modules/@paralleldrive/cuid2/src/index.js:24:23)
+      at Bs (node_modules/node_modules/.pnpm/@paralleldrive+cuid2@2.2.2/node_modules/@paralleldrive/cuid2/src/index.js:58:19)
+      at Hs (node_modules/node_modules/.pnpm/@paralleldrive+cuid2@2.2.2/node_modules/@paralleldrive/cuid2/src/index.js:78:17)
+      at salt (node_modules/node_modules/.pnpm/@paralleldrive+cuid2@2.2.2/node_modules/@paralleldrive/cuid2/src/index.js:94:11)
+      at node_modules/@prisma/client/runtime/client.js:1:196
+      at node_modules/node_modules/.pnpm/@paralleldrive+cuid2@2.2.2/node_modules/@paralleldrive/cuid2/index.js:1:1
+      at node_modules/@prisma/client/runtime/client.js:1:196
+      at Object.<anonymous> (node_modules/@prisma/client-engine-runtime/src/interpreter/generators.ts:2:35)
+      at Object.<anonymous> (generated/prisma/internal/class.ts:19:57)
+      at Object.<anonymous> (generated/prisma/client.ts:31:56)
+      at Object.<anonymous> (lib/prisma.ts:11:17)
+      at Object.<anonymous> (lib/benefit-matcher.ts:28:17)
+      at Object.<anonymous> (__tests__/lib/benefit-matcher.test.ts:6:25)
+
+FAIL __tests__/hooks/use-accounts.test.ts
+  ● Console
+
+    console.error
+      Error fetching accounts: Error: Network error
+          at Object.<anonymous> (/Users/jeff/Projects/Cards/__tests__/hooks/use-accounts.test.ts:320:53)
+          at Promise.finally.completed (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
+          at _callCircusTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
+          at _runTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
+          at /Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:849:7
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at run (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
+          at runAndTransformResultsToJestFormat (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
+          at jestAdapter (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/runner.js:101:19)
+          at runTestInternal (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:275:16)
+          at runTest (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:343:7)
+          at Object.worker (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:497:12)
+
+      107 |             const error = err instanceof Error ? err : new Error('Unknown error');
+      108 |             setError(error);
+    > 109 |             console.error('Error fetching accounts:', error);
+          |                     ^
+      110 |
+      111 |             // Check if offline
+      112 |             if (!navigator.onLine) {
+
+      at error (hooks/use-accounts.ts:109:21)
+
+    console.error
+      Error fetching accounts: Error: Internal Server Error
+          at /Users/jeff/Projects/Cards/hooks/use-accounts.ts:64:23
+
+      107 |             const error = err instanceof Error ? err : new Error('Unknown error');
+      108 |             setError(error);
+    > 109 |             console.error('Error fetching accounts:', error);
+          |                     ^
+      110 |
+      111 |             // Check if offline
+      112 |             if (!navigator.onLine) {
+
+      at error (hooks/use-accounts.ts:109:21)
+
+    console.error
+      Error fetching accounts: Error: Network error
+          at Object.<anonymous> (/Users/jeff/Projects/Cards/__tests__/hooks/use-accounts.test.ts:356:53)
+          at Promise.finally.completed (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
+          at _callCircusTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
+          at _runTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
+          at /Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:849:7
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at run (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
+          at runAndTransformResultsToJestFormat (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
+          at jestAdapter (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/runner.js:101:19)
+          at runTestInternal (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:275:16)
+          at runTest (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:343:7)
+          at Object.worker (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:497:12)
+
+      107 |             const error = err instanceof Error ? err : new Error('Unknown error');
+      108 |             setError(error);
+    > 109 |             console.error('Error fetching accounts:', error);
+          |                     ^
+      110 |
+      111 |             // Check if offline
+      112 |             if (!navigator.onLine) {
+
+      at error (hooks/use-accounts.ts:109:21)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      50 |     const fetchAccounts = useCallback(async () => {
+      51 |         try {
+    > 52 |             setLoading(true);
+         |             ^
+      53 |             setError(null);
+      54 |             setOffline(false);
+      55 |
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setLoading [as refresh] (hooks/use-accounts.ts:52:13)
+      at Object.refresh (__tests__/hooks/use-accounts.test.ts:389:28)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      51 |         try {
+      52 |             setLoading(true);
+    > 53 |             setError(null);
+         |             ^
+      54 |             setOffline(false);
+      55 |
+      56 |             const res = await fetch('/api/plaid/items');
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setError [as refresh] (hooks/use-accounts.ts:53:13)
+      at Object.refresh (__tests__/hooks/use-accounts.test.ts:389:28)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      52 |             setLoading(true);
+      53 |             setError(null);
+    > 54 |             setOffline(false);
+         |             ^
+      55 |
+      56 |             const res = await fetch('/api/plaid/items');
+      57 |             if (!res.ok) {
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setOffline [as refresh] (hooks/use-accounts.ts:54:13)
+      at Object.refresh (__tests__/hooks/use-accounts.test.ts:389:28)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      103 |             );
+      104 |
+    > 105 |             setAccounts(allAccounts);
+          |             ^
+      106 |         } catch (err) {
+      107 |             const error = err instanceof Error ? err : new Error('Unknown error');
+      108 |             setError(error);
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setAccounts [as refresh] (hooks/use-accounts.ts:105:13)
+      at Object.<anonymous> (__tests__/hooks/use-accounts.test.ts:389:7)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      114 |             }
+      115 |         } finally {
+    > 116 |             setLoading(false);
+          |             ^
+      117 |         }
+      118 |     }, []);
+      119 |
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setLoading [as refresh] (hooks/use-accounts.ts:116:13)
+      at Object.<anonymous> (__tests__/hooks/use-accounts.test.ts:389:7)
+
+    console.error
+      Error fetching accounts: Error: Error
+          at Object.<anonymous> (/Users/jeff/Projects/Cards/__tests__/hooks/use-accounts.test.ts:396:57)
+          at Promise.finally.completed (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
+          at _callCircusTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
+          at _runTest (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
+          at /Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:849:7
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at _runTestsForDescribeBlock (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at run (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
+          at runAndTransformResultsToJestFormat (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
+          at jestAdapter (/Users/jeff/Projects/Cards/node_modules/jest-circus/build/runner.js:101:19)
+          at runTestInternal (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:275:16)
+          at runTest (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:343:7)
+          at Object.worker (/Users/jeff/Projects/Cards/node_modules/jest-runner/build/testWorker.js:497:12)
+
+      107 |             const error = err instanceof Error ? err : new Error('Unknown error');
+      108 |             setError(error);
+    > 109 |             console.error('Error fetching accounts:', error);
+          |                     ^
+      110 |
+      111 |             // Check if offline
+      112 |             if (!navigator.onLine) {
+
+      at error (hooks/use-accounts.ts:109:21)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      50 |     const fetchAccounts = useCallback(async () => {
+      51 |         try {
+    > 52 |             setLoading(true);
+         |             ^
+      53 |             setError(null);
+      54 |             setOffline(false);
+      55 |
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setLoading [as refresh] (hooks/use-accounts.ts:52:13)
+      at Object.refresh (__tests__/hooks/use-accounts.test.ts:410:28)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      51 |         try {
+      52 |             setLoading(true);
+    > 53 |             setError(null);
+         |             ^
+      54 |             setOffline(false);
+      55 |
+      56 |             const res = await fetch('/api/plaid/items');
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setError [as refresh] (hooks/use-accounts.ts:53:13)
+      at Object.refresh (__tests__/hooks/use-accounts.test.ts:410:28)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      52 |             setLoading(true);
+      53 |             setError(null);
+    > 54 |             setOffline(false);
+         |             ^
+      55 |
+      56 |             const res = await fetch('/api/plaid/items');
+      57 |             if (!res.ok) {
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setOffline [as refresh] (hooks/use-accounts.ts:54:13)
+      at Object.refresh (__tests__/hooks/use-accounts.test.ts:410:28)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      103 |             );
+      104 |
+    > 105 |             setAccounts(allAccounts);
+          |             ^
+      106 |         } catch (err) {
+      107 |             const error = err instanceof Error ? err : new Error('Unknown error');
+      108 |             setError(error);
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setAccounts [as refresh] (hooks/use-accounts.ts:105:13)
+      at Object.<anonymous> (__tests__/hooks/use-accounts.test.ts:410:7)
+
+    console.error
+      An update to TestComponent inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      114 |             }
+      115 |         } finally {
+    > 116 |             setLoading(false);
+          |             ^
+      117 |         }
+      118 |     }, []);
+      119 |
+
+      at node_modules/react-dom/cjs/react-dom-client.development.js:18758:19
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-dom/cjs/react-dom-client.development.js:18757:9)
+      at scheduleUpdateOnFiber (node_modules/react-dom/cjs/react-dom-client.development.js:16409:11)
+      at dispatchSetStateInternal (node_modules/react-dom/cjs/react-dom-client.development.js:9170:13)
+      at dispatchSetState (node_modules/react-dom/cjs/react-dom-client.development.js:9127:7)
+      at Object.setLoading [as refresh] (hooks/use-accounts.ts:116:13)
+      at Object.<anonymous> (__tests__/hooks/use-accounts.test.ts:410:7)
+
+  ● useAccounts Hook › Data Transformation › should show "Today" for due date today
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Today"
+    Received: "Tomorrow"
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div />[39m
+      [36m</body>[39m
+    [36m</html>[39m
+
+      190 |
+      191 |       await waitFor(() => {
+    > 192 |         expect(result.current.accounts[0]?.due).toBe('Today');
+          |                                                 ^
+      193 |       });
+      194 |     });
+      195 |
+
+      at toBe (__tests__/hooks/use-accounts.test.ts:192:49)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+  ● useAccounts Hook › Data Transformation › should format currency correctly
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "$25"
+    Received string:    "N/A"
+
+    Ignored nodes: comments, script, style
+    [36m<html>[39m
+      [36m<head />[39m
+      [36m<body>[39m
+        [36m<div />[39m
+      [36m</body>[39m
+    [36m</html>[39m
+
+      252 |       await waitFor(() => {
+      253 |         expect(result.current.accounts[0]?.liabilities.limit).toContain('$10,000');
+    > 254 |         expect(result.current.accounts[0]?.liabilities.min_due).toContain('$25');
+          |                                                                 ^
+      255 |       });
+      256 |     });
+      257 |
+
+      at toContain (__tests__/hooks/use-accounts.test.ts:254:65)
+      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)
+      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)
+      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)
+      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)
+
+Test Suites: 9 failed, 2 passed, 11 total
+Tests:       34 failed, 109 passed, 143 total
+Snapshots:   0 total
+Time:        3.994 s, estimated 4 s
+Ran all test suites.

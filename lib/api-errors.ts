@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 
 /**
- * Standard API Error class for consistent error handling
+ * Standardized API error handling
+ * 
+ * @module lib/api-errors
+ * @implements BR-028 - Standardized Error Responses
+ * @satisfies US-016 - Error Handling
+ * @tested __tests__/lib/api-errors.test.ts
  */
 export class ApiError extends Error {
     constructor(
@@ -43,9 +48,9 @@ export function successResponse(data: any, status: number = 200) {
  * Common error responses
  */
 export const Errors = {
-    unauthorized: () => errorResponse('Unauthorized', 401),
-    forbidden: () => errorResponse('Forbidden', 403),
+    unauthorized: (message = 'Unauthorized') => errorResponse(message, 401),
+    forbidden: (message = 'Forbidden') => errorResponse(message, 403),
     notFound: (resource = 'Resource') => errorResponse(`${resource} not found`, 404),
     badRequest: (message = 'Bad Request') => errorResponse(message, 400),
-    internal: (message = 'Internal Server Error') => errorResponse(message, 500),
+    internal: (message = 'Internal Server Error') => errorResponse('Internal Server Error', 500), // Always use generic message for security
 };

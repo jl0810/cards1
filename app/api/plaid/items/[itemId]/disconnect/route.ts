@@ -1,18 +1,41 @@
+/**
+ * Plaid Item Disconnect API
+ * Marks bank connection as inactive while preserving access token per Plaid requirement
+ * 
+ * @module app/api/plaid/items/[itemId]/disconnect
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-// Disconnect a Plaid item (mark as disconnected, but preserve access_token per Plaid requirement)
+/**
+ * Disconnect a Plaid item (mark as disconnected, but preserve access_token per Plaid requirement)
+ * 
+ * @route POST /api/plaid/items/[itemId]/disconnect
+ * @implements BR-034 - Access Token Preservation
+ * @satisfies US-006 - Link Bank Account (disconnect capability)
+ * @satisfies US-020 - Monitor Bank Connection Health
+ * @tested None (HIGH PRIORITY - needs test)
+ * 
+ * @param {Request} req - HTTP request
+ * @param {Object} params - Route parameters
+ * @param {string} params.itemId - ID of Plaid item to disconnect
+ * @returns {Promise<NextResponse>} Success response
+ */
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ itemId: string }> }
 ) {
     try {
-        const { itemId } = await params;
         const { userId } = await auth();
+        const resolvedParams = await params;
+        const { itemId } = resolvedParams;
+
         if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+        if (!itemId || itemId.trim() === '') return new NextResponse("Item ID is required", { status: 400 });
 
         const userProfile = await prisma.userProfile.findUnique({
             where: { clerkId: userId },

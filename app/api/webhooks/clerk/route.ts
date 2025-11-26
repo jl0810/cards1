@@ -1,9 +1,29 @@
+/**
+ * Clerk Webhook Handler
+ * Processes Clerk authentication webhooks (user created, updated, deleted)
+ * 
+ * @module app/api/webhooks/clerk
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
+/**
+ * Process Clerk webhook events
+ * 
+ * @route POST /api/webhooks/clerk
+ * @implements BR-001 - User Profile Creation (via webhook handler)
+ * @implements BR-002 - Welcome Email (via webhook handler)
+ * @satisfies US-001 - User Registration
+ * @satisfies US-002 - User Profile Management
+ * @tested None (webhook endpoints need tests)
+ * 
+ * @param {NextRequest} req - Clerk webhook payload
+ * @returns {Promise<NextResponse>} Status 200 on success
+ */
 export async function POST(req: NextRequest) {
   // Get the headers (await in Next.js 15)
   const headerPayload = await headers();

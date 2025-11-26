@@ -1,38 +1,68 @@
+/**
+ * Family Member Management API
+ * Handles CRUD operations for family members
+ * 
+ * @module app/api/user/family
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
+import { API_MESSAGES } from '@/lib/constants';
+import { CreateFamilyMemberSchema, safeValidateSchema } from '@/lib/validations';
+import {
+  getFamilyMembers,
+  createFamilyMember,
+  UserNotFoundError,
+} from '@/lib/family-operations';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Get all family members for authenticated user
+ * 
+ * @route GET /api/user/family
+ * @implements BR-003 - Family Member Ownership
+ * @satisfies US-003 - Add Family Members (view capability)
+ * @tested __tests__/api/user/family.test.ts
+ * 
+ * @returns {Promise<NextResponse>} Array of family members
+ */
 export async function GET(req: Request) {
     try {
         const { userId } = await auth();
 
         if (!userId) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            return Errors.unauthorized();
         }
 
-        const userProfile = await prisma.userProfile.findUnique({
-            where: { clerkId: userId },
-        });
-
-        if (!userProfile) {
-            return new NextResponse("User profile not found", { status: 404 });
-        }
-
-        const familyMembers = await prisma.familyMember.findMany({
-            where: { userId: userProfile.id },
-            orderBy: { createdAt: 'asc' },
-        });
+        // Pure business logic call - easily testable separately
+        const familyMembers = await getFamilyMembers(userId);
 
         return NextResponse.json(familyMembers);
     } catch (error) {
-        console.error('Error fetching family members:', error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        if (error instanceof UserNotFoundError) {
+            return Errors.notFound('User profile');
+        }
+        logger.error('Error fetching family members', error);
+        return Errors.internal();
     }
 }
 
+/**
+ * Create a new family member
+ * 
+ * @route POST /api/user/family
+ * @implements BR-003 - Family Member Ownership
+ * @implements BR-004 - Family Member Name Requirements
+ * @satisfies US-003 - Add Family Members
+ * @tested __tests__/api/user/family.test.ts
+ * 
+ * @param {Request} req - Contains family member data (name, email, avatar, role)
+ * @returns {Promise<NextResponse>} Created family member object
+ */
 export async function POST(req: Request) {
     // Rate limit: 20 creates per minute
     const limited = await rateLimit(req, RATE_LIMITS.write);
@@ -44,35 +74,37 @@ export async function POST(req: Request) {
         const { userId } = await auth();
 
         if (!userId) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            return Errors.unauthorized();
         }
 
-        const userProfile = await prisma.userProfile.findUnique({
-            where: { clerkId: userId },
+        const body = await req.json();
+        const validation = safeValidateSchema(CreateFamilyMemberSchema, body);
+
+        if (!validation.valid) {
+            return Errors.badRequest(validation.errors?.[0]?.message || 'Validation failed');
+        }
+
+        const { name, email, avatar, role } = validation.data;
+
+        // Pure business logic call - easily testable separately
+        const familyMember = await createFamilyMember(userId, {
+            name,
+            email,
+            avatar,
+            role,
         });
 
-        if (!userProfile) {
-            return new NextResponse("User profile not found", { status: 404 });
-        }
-
-        const { name } = await req.json();
-
-        if (!name) {
-            return new NextResponse("Name is required", { status: 400 });
-        }
-
-        const newMember = await prisma.familyMember.create({
-            data: {
-                userId: userProfile.id,
-                name,
-                role: 'Member',
-                isPrimary: false,
-            },
+        logger.info(`Family member created: ${familyMember.id}`, {
+            userId,
+            memberName: name,
         });
 
-        return NextResponse.json(newMember);
+        return NextResponse.json(familyMember, { status: 201 });
     } catch (error) {
-        console.error('Error creating family member:', error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        if (error instanceof UserNotFoundError) {
+            return Errors.notFound('User profile');
+        }
+        logger.error('Error creating family member', error);
+        return Errors.internal();
     }
 }

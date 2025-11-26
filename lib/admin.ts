@@ -1,6 +1,11 @@
 /**
  * Admin middleware and helpers with caching
  * Use these to protect admin-only routes and features
+ * 
+ * @module lib/admin
+ * @implements BR-031 - Admin Role Required
+ * @satisfies US-019 - Card Catalog Management
+ * @tested None (needs tests)
  */
 
 import { auth } from '@clerk/nextjs/server';

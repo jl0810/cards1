@@ -1,3 +1,10 @@
+/**
+ * Plaid Transaction Sync API
+ * Syncs transactions from Plaid and matches to credit card benefits
+ * 
+ * @module app/api/plaid/sync-transactions
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
@@ -5,7 +12,22 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { matchTransactionToBenefits, linkTransactionToBenefit, scanAndMatchBenefits } from '@/lib/benefit-matcher';
+import { logger } from '@/lib/logger';
+import { PLAID_SYNC_CONFIG } from '@/lib/constants';
 
+/**
+ * Sync transactions from Plaid for a specific item
+ * 
+ * @route POST /api/plaid/sync-transactions
+ * @implements BR-011 - Transaction Sync Limits
+ * @implements BR-012 - Transaction Sync Rate Limiting  
+ * @implements BR-013 - Atomic Transaction Processing
+ * @satisfies US-007 - Sync Transactions
+ * @tested None (needs integration test)
+ * 
+ * @param {Request} req - Contains itemId and optional cursor
+ * @returns {Promise<NextResponse>} Sync statistics (added, modified, removed, hasMore)
+ */
 export async function POST(req: Request) {
     // Apply rate limiting: max 10 syncs per hour per user
     const limited = await rateLimit(req, RATE_LIMITS.plaidSync);
@@ -50,9 +72,8 @@ export async function POST(req: Request) {
 
         // 2. Retrieve Access Token from Vault
         // We use a raw query to select from the vault.decrypted_secrets view
-        // @ts-ignore - Prisma client update might lag in IDE
         const secretId = item.accessTokenId;
-        const vaultResult = await prisma.$queryRaw<{ decrypted_secret: string }[]>`
+        const vaultResult = await prisma.$queryRaw<Array<{ decrypted_secret: string }>>`
       SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
     `;
 
@@ -63,7 +84,6 @@ export async function POST(req: Request) {
         }
 
         // --- SYNC TRANSACTIONS ---
-        const MAX_SYNC_ITERATIONS = 50; // Prevent infinite loops
         let hasMore = true;
         let nextCursor = cursor || item.nextCursor; // Use stored cursor if not provided
         let added: any[] = [];
@@ -72,7 +92,7 @@ export async function POST(req: Request) {
         let iterations = 0;
 
         // Fetch all updates since cursor (with safety limits)
-        while (hasMore && iterations < MAX_SYNC_ITERATIONS) {
+        while (hasMore && iterations < PLAID_SYNC_CONFIG.MAX_ITERATIONS) {
             try {
                 const response = await plaidClient.transactionsSync({
                     access_token: accessToken,
@@ -87,14 +107,17 @@ export async function POST(req: Request) {
                 nextCursor = data.next_cursor;
                 iterations++;
             } catch (syncError) {
-                console.error(`Error on sync iteration ${iterations}:`, syncError);
+                logger.error('Error on sync iteration', syncError, { iteration: iterations, itemId });
                 // Stop syncing but don't fail completely - partial sync is better than nothing
                 hasMore = false;
             }
         }
 
-        if (iterations >= MAX_SYNC_ITERATIONS) {
-            console.warn(`Transaction sync hit maximum iterations (${MAX_SYNC_ITERATIONS})`);
+        if (iterations >= PLAID_SYNC_CONFIG.MAX_ITERATIONS) {
+            logger.warn('Transaction sync hit maximum iterations', { 
+                maxIterations: PLAID_SYNC_CONFIG.MAX_ITERATIONS, 
+                itemId 
+            });
         }
 
         // Wrap all database operations in a transaction for atomicity
@@ -148,14 +171,14 @@ export async function POST(req: Request) {
                         category: txn.category || [],
                         pending: txn.pending,
                     }
-                }).catch(e => console.log("Transaction not found for update, skipping", e));
+                }).catch(e => logger.debug('Transaction not found for update, skipping', { transactionId: txn.transaction_id, error: e }));
             }
 
             // 3. Handle Removed Transactions
             for (const txn of removed) {
                 await tx.plaidTransaction.delete({
                     where: { transactionId: txn.transaction_id },
-                }).catch(e => console.log("Transaction already deleted or not found", e));
+                }).catch(e => logger.debug('Transaction already deleted or not found', { transactionId: txn.transaction_id }));
             }
 
             // 4. Update Cursor on PlaidItem
@@ -167,7 +190,7 @@ export async function POST(req: Request) {
                 },
             });
         }, {
-            timeout: 20000 // Increase timeout to 20s for large batches
+            timeout: PLAID_SYNC_CONFIG.DB_TIMEOUT_MS // Increase timeout for large batches
         });
 
         // --- UPDATE ACCOUNT BALANCES ---
@@ -189,10 +212,10 @@ export async function POST(req: Request) {
                         type: account.type,
                         subtype: account.subtype,
                     }
-                }).catch(e => console.log(`Account ${account.account_id} not found in DB, skipping update`));
+                }).catch(e => logger.debug('Account not found in DB, skipping update', { accountId: account.account_id }));
             }
         } catch (balanceError) {
-            console.error("Error updating balances:", balanceError);
+            logger.error('Error updating balances', balanceError, { itemId });
             // Don't fail the whole sync if balance update fails
         }
 
@@ -206,7 +229,7 @@ export async function POST(req: Request) {
                     // Since we have cursor tracking, it's efficient.
                     await scanAndMatchBenefits(userId);
                 } catch (matchError) {
-                    console.error('Error in auto-scan benefit matching:', matchError);
+                    logger.error('Error in auto-scan benefit matching', matchError, { userId });
                 }
             })();
         }
@@ -222,7 +245,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error) {
-        console.error('Error syncing transactions:', error);
+        logger.error('Error syncing transactions', error);
         return new NextResponse("Internal Server Error", { status: 500 });
     }
 }

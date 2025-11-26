@@ -216,13 +216,13 @@ function BankConnectionCard({ item, familyMembers, onReassign, onRefresh, onDisc
                                     </button>
                                 )}
 
-                                {/* Refresh Status */}
+                                {/* Check Connection Status */}
                                 <button
                                     onClick={() => onRefresh(item.id)}
                                     className="px-3 py-2 text-xs font-bold bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
                                 >
                                     <RefreshCw className="w-4 h-4" />
-                                    Refresh
+                                    Check Status
                                 </button>
 
                                 {/* Disconnect */}

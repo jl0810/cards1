@@ -1,25 +1,56 @@
+/**
+ * Family Member Update/Delete API
+ * Handles updating and deleting individual family members
+ * 
+ * @module app/api/user/family/[memberId]
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
+import { UpdateFamilyMemberSchema, safeValidateSchema } from '@/lib/validations';
 
 export const dynamic = 'force-dynamic';
 
-// UPDATE (Rename) Family Member
+/**
+ * Update family member details
+ * 
+ * @route PATCH /api/user/family/[memberId]
+ * @implements BR-003 - Family Member Ownership
+ * @implements BR-005 - Partial Updates Allowed
+ * @satisfies US-004 - Update Family Member
+ * @tested __tests__/api/user/family.test.ts
+ * 
+ * @param {Request} req - Contains partial family member data
+ * @param {Object} params - Route parameters
+ * @param {string} params.memberId - ID of family member to update
+ * @returns {Promise<NextResponse>} Updated family member object
+ */
 export async function PATCH(
     req: Request,
     { params }: { params: Promise<{ memberId: string }> }
 ) {
+    const { memberId } = await params;
     try {
-        const { memberId } = await params;
         const { userId } = await auth();
-        if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+        if (!userId) return Errors.unauthorized();
 
         const userProfile = await prisma.userProfile.findUnique({
             where: { clerkId: userId },
         });
-        if (!userProfile) return new NextResponse("User not found", { status: 404 });
+        if (!userProfile) return Errors.notFound('User profile');
 
-        const { name, avatar } = await req.json();
+        const body = await req.json();
+        
+        // Validate request body
+        const validation = safeValidateSchema(UpdateFamilyMemberSchema, body);
+        if (!validation.success) {
+            return Errors.badRequest(validation.error.errors[0]?.message || 'Invalid input');
+        }
+        
+        const { name, avatar, email } = validation.data;
 
         // Verify ownership
         const member = await prisma.familyMember.findFirst({
@@ -29,37 +60,52 @@ export async function PATCH(
             }
         });
 
-        if (!member) return new NextResponse("Family member not found", { status: 404 });
+        if (!member) return Errors.notFound('Family member');
 
         const updatedMember = await prisma.familyMember.update({
             where: { id: memberId },
             data: {
-                name: name || member.name,
-                avatar: avatar !== undefined ? avatar : member.avatar
+                ...(name && { name }),
+                ...(avatar !== undefined && { avatar }),
+                ...(email !== undefined && { email }),
             }
         });
 
         return NextResponse.json(updatedMember);
     } catch (error) {
-        console.error('Error updating family member:', error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        logger.error('Error updating family member', error, { memberId });
+        return Errors.internal();
     }
 }
 
-// DELETE Family Member
+/**
+ * Delete a family member
+ * 
+ * @route DELETE /api/user/family/[memberId]
+ * @implements BR-003 - Family Member Ownership
+ * @implements BR-006 - Primary Member Protection
+ * @implements BR-007 - Bank Connection Dependency
+ * @satisfies US-005 - Delete Family Member
+ * @tested __tests__/api/user/family.test.ts
+ * 
+ * @param {Request} req - HTTP request
+ * @param {Object} params - Route parameters
+ * @param {string} params.memberId - ID of family member to delete
+ * @returns {Promise<NextResponse>} Success message or error
+ */
 export async function DELETE(
     req: Request,
     { params }: { params: Promise<{ memberId: string }> }
 ) {
+    const { memberId } = await params;
     try {
-        const { memberId } = await params;
         const { userId } = await auth();
-        if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+        if (!userId) return Errors.unauthorized();
 
         const userProfile = await prisma.userProfile.findUnique({
             where: { clerkId: userId },
         });
-        if (!userProfile) return new NextResponse("User not found", { status: 404 });
+        if (!userProfile) return Errors.notFound('User profile');
 
         // Verify ownership
         const member = await prisma.familyMember.findFirst({
@@ -74,19 +120,18 @@ export async function DELETE(
             }
         });
 
-        if (!member) return new NextResponse("Family member not found", { status: 404 });
+        if (!member) return Errors.notFound('Family member');
 
         // PROTECTION 1: Cannot delete Primary member
         if (member.isPrimary) {
-            return new NextResponse("Cannot delete the primary family member.", { status: 400 });
+            return Errors.badRequest('Cannot delete the primary family member');
         }
 
         // PROTECTION 2: Cannot delete member with linked items
         // We check this explicitly to give a better error message than the DB constraint
         if (member._count.plaidItems > 0) {
-            return new NextResponse(
-                `Cannot delete ${member.name} because they have ${member._count.plaidItems} active bank connection(s). Please reassign or remove the bank connections first.`,
-                { status: 400 }
+            return Errors.badRequest(
+                `Cannot delete ${member.name} because they have ${member._count.plaidItems} active bank connection(s). Please reassign or remove the bank connections first.`
             );
         }
 
@@ -97,7 +142,7 @@ export async function DELETE(
         return new NextResponse(null, { status: 204 });
 
     } catch (error) {
-        console.error('Error deleting family member:', error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        logger.error('Error deleting family member', error, { memberId });
+        return Errors.internal();
     }
 }

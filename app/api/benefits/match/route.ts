@@ -1,17 +1,33 @@
+/**
+ * Benefit Matching API
+ * Triggers manual benefit matching for unmatched transactions
+ * 
+ * @module app/api/benefits/match
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { scanAndMatchBenefits } from '@/lib/benefit-matcher';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
 
 /**
  * Matches all unmatched transactions to card benefits
  * Uses cursor-based tracking to avoid re-processing
+ * 
+ * @route POST /api/benefits/match
+ * @implements BR-024 - Cursor-Based Tracking
+ * @satisfies US-012 - Manual Benefit Matching
+ * @tested __tests__/api/benefits/match.test.ts
+ * 
+ * @returns {Promise<NextResponse>} Match statistics (matched count, scanned count)
  */
 export async function POST(req: Request) {
     const { userId } = await auth();
 
     if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return Errors.unauthorized();
     }
 
     try {
@@ -23,10 +39,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error) {
-        console.error('Error in benefit matching:', error);
-        return NextResponse.json(
-            { error: 'Failed to match benefits' },
-            { status: 500 }
-        );
+        logger.error('Error in benefit matching', error, { userId });
+        return Errors.internal('Failed to match benefits');
     }
 }

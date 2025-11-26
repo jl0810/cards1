@@ -1,3 +1,10 @@
+/**
+ * Plaid Item Health Check API
+ * Checks connection status and token validity via Plaid API
+ * 
+ * @module app/api/plaid/items/[itemId]/status
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
@@ -17,7 +24,19 @@ const configuration = new Configuration({
 
 const plaidClient = new PlaidApi(configuration);
 
-// Get current item status from Plaid
+/**
+ * Get current item status from Plaid
+ * 
+ * @route GET /api/plaid/items/[itemId]/status
+ * @implements BR-033 - Connection Health Monitoring
+ * @satisfies US-020 - Monitor Bank Connection Health
+ * @tested None (HIGH PRIORITY - needs integration test)
+ * 
+ * @param {Request} req - HTTP request
+ * @param {Object} params - Route parameters
+ * @param {string} params.itemId - ID of Plaid item to check
+ * @returns {Promise<NextResponse>} Status object with health indicators
+ */
 export async function GET(
     req: Request,
     { params }: { params: Promise<{ itemId: string }> }

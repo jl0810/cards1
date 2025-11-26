@@ -167,6 +167,9 @@ Cards/
 ├── lib/                     # Core utilities
 │   ├── plaid.ts            # Plaid client
 │   ├── prisma.ts           # Database client
+│   ├── logger.ts           # Structured logging
+│   ├── validations.ts      # Zod validation schemas
+│   ├── constants.ts        # Application constants
 │   ├── admin.ts            # Admin utilities
 │   ├── rate-limit.ts       # Rate limiting
 │   └── api-errors.ts       # Error handling
@@ -221,18 +224,50 @@ Cards/
 - SWR-ready for client-side data fetching
 - Custom hooks for data management
 
-## 🧪 Testing
+## 🧪 Testing & Code Quality
+
+### Running Tests
 
 ```bash
-# Run tests (when implemented)
+# Run all tests
 npm test
 
-# Type checking
-npm run type-check
+# Watch mode (auto-rerun on changes)
+npm run test:watch
 
-# Linting
+# Generate coverage report
+npm run test:coverage
+```
+
+### Test Coverage
+
+**Current Test Suite:**
+- ✅ **Validation Schemas** - 50+ test cases for all Zod schemas
+- ✅ **Logger Utility** - Comprehensive logging tests
+- ✅ **Constants** - Type safety and value validation
+- ✅ **UI Components** - Button component tests
+
+**Test Files:**
+- `__tests__/lib/validations.test.ts`
+- `__tests__/lib/logger.test.ts`
+- `__tests__/lib/constants.test.ts`
+- `__tests__/button.test.tsx`
+
+See `__tests__/README.md` for detailed testing documentation.
+
+### Code Quality (ESLint)
+
+```bash
+# Linting (with custom rules)
 npm run lint
 ```
+
+**Enforces:**
+- ❌ No `console.*` usage (use `logger` instead)
+- ❌ No `any` types in TypeScript
+- ✅ Next.js best practices
+
+**Coverage Target:** 80%+ for utility functions
 
 ## 📱 Mobile (Coming Soon)
 
@@ -278,17 +313,27 @@ npx tsx scripts/make-admin.ts          # List users
 npx tsx scripts/make-admin.ts <user_id>  # Make user admin
 ```
 
-### Important Files
+### Important Documentation
 
-| File | Purpose |
-|------|---------|
-| `docs/ARCHITECTURE.md` | Core design patterns |
-| `docs/IOS_DEPLOYMENT.md` | iOS deployment guide |
-| `docs/RATE_LIMITING.md` | API protection |
-| `CHANGELOG.md` | Recent changes |
-| `capacitor.config.ts` | iOS app config |
-| `lib/platform.ts` | Platform detection |
-| `lib/rate-limit.ts` | Rate limiting |
+| File | Purpose | Audience |
+|------|---------|----------|
+| **📖 Traceability Docs** | | |
+| `docs/USER_STORIES.md` | 19 user stories with requirements | Business, Product |
+| `docs/BUSINESS_RULES.md` | 32 business rules | All |
+| `docs/TRACEABILITY_MATRIX.md` | Requirements → Code → Tests | All |
+| `docs/DOCUMENTATION_GUIDE.md` | How to navigate docs | All |
+| **🏗️ Technical Docs** | | |
+| `docs/ARCHITECTURE.md` | Core design patterns | Developers |
+| `docs/IOS_DEPLOYMENT.md` | iOS deployment guide | DevOps |
+| `docs/RATE_LIMITING.md` | API protection | Developers |
+| `CHANGELOG.md` | Recent changes | All |
+| `__tests__/README.md` | Testing guide | QA, Developers |
+| **📁 Key Code Files** | | |
+| `.eslintrc.json` | Code quality rules | Developers |
+| `lib/logger.ts` | Structured logging | Developers |
+| `lib/validations.ts` | Input validation schemas | Developers |
+| `lib/constants.ts` | Application constants | Developers |
+| `lib/rate-limit.ts` | Rate limiting | Developers |
 
 ### Rate Limits
 
@@ -310,6 +355,6 @@ npx tsx scripts/make-admin.ts <user_id>  # Make user admin
 
 ---
 
-**Last Updated:** November 23, 2025  
-**Version:** 2.0  
+**Last Updated:** November 26, 2025  
+**Version:** 2.1  
 **Status:** 🟢 Production Ready

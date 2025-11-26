@@ -3,6 +3,14 @@ import { prisma } from './prisma';
 /**
  * Benefit matching rules for Amex Platinum Schwab and other premium cards
  * Each benefit has matching criteria based on merchant name, category, and amount
+ * 
+ * @module lib/benefit-matcher
+ * @implements BR-017 - Merchant Pattern Matching
+ * @implements BR-018 - Category-Based Matching
+ * @implements BR-019 - Amount Guard Rails
+ * @implements BR-020 - Monthly and Annual Limits
+ * @satisfies US-010 - Match Transactions to Benefits
+ * @tested __tests__/lib/benefit-matcher.test.ts
  */
 
 export interface BenefitMatchCriteria {

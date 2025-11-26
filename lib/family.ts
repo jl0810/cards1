@@ -1,3 +1,14 @@
+/**
+ * Family member management utilities
+ * 
+ * @module lib/family
+ * @implements BR-003 - Family Member Ownership
+ * @implements BR-010 - Family Member Assignment
+ * @satisfies US-003 - Add Family Members
+ * @satisfies US-006 - Link Bank Account
+ * @tested None (needs tests)
+ */
+
 import { prisma } from './prisma';
 
 interface ProfileLike {
@@ -6,6 +17,11 @@ interface ProfileLike {
   avatar?: string | null;
 }
 
+/**
+ * Ensures primary family member exists for user profile
+ * 
+ * @implements BR-010 - Family Member Assignment
+ */
 export async function ensurePrimaryFamilyMember(userProfile: ProfileLike) {
   let member = await prisma.familyMember.findFirst({
     where: {
@@ -46,6 +62,11 @@ export async function ensurePrimaryFamilyMember(userProfile: ProfileLike) {
   });
 }
 
+/**
+ * Verifies family member belongs to user
+ * 
+ * @implements BR-003 - Family Member Ownership
+ */
 export async function assertFamilyMemberOwnership(userProfileId: string, familyMemberId: string) {
   const member = await prisma.familyMember.findFirst({
     where: {

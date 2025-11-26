@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/nextjs";
 import { ErrorBoundary as SentryErrorBoundary } from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export function ErrorBoundary({
   children,
@@ -50,7 +51,9 @@ export function ErrorBoundary({
         </div>
       )}
       onError={(error, errorInfo) => {
-        console.error('Error caught by boundary:', error, errorInfo);
+        logger.error('Error caught by boundary', error, {
+          componentStack: (errorInfo as any).componentStack || 'No component stack available',
+        });
         Sentry.captureException(error, {
           contexts: {
             react: {

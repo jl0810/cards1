@@ -1,10 +1,29 @@
+/**
+ * Plaid Items API
+ * Returns all connected bank accounts (Plaid items) for user
+ * 
+ * @module app/api/plaid/items
+ */
+
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { Errors, successResponse } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Get all Plaid items (connected banks) for authenticated user
+ * 
+ * @route GET /api/plaid/items
+ * @implements BR-014 - Account Balance Display
+ * @implements BR-015 - Due Date Calculation
+ * @satisfies US-008 - View Connected Accounts
+ * @tested None (needs integration test)
+ * 
+ * @returns {Promise<NextResponse>} Array of Plaid items with accounts and balances
+ */
 export async function GET(req: Request) {
     try {
         const { userId } = await auth();
@@ -18,7 +37,7 @@ export async function GET(req: Request) {
         });
 
         if (!userProfile) {
-            console.log(`User profile not found for ${userId}, attempting to create...`);
+            logger.info('User profile not found, attempting to create', { userId });
             // Self-healing: Create profile if missing
             const user = await currentUser();
 
@@ -31,9 +50,9 @@ export async function GET(req: Request) {
                             avatar: user.imageUrl,
                         }
                     });
-                    console.log(`Created user profile for ${userId}`);
+                    logger.info('Created user profile', { userId });
                 } catch (createError) {
-                    console.error('Error creating user profile in API:', createError);
+                    logger.error('Error creating user profile in API', createError, { userId });
                     // If creation fails (e.g. race condition), try fetching again
                     userProfile = await prisma.userProfile.findUnique({
                         where: { clerkId: userId },
@@ -73,7 +92,7 @@ export async function GET(req: Request) {
 
         return successResponse(items);
     } catch (error) {
-        console.error('Error fetching Plaid items:', error);
+        logger.error('Error fetching Plaid items', error);
         return Errors.internal(error instanceof Error ? error.message : 'Unknown error');
     }
 }

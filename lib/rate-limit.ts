@@ -5,6 +5,9 @@
  * It uses a sliding window algorithm with per-user limits.
  * 
  * @module lib/rate-limit
+ * @implements BR-030 - API Rate Limits
+ * @satisfies US-018 - API Rate Limiting
+ * @tested None (needs tests)
  * 
  * @example Basic usage in API route
  * ```typescript

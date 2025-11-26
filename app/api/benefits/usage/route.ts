@@ -1,12 +1,34 @@
+/**
+ * Benefit Usage Tracking API
+ * Calculates and returns benefit usage for user's credit cards
+ * 
+ * @module app/api/benefits/usage
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
 
+/**
+ * Get benefit usage for user's cards
+ * 
+ * @route GET /api/benefits/usage?period=month&accountId=xxx
+ * @implements BR-021 - Benefit Period Calculation
+ * @implements BR-022 - Usage Percentage Calculation
+ * @implements BR-023 - Urgency-Based Sorting
+ * @satisfies US-011 - View Benefit Usage
+ * @tested __tests__/api/benefits/usage.test.ts
+ * 
+ * @param {Request} req - Query params: period (month/quarter/year), accountId (optional)
+ * @returns {Promise<NextResponse>} Benefit usage data with progress and remaining amounts
+ */
 export async function GET(req: Request) {
     const { userId } = await auth();
 
     if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return Errors.unauthorized();
     }
 
     const { searchParams } = new URL(req.url);
@@ -40,7 +62,7 @@ export async function GET(req: Request) {
         });
 
         if (!userProfile) {
-            return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+            return Errors.notFound('User profile');
         }
 
         // Get all linked accounts (or specific account if provided)
@@ -197,7 +219,7 @@ export async function GET(req: Request) {
         });
 
     } catch (error) {
-        console.error('Error fetching benefit usage:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        logger.error('Error fetching benefit usage', error, { userId, period, accountId });
+        return Errors.internal();
     }
 }

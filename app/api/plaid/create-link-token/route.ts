@@ -1,16 +1,35 @@
+/**
+ * Plaid Link Token Creation API
+ * Creates a Plaid Link token for initiating bank account connection
+ * 
+ * @module app/api/plaid/create-link-token
+ */
+
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
 import { CountryCode, Products } from 'plaid';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
 
+/**
+ * Create Plaid Link token for bank account connection
+ * 
+ * @route POST /api/plaid/create-link-token
+ * @implements BR-008 - Duplicate Detection (preparation)
+ * @satisfies US-006 - Link Bank Account
+ * @tested None (needs integration test)
+ * 
+ * @returns {Promise<NextResponse>} Plaid link token for frontend initialization
+ */
 export async function POST(req: Request) {
     try {
         const { userId } = await auth();
         const user = await currentUser();
 
         if (!userId || !user) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            return Errors.unauthorized();
         }
 
         // Ensure user profile exists
@@ -28,7 +47,7 @@ export async function POST(req: Request) {
                     }
                 });
             } catch (e) {
-                console.error('Error creating profile in link token route:', e);
+                logger.error('Error creating profile in link token route', e, { userId });
             }
         }
 
@@ -47,7 +66,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(createTokenResponse.data);
     } catch (error) {
-        console.error('Error creating link token:', error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        logger.error('Error creating link token', error);
+        return Errors.internal();
     }
 }

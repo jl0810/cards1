@@ -76,11 +76,17 @@ export function useAccounts(): UseAccountsReturn {
                     balance: acc.currentBalance || 0,
                     due: acc.nextPaymentDueDate
                         ? (() => {
-                            const diffDays = Math.ceil((new Date(acc.nextPaymentDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                            const dueDate = new Date(acc.nextPaymentDueDate);
+                            const today = new Date();
+                            // Reset time to start of day for both dates for proper comparison
+                            dueDate.setHours(0, 0, 0, 0);
+                            today.setHours(0, 0, 0, 0);
+                            const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                             if (diffDays < 0) return 'Overdue';
                             if (diffDays === 0) return 'Today';
                             if (diffDays === 1) return 'Tomorrow';
-                            return `${diffDays} days`;
+                            if (diffDays <= 7) return `${diffDays} days`;
+                            return formatDate(acc.nextPaymentDueDate);
                         })()
                         : 'N/A',
                     type: acc.subtype || acc.type,

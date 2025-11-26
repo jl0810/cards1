@@ -1,12 +1,28 @@
+/**
+ * Plaid Token Exchange API
+ * Completes bank account linking by exchanging public token for access token
+ * 
+ * @module app/api/plaid/exchange-public-token
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
 import { assertFamilyMemberOwnership, ensurePrimaryFamilyMember } from '@/lib/family';
 import { ensureBankExists } from '@/lib/plaid-bank';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
 
 /**
  * Exchanges a Plaid public token for an access token and creates a new PlaidItem.
+ * 
+ * @route POST /api/plaid/exchange-public-token
+ * @implements BR-008 - Duplicate Detection
+ * @implements BR-009 - Secure Token Storage
+ * @implements BR-010 - Family Member Assignment
+ * @satisfies US-006 - Link Bank Account
+ * @tested None (needs integration test)
  * 
  * This endpoint handles:
  * 1. User authentication and profile retrieval.
@@ -25,7 +41,7 @@ export async function POST(req: Request) {
         const { userId } = await auth();
 
         if (!userId) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            return Errors.unauthorized();
         }
 
         const { public_token, metadata, familyMemberId } = await req.json();
@@ -36,7 +52,7 @@ export async function POST(req: Request) {
         });
 
         if (!userProfile) {
-            return new NextResponse("User profile not found", { status: 404 });
+            return Errors.notFound('User profile');
         }
 
         // 3. Determine which family member this item belongs to (required)
@@ -73,7 +89,10 @@ export async function POST(req: Request) {
                 ).length;
 
                 if (matchCount > 0) {
-                    console.log(`Duplicate item detected (${existingItem.id}). Skipping token exchange.`);
+                    logger.info('Duplicate item detected, skipping token exchange', { 
+                        existingItemId: existingItem.id, 
+                        institutionId 
+                    });
                     // Return success but indicate it was a duplicate. We return the existing item ID.
                     return NextResponse.json({ ok: true, itemId: existingItem.id, duplicate: true });
                 }
@@ -105,7 +124,7 @@ export async function POST(req: Request) {
                 });
             }
         } catch (err) {
-            console.log("Failed to fetch liabilities, falling back to accountsGet", err);
+            logger.warn('Failed to fetch liabilities, falling back to accountsGet', { error: err });
             const accountsResponse = await plaidClient.accountsGet({
                 access_token: accessToken,
             });
@@ -165,7 +184,9 @@ export async function POST(req: Request) {
         });
 
         // Ensure Bank exists and link it
-        await ensureBankExists(plaidItem).catch(err => console.error("Failed to ensure bank exists", err));
+        await ensureBankExists(plaidItem).catch(err => 
+            logger.error('Failed to ensure bank exists', err, { itemId: plaidItem.id })
+        );
 
         let plaidItemDbId = plaidItem.id;
 
@@ -177,11 +198,13 @@ export async function POST(req: Request) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ itemId: itemId, cursor: null }),
-        }).catch(err => console.error("Failed to trigger initial sync", err));
+        }).catch(err => 
+            logger.error('Failed to trigger initial sync', err, { itemId })
+        );
 
         return NextResponse.json({ ok: true, itemId: plaidItemDbId });
     } catch (error) {
-        console.error('Error exchanging public token:', error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        logger.error('Error exchanging public token', error);
+        return Errors.internal();
     }
 }

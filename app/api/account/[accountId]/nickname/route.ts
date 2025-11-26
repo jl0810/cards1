@@ -1,19 +1,46 @@
 "use server";
 
+/**
+ * Account Nickname API
+ * Allows users to set custom nicknames for bank accounts
+ * 
+ * @module app/api/account/[accountId]/nickname
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { Errors, successResponse } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
+import { UpdateAccountNicknameSchema, safeValidateSchema } from '@/lib/validations';
 
+/**
+ * Update account nickname
+ * 
+ * @route PATCH /api/account/[accountId]/nickname
+ * @implements BR-016 - Account Nickname Persistence
+ * @satisfies US-009 - Nickname Accounts
+ * @tested __tests__/lib/validations.test.ts (schema validation)
+ * 
+ * @param {Request} req - Contains nickname (string, max 50 chars, or null to clear)
+ * @param {Object} params - Route parameters
+ * @param {string} params.accountId - Plaid account ID
+ * @returns {Promise<NextResponse>} Success response
+ */
 export async function PATCH(req: Request, { params }: { params: Promise<{ accountId: string }> }) {
     const { userId } = await auth();
     if (!userId) return Errors.unauthorized();
 
     const { accountId } = await params;
-    const { nickname } = await req.json();
-    if (typeof nickname !== 'string') {
-        return Errors.badRequest('nickname must be a string');
+    const body = await req.json();
+    
+    // Validate request body
+    const validation = safeValidateSchema(UpdateAccountNicknameSchema, body);
+    if (!validation.success) {
+        return Errors.badRequest(validation.error.errors[0]?.message || 'Invalid input');
     }
+    
+    const { nickname } = validation.data;
 
     try {
         // Find the PlaidAccount first to ensure it belongs to this user
@@ -36,7 +63,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ accoun
 
         return successResponse({ success: true });
     } catch (e) {
-        console.error(e);
+        logger.error('Error updating account nickname', e, { accountId });
         return Errors.internal(e instanceof Error ? e.message : 'Unknown error');
     }
 }
