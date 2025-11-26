@@ -9,6 +9,9 @@ const globalForPrisma = globalThis as unknown as {
 // Create a PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // Required for Supabase connection pooler
+  },
 })
 
 // Create the Prisma adapter
