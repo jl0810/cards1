@@ -12,6 +12,18 @@ import { GET } from '@/app/api/plaid/items/[itemId]/status/route';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
 
+// Mock the env module
+jest.mock('@/env', () => ({
+    env: {
+        NEXT_PUBLIC_SUPABASE_URL: 'http://localhost:54321',
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key',
+        SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
+        PLAID_CLIENT_ID: 'test-client-id',
+        PLAID_SECRET: 'test-secret',
+        PLAID_ENV: 'sandbox',
+    },
+}));
+
 // Mock dependencies
 jest.mock('@clerk/nextjs/server', () => ({
     auth: jest.fn(),
@@ -288,14 +300,20 @@ describe('US-020: Monitor Bank Connection Health', () => {
 
             await GET(mockRequest, { params: mockParams });
 
-            // Verify Vault was called correctly
+            // Verify Vault was called correctly with a VALID URL (no 'undefined')
             expect(global.fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/rest/v1/rpc/get_plaid_access_token'),
+                expect.stringMatching(/^https?:\/\/.*\/rest\/v1\/rpc\/get_plaid_access_token/),
                 expect.objectContaining({
                     method: 'POST',
                     body: JSON.stringify({ token_id: mockAccessTokenId }),
                 })
             );
+
+            // Explicitly fail if URL contains 'undefined'
+            const fetchCall = (global.fetch as jest.Mock).mock.calls.find(call => 
+                call[0].includes('/rest/v1/rpc/get_plaid_access_token')
+            );
+            expect(fetchCall[0]).not.toContain('undefined');
 
             // Verify token used with Plaid
             expect(mockItemGet).toHaveBeenCalledWith({

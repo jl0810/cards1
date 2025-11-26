@@ -2,8 +2,8 @@ import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals
 import { renderHook, waitFor } from '@testing-library/react';
 import { useAccounts } from '@/hooks/use-accounts';
 
-// Mock fetch
-global.fetch = jest.fn() as jest.Mock;
+// Mock fetch with proper typing
+global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 
 describe('useAccounts Hook', () => {
   beforeEach(() => {
@@ -74,6 +74,9 @@ describe('useAccounts Hook', () => {
         expect(result.current.loading).toBe(false);
       });
 
+      // Validate fetch was called with correct endpoint
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+
       expect(result.current.accounts).toHaveLength(1);
       expect(result.current.accounts[0]).toMatchObject({
         id: 'acc_1',
@@ -112,6 +115,9 @@ describe('useAccounts Hook', () => {
         expect(result.current.accounts).toHaveLength(3);
       });
 
+      // Validate correct endpoint called
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+
       expect(result.current.accounts[0].bank).toBe('Chase');
       expect(result.current.accounts[2].bank).toBe('Amex');
     });
@@ -128,6 +134,9 @@ describe('useAccounts Hook', () => {
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
+
+      // Validate correct endpoint called even on 404
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
 
       expect(result.current.accounts).toEqual([]);
       expect(result.current.error).toBeNull();
@@ -162,6 +171,8 @@ describe('useAccounts Hook', () => {
       await waitFor(() => {
         expect(result.current.accounts[0]?.due).toBe('Tomorrow');
       });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
     });
 
     it('should show "Today" for due date today', async () => {
@@ -191,6 +202,8 @@ describe('useAccounts Hook', () => {
       await waitFor(() => {
         expect(result.current.accounts[0]?.due).toBe('Today');
       });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
     });
 
     it('should show "Overdue" for past due dates', async () => {
@@ -220,6 +233,8 @@ describe('useAccounts Hook', () => {
       await waitFor(() => {
         expect(result.current.accounts[0]?.due).toBe('Overdue');
       });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
     });
 
     it('should format currency correctly', async () => {
@@ -251,6 +266,8 @@ describe('useAccounts Hook', () => {
         expect(result.current.accounts[0]?.liabilities.limit).toContain('$10,000');
         expect(result.current.accounts[0]?.liabilities.min_due).toContain('$25');
       });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
     });
 
     it('should format APR as percentage', async () => {
@@ -277,6 +294,8 @@ describe('useAccounts Hook', () => {
       await waitFor(() => {
         expect(result.current.accounts[0]?.liabilities.apr).toBe('24.99%');
       });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
     });
 
     it('should handle null/undefined values gracefully', async () => {
@@ -309,6 +328,8 @@ describe('useAccounts Hook', () => {
         expect(result.current.accounts[0]?.liabilities.apr).toBe('N/A');
         expect(result.current.accounts[0]?.liabilities.limit).toBe('N/A');
       });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
     });
   });
 
@@ -323,6 +344,7 @@ describe('useAccounts Hook', () => {
         expect(result.current.loading).toBe(false);
       });
 
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
       expect(result.current.error).toBeDefined();
       expect(result.current.error?.message).toBe(errorMessage);
       expect(result.current.accounts).toEqual([]);
@@ -341,6 +363,7 @@ describe('useAccounts Hook', () => {
         expect(result.current.loading).toBe(false);
       });
 
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
       expect(result.current.error).toBeDefined();
       expect(result.current.accounts).toEqual([]);
     });
@@ -358,6 +381,8 @@ describe('useAccounts Hook', () => {
       await waitFor(() => {
         expect(result.current.offline).toBe(true);
       });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
     });
   });
 

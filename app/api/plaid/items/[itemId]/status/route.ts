@@ -9,15 +9,16 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
+import { env } from '@/env';
 
 export const dynamic = 'force-dynamic';
 
 const configuration = new Configuration({
-    basePath: PlaidEnvironments[process.env.PLAID_ENV as keyof typeof PlaidEnvironments] || PlaidEnvironments.production,
+    basePath: PlaidEnvironments[env.PLAID_ENV as keyof typeof PlaidEnvironments] || PlaidEnvironments.production,
     baseOptions: {
         headers: {
-            'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-            'PLAID-SECRET': process.env.PLAID_SECRET,
+            'PLAID-CLIENT-ID': env.PLAID_CLIENT_ID,
+            'PLAID-SECRET': env.PLAID_SECRET,
         },
     },
 });
@@ -63,13 +64,13 @@ export async function GET(
 
         // Get access token from Supabase Vault
         const { data: vaultData, error: vaultError } = await fetch(
-            `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_plaid_access_token`,
+            `${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/get_plaid_access_token`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+                    'apikey': env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
                 },
                 body: JSON.stringify({ token_id: plaidItem.accessTokenId })
             }

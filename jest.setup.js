@@ -1,4 +1,10 @@
 import '@testing-library/jest-dom';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load test environment variables
+// Next.js loads .env.local but NOT .env.test.local by default
+dotenv.config({ path: path.resolve(process.cwd(), '.env.test.local') });
 
 // Mock fetch globally
 global.fetch = jest.fn();

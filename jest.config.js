@@ -16,6 +16,9 @@ const customJestConfig = {
     '^uncrypto$': '<rootDir>/__mocks__/uncrypto.js',
     '^@upstash/redis$': '<rootDir>/__mocks__/@upstash/redis.js',
   },
+  testEnvironmentOptions: {
+    customExportConditions: ['node', 'node-addons'],
+  },
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

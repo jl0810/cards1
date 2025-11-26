@@ -1,17 +1,23 @@
+/**
+ * @jest-environment node
+ */
+
 import { describe, expect, it, beforeAll } from '@jest/globals';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 
 /**
  * Plaid Sandbox Integration Tests
  * 
- * These tests use REAL Plaid sandbox API (optional)
- * Set ENABLE_REAL_PLAID_TESTS=true in .env.test.local to run
+ * These tests use REAL Plaid sandbox API
+ * Sandbox is free and designed for testing - no reason to skip!
  * 
  * @requires PLAID_CLIENT_ID, PLAID_SECRET from env
  * @satisfies BR-033, BR-034 with real API
+ * @jest-environment node - Required for real HTTP calls
  */
 
-const SHOULD_RUN = process.env.ENABLE_REAL_PLAID_TESTS === 'true';
+// Run if credentials exist, skip if not
+const SHOULD_RUN = !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET);
 
 const describeIf = SHOULD_RUN ? describe : describe.skip;
 
@@ -137,7 +143,7 @@ describe('Plaid Integration Test Status', () => {
     if (SHOULD_RUN) {
       console.log('✅ Running Plaid sandbox integration tests');
     } else {
-      console.log('⏭️  Skipping Plaid sandbox tests (set ENABLE_REAL_PLAID_TESTS=true to run)');
+      console.log('⏭️  Skipping Plaid sandbox tests (add PLAID_CLIENT_ID and PLAID_SECRET to .env.test.local)');
     }
     expect(true).toBe(true);
   });
