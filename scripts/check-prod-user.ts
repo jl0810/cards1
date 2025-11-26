@@ -2,8 +2,8 @@
 import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { PrismaClient } from '../generated/prisma/client';
+const prisma = new PrismaClient({});
 
 async function checkUser() {
     const email = 'jefflawson@gmail.com';

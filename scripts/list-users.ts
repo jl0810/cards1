@@ -1,10 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma/client';
 import * as dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({});
 
 async function main() {
     const members = await prisma.familyMember.findMany({

@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma/client';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 import * as dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({});
 
 const configuration = new Configuration({
     basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
