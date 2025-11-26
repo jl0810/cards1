@@ -1,0 +1,41 @@
+[dotenv@17.2.3] injecting env (21) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+🔍 Analyzing Credits...
+
+✅ MATCHED CREDITS - SCHWAB PLATINUM (22):
+--------------------------------------------------------------------------------
+Date         | Amount     | Benefit                        | Transaction Name
+--------------------------------------------------------------------------------
+2025-11-23   | $2.13      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-11-22   | $5.60      | Airline Incidental Fee Credi   | Alaska Airlines
+2025-11-22   | $5.60      | Airline Incidental Fee Credi   | Alaska Airlines
+2025-11-19   | $209.00    | CLEAR Plus Credit              | AMEX CLEAR PLUS CREDIT
+2025-11-13   | $5.60      | Airline Incidental Fee Credi   | American Airlines
+2025-11-13   | $5.60      | Airline Incidental Fee Credi   | American Airlines
+2025-11-07   | $8.85      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-11-05   | $8.57      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-10-27   | $100.00    | Resy Credit                    | Platinum Resy Credit
+2025-10-23   | $2.13      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-10-11   | $75.00     | Lululemon Credit               | Platinum Lululemon Credit
+2025-10-10   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-10-05   | $8.57      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-09-29   | $100.00    | Resy Credit                    | Platinum Resy Credit
+2025-09-25   | $62.35     | Lululemon Credit               | Platinum Lululemon Credit
+2025-09-25   | $2.13      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-09-12   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-09-03   | $11.79     | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-08-15   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-08-03   | $8.57      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-07-24   | $200.00    | Prepaid Hotel Credit           | Platinum Hotel Credit
+2025-07-18   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+--------------------------------------------------------------------------------
+
+⚠️  UNMATCHED CREDITS - SCHWAB PLATINUM (6 found):
+--------------------------------------------------------------------------------
+Date         | Amount     | Transaction Name
+--------------------------------------------------------------------------------
+2025-11-18   | $13.89     | Walmart
+2025-10-28   | $20.55     | STUBHUB SAN FRANCISCO
+2025-10-19   | $13.89     | Walmart
+2025-09-20   | $13.89     | Walmart
+2025-08-19   | $13.89     | Walmart
+2025-07-18   | $13.89     | Walmart

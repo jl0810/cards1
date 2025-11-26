@@ -1,0 +1,55 @@
+[dotenv@17.2.3] injecting env (21) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+🔍 Analyzing Credits...
+
+✅ MATCHED CREDITS (22):
+--------------------------------------------------------------------------------
+Date         | Amount     | Benefit                        | Transaction Name
+--------------------------------------------------------------------------------
+2025-11-23   | $2.13      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-11-22   | $5.60      | Airline Incidental Fee Credi   | Alaska Airlines
+2025-11-22   | $5.60      | Airline Incidental Fee Credi   | Alaska Airlines
+2025-11-19   | $209.00    | CLEAR Plus Credit              | AMEX CLEAR PLUS CREDIT
+2025-11-13   | $5.60      | Airline Incidental Fee Credi   | American Airlines
+2025-11-13   | $5.60      | Airline Incidental Fee Credi   | American Airlines
+2025-11-07   | $8.85      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-11-05   | $8.57      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-10-27   | $100.00    | Resy Credit                    | Platinum Resy Credit
+2025-10-23   | $2.13      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-10-11   | $75.00     | Lululemon Credit               | Platinum Lululemon Credit
+2025-10-10   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-10-05   | $8.57      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-09-29   | $100.00    | Resy Credit                    | Platinum Resy Credit
+2025-09-25   | $62.35     | Lululemon Credit               | Platinum Lululemon Credit
+2025-09-25   | $2.13      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-09-12   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-09-03   | $11.79     | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-08-15   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-08-03   | $8.57      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+2025-07-24   | $200.00    | Prepaid Hotel Credit           | Platinum Hotel Credit
+2025-07-18   | $4.29      | Digital Entertainment Credit   | Platinum Digital Entertainment Credit
+--------------------------------------------------------------------------------
+
+⚠️  POTENTIAL MISSED CREDITS (20 found):
+----------------------------------------------------------------------------------------------------
+Date         | Amount     | Account                   | Transaction Name
+----------------------------------------------------------------------------------------------------
+2025-11-23   | $9.22      | Business Gold Card        | Walmart
+2025-11-23   | $4.45      | Business Gold Card        | Walmart
+2025-11-22   | $5.60      | Hilton Honors Aspire Ca   | Alaska Airlines
+2025-11-22   | $5.60      | Hilton Honors Aspire Ca   | Alaska Airlines
+2025-11-22   | $5.60      | Hilton Honors Aspire Ca   | Alaska Airlines
+2025-11-22   | $5.60      | Hilton Honors Aspire Ca   | Alaska Airlines
+2025-11-18   | $13.89     | Charles Schwab Platinum   | Walmart
+2025-11-16   | $5.79      | Blue Business Plus Card   | Harris Teeter Supermarkets
+2025-11-14   | $5.60      | Hilton Honors Aspire Ca   | Alaska Airlines
+2025-11-14   | $5.60      | Hilton Honors Aspire Ca   | Alaska Airlines
+2025-11-12   | $5.60      | Hilton Honors Aspire Ca   | Alaska Airlines
+2025-11-06   | $299.00    | Blue Business Plus Card   | US MOBILE
+2025-11-06   | $78.00     | Blue Business Plus Card   | US MOBILE
+2025-11-06   | $4.48      | Blue Business Plus Card   | US MOBILE
+2025-11-04   | $10.00     | American Express Gold C   | AMEX Dining Credit
+2025-11-03   | $10.00     | Business Platinum Card®   | AMEX Wireless Credit
+2025-11-02   | $107.20    | American Express Gold C   | Amazon
+2025-11-01   | $94.37     | Blue Business Plus Card   | DICK'S SPORTING GOODCORAOPOLIS
+2025-10-30   | $20.00     | Business Gold Card        | FLEXIBLE BUSINESS CREDIT
+2025-10-30   | $20.00     | Business Gold Card        | FLEXIBLE BUSINESS CREDIT

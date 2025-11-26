@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, ArrowUpRight, CreditCard } from "lucide-react";
+import { Search, ArrowUpRight, CreditCard, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => (
   <motion.div
@@ -16,25 +17,65 @@ const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode, delay?: nu
 export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const res = await fetch('/api/plaid/transactions');
-        if (res.ok) {
-          const data = await res.json();
-          setTransactions(data);
-        }
-      } catch (error) {
-        console.error("Error fetching transactions:", error);
-      } finally {
-        setLoading(false);
+  const fetchTransactions = async () => {
+    try {
+      const res = await fetch('/api/plaid/transactions');
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchTransactions();
   }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+
+    try {
+      // Get all Plaid items to sync
+      const itemsRes = await fetch('/api/plaid/items');
+      if (!itemsRes.ok) throw new Error('Failed to fetch items');
+
+      const items = await itemsRes.json();
+
+      if (items.length === 0) {
+        toast.info('No bank accounts connected');
+        setSyncing(false);
+        return;
+      }
+
+      // Sync all items
+      const syncPromises = items.map((item: any) =>
+        fetch('/api/plaid/sync-transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.itemId })
+        })
+      );
+
+      await Promise.all(syncPromises);
+
+      // Refresh transactions
+      await fetchTransactions();
+
+      toast.success('Transactions synced successfully!');
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast.error('Failed to sync transactions');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const filteredTransactions = transactions.filter(t => {
     // Filter by search term
@@ -60,7 +101,18 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
 
   return (
     <div className="space-y-4 pb-24">
-      <div className="sticky top-0 z-10">
+      <div className="sticky top-0 z-10 space-y-3">
+        {/* Sync Button */}
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-xl font-medium text-white transition-all hover:shadow-lg hover:shadow-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+          <span>{syncing ? 'Syncing...' : 'Sync Transactions'}</span>
+        </button>
+
+        {/* Search Bar */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="text-slate-400 w-4 h-4" />

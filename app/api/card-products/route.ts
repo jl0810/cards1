@@ -11,12 +11,20 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const issuer = searchParams.get('issuer');
+    const bankId = searchParams.get('bankId');
+    const issuer = searchParams.get('issuer'); // Fallback for when bankId not available
+
+    console.log('🔍 [Card Products API] Query:', { bankId, issuer, userId });
 
     const products = await prisma.cardProduct.findMany({
         where: {
             active: true,
-            ...(issuer ? { issuer: { contains: issuer, mode: 'insensitive' } } : {})
+            ...(bankId
+                ? { bankId } // Prefer exact FK match
+                : issuer
+                    ? { issuer: { contains: issuer.replace(/\s+(online|bank|banking|financial)/gi, '').trim(), mode: 'insensitive' } }
+                    : {}
+            )
         },
         include: {
             benefits: {
@@ -28,6 +36,11 @@ export async function GET(req: Request) {
             { productName: 'asc' }
         ]
     });
+
+    console.log(`✅ [Card Products API] Found ${products.length} products ${bankId ? `for bankId "${bankId}"` : issuer ? `for issuer "${issuer}"` : 'total'}`);
+    if (products.length > 0) {
+        console.log('   Products:', products.map(p => `${p.issuer} - ${p.productName}`).join(', '));
+    }
 
     return NextResponse.json(products);
 }

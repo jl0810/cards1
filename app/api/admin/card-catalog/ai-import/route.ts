@@ -14,6 +14,10 @@ interface CardProductData {
         timing: string;
         max_amount: number | null;
         keywords: string[];
+        rule_config?: {
+            minAmount?: number | null;
+            maxAmount?: number | null;
+        } | null;
     }>;
 }
 
@@ -142,7 +146,11 @@ export async function POST(req: Request) {
                         type: "STATEMENT_CREDIT" | "EXTERNAL_CREDIT" | "INSURANCE" | "PERK",
                         timing: "Monthly" | "Annually" | "SemiAnnually" | "Quarterly" | "OneTime",
                         max_amount: number | null (dollar amount),
-                        keywords: string[] (3-5 keywords for transaction matching)
+                        keywords: string[] (3-5 keywords for transaction matching),
+                        rule_config: {
+                            minAmount: number | null (minimum transaction amount to match, e.g., 12 for $12.95 Walmart+ credit),
+                            maxAmount: number | null (maximum transaction amount to match, e.g., 16 for $12.95 Walmart+ credit with tax)
+                        } | null (only include if the benefit has a specific known dollar amount, leave null otherwise)
                     }]
                 }]
 
@@ -151,6 +159,11 @@ export async function POST(req: Request) {
                 - EXTERNAL_CREDIT: Money given to you in an external account, NOT on the statement (e.g., "Uber Cash" deposited to Uber app, "Lyft Pink").
                 - INSURANCE: Purchase protection, travel insurance, etc.
                 - PERK: Lounge access, status, concierge, etc.
+
+                RULE_CONFIG GUIDANCE:
+                - For recurring credits with known amounts (like "$12.95/month Walmart+"), set minAmount to ~90% and maxAmount to ~115% of the amount to account for tax.
+                - For flexible credits (like "Up to $200 airline fee"), leave rule_config as null.
+                - For external credits that don't appear on statements, leave rule_config as null.
 
                 Text:
                 ${combinedText}
@@ -243,7 +256,9 @@ export async function POST(req: Request) {
                                         timing: benefitData.timing || 'Annually',
                                         maxAmount: benefitData.max_amount,
                                         keywords: benefitData.keywords || [],
-                                        isApproved: false // MARK AS DRAFT (Requires Admin Review)
+                                        ruleConfig: (benefitData.rule_config || undefined) as any,
+                                        isApproved: false, // MARK AS DRAFT (Requires Admin Review)
+                                        changeNotes: 'AI-generated benefit - pending review'
                                     }
                                 });
                             }

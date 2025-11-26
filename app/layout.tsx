@@ -6,6 +6,7 @@ import { PostHogProvider } from "@/app/providers/posthog";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from '@clerk/themes';
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -35,6 +36,7 @@ export default function RootLayout({
             >
               {children}
               <Toaster />
+              <Analytics />
             </ThemeProvider>
           </PostHogProvider>
         </body>

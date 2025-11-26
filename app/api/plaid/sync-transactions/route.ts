@@ -4,6 +4,7 @@ import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { matchTransactionToBenefits, linkTransactionToBenefit, scanAndMatchBenefits } from '@/lib/benefit-matcher';
 
 export async function POST(req: Request) {
     // Apply rate limiting: max 10 syncs per hour per user
@@ -110,6 +111,11 @@ export async function POST(req: Request) {
                         merchantName: txn.merchant_name,
                         category: txn.category || [],
                         pending: txn.pending,
+                        originalDescription: txn.original_description,
+                        paymentChannel: txn.payment_channel,
+                        transactionCode: txn.transaction_code,
+                        personalFinanceCategoryPrimary: txn.personal_finance_category?.primary,
+                        personalFinanceCategoryDetailed: txn.personal_finance_category?.detailed,
                     },
                     create: {
                         transactionId: txn.transaction_id,
@@ -121,6 +127,11 @@ export async function POST(req: Request) {
                         merchantName: txn.merchant_name,
                         category: txn.category || [],
                         pending: txn.pending,
+                        originalDescription: txn.original_description,
+                        paymentChannel: txn.payment_channel,
+                        transactionCode: txn.transaction_code,
+                        personalFinanceCategoryPrimary: txn.personal_finance_category?.primary,
+                        personalFinanceCategoryDetailed: txn.personal_finance_category?.detailed,
                     }
                 });
             }
@@ -183,6 +194,21 @@ export async function POST(req: Request) {
         } catch (balanceError) {
             console.error("Error updating balances:", balanceError);
             // Don't fail the whole sync if balance update fails
+        }
+
+        // --- MATCH BENEFITS (Async, don't block response) ---
+        // Automatically scan and match benefits for the user (handles both new and old transactions)
+        if (userId) {
+            (async () => {
+                try {
+                    // We can scope this to the specific item's accounts if we want, 
+                    // but scanning all user accounts is safer to ensure nothing is missed.
+                    // Since we have cursor tracking, it's efficient.
+                    await scanAndMatchBenefits(userId);
+                } catch (matchError) {
+                    console.error('Error in auto-scan benefit matching:', matchError);
+                }
+            })();
         }
 
         revalidatePath('/dashboard');

@@ -109,7 +109,8 @@ model UserAlert {
   expiresAt   DateTime?   // Optional expiration
   actionUrl   String?     // Optional action button URL
   actionText  String?     // Optional action button text
-  createdAt   DateTime    @default(now())
+  
+  createdAt   DateTime @default(now())
   updatedAt   DateTime    @updatedAt
 
   // Relations
@@ -256,6 +257,13 @@ model PlaidTransaction {
   category        String[] 
   
   pending         Boolean  @default(false)
+
+  // Detailed Plaid Fields
+  originalDescription String?
+  paymentChannel      String?
+  transactionCode     String?
+  personalFinanceCategoryPrimary String?
+  personalFinanceCategoryDetailed String?
   
   // Our enrichments (1-to-1)
   extended        TransactionExtended?
@@ -334,6 +342,9 @@ model CardBenefit {
   timing          String   // "Monthly", "Quarterly", "Annually", "SemiAnnually"
   maxAmount       Float?   // 100, 200, etc. (null if no limit)
   keywords        String[] // ["resy", "restaurant"], ["airline", "baggage"]
+  
+  // Dynamic matching rules (min/max amount, specific fields to check)
+  ruleConfig      Json?    // {"minAmount": 12, "maxAmount": 16, "matchField": "originalDescription"}
   
   isApproved      Boolean  @default(true) // False = Draft (AI), True = Live
   changeNotes     String?  // AI reasoning and change detection notes

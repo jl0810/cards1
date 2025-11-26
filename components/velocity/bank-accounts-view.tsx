@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, CreditCard, Plus, Trash2, RefreshCw, Users } from 'lucide-react';
+import { Building2, CreditCard, Plus, Trash2, RefreshCw, Users, Link as LinkIcon } from 'lucide-react';
 import PlaidLink from '@/components/plaid-link';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useBankBrand } from '@/hooks/use-bank-brand';
 import { FamilyMemberSelector } from './family-member-selector';
+import { CardProductMatcher } from './card-product-matcher';
+import { LinkedCardDisplay } from './linked-card-display';
 
-// ... (BankLogo component remains the same)
 function BankLogo({ name, bankId }: { name: string | null, bankId?: string | null }) {
     const { brand, loading } = useBankBrand(bankId || null);
     const [error, setError] = useState(false);
@@ -25,7 +26,6 @@ function BankLogo({ name, bankId }: { name: string | null, bankId?: string | nul
     // Get a color based on bank name (consistent hash)
     const getColor = (bankName: string | null) => {
         if (!bankName) return 'bg-brand-primary';
-        // Use brand-aligned colors
         const colors = [
             'bg-blue-600', 'bg-indigo-600', 'bg-violet-600',
             'bg-purple-600', 'bg-fuchsia-600', 'bg-pink-600',
@@ -65,11 +65,33 @@ function BankLogo({ name, bankId }: { name: string | null, bankId?: string | nul
 interface PlaidAccount {
     id: string;
     name: string;
+    officialName: string | null;
     mask: string;
     type: string;
     subtype: string;
     currentBalance: number | null;
     isoCurrencyCode: string | null;
+    extended?: {
+        id: string;
+        nickname: string | null;
+        cardProductId: string | null;
+        cardProduct?: {
+            id: string;
+            issuer: string;
+            productName: string;
+            cardType: string | null;
+            annualFee: number | null;
+            signupBonus: string | null;
+            imageUrl: string | null;
+            benefits: Array<{
+                id: string;
+                benefitName: string;
+                timing: string;
+                maxAmount: number | null;
+                keywords: string[];
+            }>;
+        } | null;
+    } | null;
 }
 
 interface PlaidItem {
@@ -93,6 +115,7 @@ export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }
     const [items, setItems] = useState<PlaidItem[]>([]);
     const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
     const [loading, setLoading] = useState(true);
+    const [linkingAccountId, setLinkingAccountId] = useState<string | null>(null);
 
     const fetchData = async () => {
         try {
@@ -111,7 +134,7 @@ export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }
             setFamilyMembers(familyData);
         } catch (error) {
             console.error(error);
-            // toast.error('Failed to load data');
+            toast.error('Failed to load data');
         } finally {
             setLoading(false);
         }
@@ -144,7 +167,6 @@ export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }
     };
 
     const updateItemFamilyMember = async (itemId: string, familyMemberId: string) => {
-        // Optimistic update
         const originalItems = [...items];
         setItems(items.map(item =>
             item.id === itemId ? { ...item, familyMemberId } : item
@@ -163,14 +185,13 @@ export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }
         } catch (error) {
             console.error(error);
             toast.error('Failed to update assignment');
-            setItems(originalItems); // Revert on error
+            setItems(originalItems);
         }
     };
 
     const deleteItem = async (itemId: string) => {
         if (!confirm('Are you sure you want to disconnect this bank? This will remove all associated accounts and transactions.')) return;
 
-        // Optimistic update
         const originalItems = [...items];
         setItems(items.filter(i => i.id !== itemId));
 
@@ -191,6 +212,16 @@ export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }
     useEffect(() => {
         fetchData();
     }, []);
+
+    // Calculate linking stats for drawer
+    const allAccounts = items.flatMap(item => item.accounts);
+    const linkedAccounts = allAccounts.filter(acc => acc.extended?.cardProductId);
+    const linkingStats = {
+        totalAccounts: allAccounts.length,
+        linkedAccounts: linkedAccounts.length,
+        unlinkAccounts: allAccounts.length - linkedAccounts.length
+    };
+
 
     return (
         <div className="pb-24 space-y-6">
@@ -255,20 +286,39 @@ export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }
 
                             <div className="p-4 space-y-3">
                                 {item.accounts.map((account) => (
-                                    <div key={account.id} className="flex items-center justify-between p-3 rounded-xl bg-black/20 hover:bg-black/30 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <CreditCard className="w-5 h-5 text-slate-500" />
-                                            <div>
-                                                <p className="text-sm font-medium text-slate-200">{account.name}</p>
-                                                <p className="text-xs text-slate-500">•••• {account.mask}</p>
+                                    <div key={account.id} className="space-y-2">
+                                        <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 hover:bg-black/30 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <CreditCard className="w-5 h-5 text-slate-500" />
+                                                <div>
+                                                    <p className="text-sm font-medium text-slate-200">{account.extended?.nickname ?? account.officialName ?? account.name}</p>
+                                                    <p className="text-xs text-slate-500">•••• {account.mask}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <p className="font-mono text-sm text-white">
+                                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.isoCurrencyCode || 'USD' }).format(account.currentBalance || 0)}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500 capitalize">{account.subtype || account.type}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setLinkingAccountId(account.id)}
+                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+                                                    title="Link to Card Product"
+                                                >
+                                                    <LinkIcon className="w-3 h-3" />
+                                                    {account.extended?.cardProduct ? 'Change' : 'Link'}
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-mono text-sm text-white">
-                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: account.isoCurrencyCode || 'USD' }).format(account.currentBalance || 0)}
-                                            </p>
-                                            <p className="text-xs text-slate-500 capitalize">{account.subtype || account.type}</p>
-                                        </div>
+
+                                        {/* Linked Card Preview */}
+                                        {account.extended?.cardProduct && (
+                                            <div className="pl-4">
+                                                <LinkedCardDisplay product={account.extended.cardProduct} />
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -276,6 +326,32 @@ export function BankAccountsView({ activeUser = 'all' }: { activeUser?: string }
                     ))}
                 </div>
             )}
+
+            {/* Matcher Modal */}
+            {linkingAccountId && (() => {
+                const allAccounts = items.flatMap(i => i.accounts);
+                const account = allAccounts.find(a => a.id === linkingAccountId);
+                const item = items.find(i => i.accounts.some(a => a.id === linkingAccountId));
+
+                if (!account || !item) return null;
+
+                return (
+                    <CardProductMatcher
+                        isOpen={!!linkingAccountId}
+                        onClose={() => setLinkingAccountId(null)}
+                        accountId={account.id}
+                        accountName={account.name}
+                        institutionName={item.institutionName}
+                        bankId={item.bankId}  // ✅ Use FK relationship!
+                        currentProductId={account.extended?.cardProductId}
+                        stats={linkingStats}
+                        onSuccess={() => {
+                            setLinkingAccountId(null);
+                            fetchData(); // Refresh to show linked card
+                        }}
+                    />
+                );
+            })()}
         </div>
     );
 }

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Wallet, Activity, Building2, Settings, Shield } from "lucide-react";
+import { Wallet, Activity, Building2, Settings, Shield, Sparkles } from "lucide-react";
 
 interface NavDockProps {
     activeTab: string;
@@ -16,6 +16,8 @@ export function NavDock({ activeTab, onTabChange, isAdmin = false }: NavDockProp
     const handleTabClick = (tabId: string) => {
         if (tabId === 'admin') {
             router.push('/admin/card-catalog');
+        } else if (tabId === 'benefits') {
+            router.push('/benefits');
         } else {
             if (onTabChange) {
                 onTabChange(tabId);
@@ -27,6 +29,7 @@ export function NavDock({ activeTab, onTabChange, isAdmin = false }: NavDockProp
 
     const tabs = [
         { id: 'wallet', icon: Wallet },
+        { id: 'benefits', icon: Sparkles },
         { id: 'activity', icon: Activity },
         { id: 'banks', icon: Building2 },
         { id: 'settings', icon: Settings },

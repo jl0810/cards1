@@ -45,15 +45,56 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
     const [loading, setLoading] = useState(false);
     const [card, setCard] = useState<CardProduct | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('details');
+    const [showCopyDropdown, setShowCopyDropdown] = useState(false);
+    const [allCards, setAllCards] = useState<CardProduct[]>([]);
 
     useEffect(() => {
         if (isOpen && cardId) {
             fetchCardDetails();
+            fetchAllCards();
         } else {
             setCard(null);
             setActiveTab('details');
+            setShowCopyDropdown(false);
         }
     }, [isOpen, cardId]);
+
+    const fetchAllCards = async () => {
+        try {
+            const res = await fetch('/api/admin/card-catalog');
+            if (!res.ok) throw new Error('Failed to fetch cards');
+            const data = await res.json();
+            setAllCards(data.products || []);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleCopyBenefits = async (sourceCardId: string) => {
+        if (!card) return;
+
+        const sourceCard = allCards.find(c => c.id === sourceCardId);
+        if (!sourceCard) return;
+
+        if (confirm(`Copy all benefits from "${sourceCard.productName}"? This will add ${sourceCard.benefits.length} benefits to ${card.productName}.`)) {
+            try {
+                const res = await fetch(`/api/admin/card-catalog/${card.id}/copy-benefits`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sourceCardId })
+                });
+
+                if (!res.ok) throw new Error('Failed to copy benefits');
+
+                toast.success(`Copied ${sourceCard.benefits.length} benefits!`);
+                fetchCardDetails(); // Refresh
+                setShowCopyDropdown(false);
+            } catch (error) {
+                console.error(error);
+                toast.error('Failed to copy benefits');
+            }
+        }
+    };
 
     const fetchCardDetails = async () => {
         if (!cardId) return;
@@ -90,26 +131,26 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
 
     const updateBenefit = async (index: number, field: keyof Benefit, value: any) => {
         if (!card) return;
-        
+
         // If updating isApproved, save to database immediately
         if (field === 'isApproved') {
             const benefit = card.benefits[index];
             if (!benefit.id) return;
-            
+
             try {
                 const res = await fetch(`/api/admin/benefits/${benefit.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ [field]: value })
                 });
-                
+
                 if (!res.ok) throw new Error('Failed to update benefit');
-                
+
                 // Update local state
                 const newBenefits = [...card.benefits];
                 newBenefits[index] = { ...newBenefits[index], [field]: value };
                 setCard({ ...card, benefits: newBenefits });
-                
+
                 toast.success(value ? 'Benefit approved' : 'Benefit marked as draft');
             } catch (error) {
                 console.error(error);
@@ -325,12 +366,48 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
                                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                             <div className="flex items-center justify-between">
                                                 <h3 className="text-lg font-bold text-white">Benefits ({card.benefits.length})</h3>
-                                                <button
-                                                    onClick={addBenefit}
-                                                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-bold text-white transition-colors flex items-center gap-2"
-                                                >
-                                                    <Plus className="w-4 h-4" /> Add New
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {/* Copy Benefits Dropdown */}
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={() => setShowCopyDropdown(!showCopyDropdown)}
+                                                            className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-sm font-bold text-purple-300 transition-colors flex items-center gap-2"
+                                                        >
+                                                            <CreditCard className="w-4 h-4" />
+                                                            Copy From...
+                                                        </button>
+
+                                                        {showCopyDropdown && (
+                                                            <>
+                                                                <div
+                                                                    className="fixed inset-0 z-10"
+                                                                    onClick={() => setShowCopyDropdown(false)}
+                                                                />
+                                                                <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-white/20 rounded-xl shadow-2xl z-20 max-h-64 overflow-y-auto">
+                                                                    {allCards
+                                                                        .filter(c => c.id !== card.id)
+                                                                        .map(sourceCard => (
+                                                                            <button
+                                                                                key={sourceCard.id}
+                                                                                onClick={() => handleCopyBenefits(sourceCard.id)}
+                                                                                className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0"
+                                                                            >
+                                                                                <div className="text-sm font-bold text-white">{sourceCard.productName}</div>
+                                                                                <div className="text-xs text-slate-400">{sourceCard.benefits.length} benefits</div>
+                                                                            </button>
+                                                                        ))}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    <button
+                                                        onClick={addBenefit}
+                                                        className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-bold text-white transition-colors flex items-center gap-2"
+                                                    >
+                                                        <Plus className="w-4 h-4" /> Add New
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <div className="space-y-4">
