@@ -288,6 +288,33 @@ This is a private project, but contributions are welcome. Please:
 
 Private/Proprietary
 
+## ⏰ Automated Jobs (Cron)
+
+### Clerk Sync (BR-001A)
+**Purpose:** Automatically sync Clerk users to database daily to catch missed webhooks.
+
+**Schedule:** Daily at 2:00 AM UTC (configured in `vercel.json`)
+
+**Setup:**
+1. Add `CRON_SECRET` to Vercel environment variables:
+   ```bash
+   openssl rand -base64 32  # Generate secret
+   vercel env add CRON_SECRET
+   ```
+
+2. Deploy to Vercel (cron only works in production)
+
+**Manual Trigger:**
+```bash
+# CLI
+npx tsx scripts/sync-missing-clerk-users.ts
+
+# API (requires auth)
+curl -X POST https://your-app.vercel.app/api/admin/sync-clerk
+```
+
+**Monitoring:** Check Vercel Dashboard > Logs > Filter by `/api/cron/sync-clerk`
+
 ## 🎓 Quick Reference
 
 ### Common Commands

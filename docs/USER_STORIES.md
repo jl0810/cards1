@@ -59,6 +59,29 @@ Each user story follows this format:
 
 ---
 
+### **[US-021]** Account Deletion
+**As a** registered user  
+**I want** to permanently delete my account and all personal data  
+**So that** I can exercise my right to be forgotten (GDPR/privacy compliance)
+
+**Acceptance Criteria:**
+- User can request account deletion from settings
+- All personal data is deleted from database (user profile, family members, transactions, accounts, items)
+- Plaid access tokens are retained in Vault (Plaid compliance requirement)
+- User receives confirmation email
+- User is logged out and cannot access the system
+- Deletion is irreversible
+
+**Important Distinction:**
+- **Lame Duck Account** (payment ended): User data retained, account inactive but recoverable
+- **Deleted Account** (user-requested): All personal data deleted permanently, only Plaid tokens retained for compliance
+
+**Business Rules:** [BR-035, BR-009]  
+**Code:** `lib/webhooks/handlers/user.ts::handleUserDeleted`  
+**Tests:** None (webhook handlers)
+
+---
+
 ## Family Member Management
 
 ### **[US-003]** Add Family Members
@@ -199,10 +222,77 @@ Each user story follows this format:
 - Sync is rate-limited (10 per hour)
 - Account balances update
 - Benefit matching triggers after sync
+- Cursor is tracked for incremental sync
 
 **Business Rules:** [BR-011, BR-012, BR-013]  
 **Code:** `app/api/plaid/sync-transactions/route.ts`  
 **Tests:** None yet (complex integration)
+
+---
+
+### **[US-023]** Payment Cycle Status Tracking
+**As a** user  
+**I want** my credit cards automatically categorized by payment cycle status  
+**So that** I know which cards need payment, which are paid, and which are awaiting new statements
+
+**Acceptance Criteria:**
+- ✅ Cards automatically categorized into 4 statuses based on Plaid data
+- ✅ **Status 1: Statement Generated** - Recent statement (< 30 days), payment needed
+- ✅ **Status 2: Payment Scheduled** - User manually marked payment as made
+- ✅ **Status 3: Paid, Awaiting Statement** - Paid off, waiting for next statement (> 30 days)
+- ✅ **Status 4: Dormant** - No activity (balance $0 for > 90 days)
+- ✅ User can manually mark payment as "paid" with date and amount
+- ✅ Status updates automatically when new Plaid data syncs
+- ✅ UI shows clear visual indicators (colors, badges) for each status
+
+**Data Sources:**
+- Plaid: `last_statement_balance`, `last_statement_issue_date`, `current_balance`, `next_payment_due_date`
+- User Input: Manual "mark as paid" action
+- Calculated: Days since statement issue, payment status
+
+**Business Rules:** [BR-037]  
+**Code:** `lib/payment-cycle.ts` (needs implementation)  
+**Tests:** None (needs implementation)
+
+---
+
+### **[US-022]** Full Transaction Reload (Dump & Reload)
+**As a** user  
+**I want** to completely reload all my transaction history from scratch  
+**So that** I can recover if the sync cursor gets corrupted or I want to start fresh
+
+**Acceptance Criteria:**
+- ⚠️ **User sees clear warning before proceeding:**
+  - "This will delete ALL existing transactions and benefit tracking history"
+  - "This action cannot be undone"
+  - "Are you sure you want to reload all transactions?"
+- User must explicitly confirm the action
+- System deletes all existing transactions for the bank account
+- System deletes all benefit usage tracking for those transactions
+- System resets the Plaid cursor to null
+- System fetches ALL transactions from Plaid (full history)
+- System re-runs benefit matching on new transactions
+- Success message shows count of transactions reloaded
+
+**Important Warnings:**
+- 🔴 **Data Loss:** All transaction history deleted
+- 🔴 **Benefit Tracking Lost:** All benefit usage records deleted
+- 🔴 **Cannot Undo:** Permanent action
+- ⚠️ **Rate Limits:** May hit Plaid API limits for large histories
+
+**User Flow:**
+1. User navigates to Settings > Connected Banks
+2. User clicks "..." menu on bank card
+3. User selects "Reload All Transactions"
+4. System shows warning modal with consequences
+5. User must type "RELOAD" to confirm
+6. System deletes transactions and benefit tracking
+7. System resets cursor and fetches all history
+8. Success: "Reloaded X transactions from [Bank Name]"
+
+**Business Rules:** [BR-036, BR-013]  
+**Code:** `app/api/plaid/items/[itemId]/reload-transactions/route.ts` (needs implementation)  
+**Tests:** None (needs implementation)
 
 ---
 

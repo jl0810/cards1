@@ -1,0 +1,65 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "PointMax" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6]
+        - generic [ref=e8]: PointMax
+      - blockquote [ref=e10]:
+        - paragraph [ref=e11]: "\"I've earned over $5,000 in travel rewards since I started using PointMax. It completely changed how I manage my cards.\""
+        - contentinfo [ref=e12]: "- Alex Chen, Platinum Member"
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - heading "Welcome back" [level=1] [ref=e17]
+        - paragraph [ref=e18]: Sign in to continue to your dashboard
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - generic [ref=e24]:
+            - heading "Sign in to My Application" [level=1] [ref=e25]
+            - paragraph [ref=e26]: Welcome back! Please sign in to continue
+          - generic [ref=e27]:
+            - generic [ref=e29]:
+              - button "Sign in with Apple Apple" [ref=e30] [cursor=pointer]:
+                - generic [ref=e31]:
+                  - img "Sign in with Apple" [ref=e33]
+                  - generic [ref=e34]: Apple
+              - button "Sign in with Google Google" [ref=e35] [cursor=pointer]:
+                - generic [ref=e36]:
+                  - img "Sign in with Google" [ref=e38]
+                  - generic [ref=e39]: Google
+            - paragraph [ref=e42]: or
+            - generic [ref=e44]:
+              - generic [ref=e47]:
+                - generic [ref=e48]:
+                  - generic [ref=e50]: Email address
+                  - textbox "Email address" [ref=e51]:
+                    - /placeholder: Enter your email address
+                    - text: jeffllawson+testuser@gmail.com
+                - generic [ref=e52]: Couldn't find your account.
+                - paragraph [ref=e54]:
+                  - img [ref=e55]
+                  - text: Couldn't find your account.
+              - button "Continue" [ref=e58] [cursor=pointer]:
+                - generic [ref=e59]:
+                  - text: Continue
+                  - img [ref=e60]
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - generic [ref=e64]: Don’t have an account?
+            - link "Sign up" [ref=e65] [cursor=pointer]:
+              - /url: https://sought-spider-1.accounts.dev/sign-up?__clerk_db_jwt=dvb_361oZAoqLnXmN3G1TrOAiPqIAGU
+          - generic [ref=e67]:
+            - generic [ref=e69]:
+              - paragraph [ref=e70]: Secured by
+              - link "Clerk logo" [ref=e71] [cursor=pointer]:
+                - /url: https://go.clerk.com/components
+                - img [ref=e72]
+            - paragraph [ref=e77]: Development mode
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e83] [cursor=pointer]:
+    - img [ref=e84]
+  - alert [ref=e87]
+```

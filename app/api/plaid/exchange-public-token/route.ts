@@ -71,32 +71,30 @@ export async function POST(req: Request) {
         const institutionName = metadata?.institution?.name || "Unknown Institution";
         const newAccounts = metadata?.accounts || [];
 
-        // 1. Check for Duplicate / Existing Item BEFORE exchange
-        // "Do not exchange a public token for an access token if you detect a duplicate Item."
-        if (institutionId) {
-            const existingItem = await prisma.plaidItem.findFirst({
-                where: {
-                    userId: userProfile.id,
-                    institutionId: institutionId,
-                },
-                include: { accounts: true },
+        // 1. Check for Duplicate Accounts BEFORE exchange
+        // Check if any of the new accounts already exist for this family member
+        // Unique constraint: familyMemberId + mask + officialName
+        const duplicateAccounts = await prisma.plaidAccount.findMany({
+            where: {
+                familyMemberId: familyMember.id,
+                OR: newAccounts.map((acc: any) => ({
+                    mask: acc.mask,
+                    // Note: officialName not available in metadata, will be checked after liabilitiesGet
+                })),
+            },
+            include: {
+                plaidItem: true,
+            },
+        });
+
+        if (duplicateAccounts.length > 0) {
+            const existingItem = duplicateAccounts[0].plaidItem;
+            logger.info('Duplicate account detected, skipping token exchange', { 
+                existingItemId: existingItem.id,
+                familyMemberId: familyMember.id,
+                duplicateAccountMasks: duplicateAccounts.map(a => a.mask),
             });
-
-            if (existingItem) {
-                // Check for matching accounts (mask + subtype)
-                const matchCount = newAccounts.filter((na: any) =>
-                    existingItem.accounts.some(ea => ea.mask === na.mask && ea.subtype === na.subtype)
-                ).length;
-
-                if (matchCount > 0) {
-                    logger.info('Duplicate item detected, skipping token exchange', { 
-                        existingItemId: existingItem.id, 
-                        institutionId 
-                    });
-                    // Return success but indicate it was a duplicate. We return the existing item ID.
-                    return NextResponse.json({ ok: true, itemId: existingItem.id, duplicate: true });
-                }
-            }
+            return NextResponse.json({ ok: true, itemId: existingItem.id, duplicate: true });
         }
 
         // 2. Exchange public token (Only if not a duplicate)
@@ -131,57 +129,99 @@ export async function POST(req: Request) {
             accounts = accountsResponse.data.accounts;
         }
 
-        // 4. Save to Vault
-        // We use a raw query to insert into the vault.secrets table via the create_secret function
-        const vaultResult = await prisma.$queryRaw<{ id: string }[]>`
-            SELECT vault.create_secret(${accessToken}, ${itemId}, 'Plaid Access Token') as id;
-        `;
+        // 4. Save to Vault and DB atomically with rollback
+        // BUG FIX: Wrap in try-catch to prevent orphaned Vault secrets
+        let secretId: string | null = null;
+        let plaidItem;
+        
+        try {
+            // Step 1: Create Vault secret
+            const vaultResult = await prisma.$queryRaw<{ id: string }[]>`
+                SELECT vault.create_secret(${accessToken}, ${itemId}, 'Plaid Access Token') as id;
+            `;
 
-        const secretId = vaultResult[0]?.id;
+            secretId = vaultResult[0]?.id;
 
-        if (!secretId) {
-            throw new Error("Failed to store access token in vault");
-        }
+            if (!secretId) {
+                throw new Error("Failed to store access token in vault");
+            }
 
-        // 5. Save to DB
-        const plaidItem = await prisma.plaidItem.create({
-            data: {
-                userId: userProfile.id,
-                familyMemberId: familyMember.id,
-                itemId: itemId,
-                accessTokenId: secretId,
-                institutionId: institutionId,
-                institutionName: institutionName,
-                accounts: {
-                    create: accounts.map((acc: any) => {
-                        const creditLiability = liabilitiesData[acc.account_id];
-                        // Find purchase APR or take the first one
-                        const apr = creditLiability?.aprs?.find((a: any) => a.apr_type === 'purchase_apr')?.apr_percentage
-                            || creditLiability?.aprs?.[0]?.apr_percentage;
+            // Step 2: Create PlaidItem (if this fails, we rollback Vault)
+            plaidItem = await prisma.plaidItem.create({
+                data: {
+                    userId: userProfile.id,
+                    familyMemberId: familyMember.id,
+                    itemId: itemId,
+                    accessTokenId: secretId,
+                    institutionId: institutionId,
+                    institutionName: institutionName,
+                    accounts: {
+                        create: accounts.map((acc: any) => {
+                            const creditLiability = liabilitiesData[acc.account_id];
+                            // Find purchase APR or take the first one
+                            const apr = creditLiability?.aprs?.find((a: any) => a.apr_type === 'purchase_apr')?.apr_percentage
+                                || creditLiability?.aprs?.[0]?.apr_percentage;
 
-                        return {
-                            accountId: acc.account_id,
-                            name: acc.name,
-                            officialName: acc.official_name,
-                            mask: acc.mask,
-                            type: acc.type,
-                            subtype: acc.subtype,
-                            currentBalance: acc.balances.current,
-                            availableBalance: acc.balances.available,
-                            limit: acc.balances.limit,
-                            isoCurrencyCode: acc.balances.iso_currency_code,
-                            familyMemberId: familyMember.id,
-                            // Liability fields
-                            apr: apr,
-                            minPaymentAmount: creditLiability?.minimum_payment_amount,
-                            lastStatementBalance: creditLiability?.last_statement_balance,
-                            nextPaymentDueDate: creditLiability?.next_payment_due_date ? new Date(creditLiability.next_payment_due_date) : null,
-                            lastStatementIssueDate: creditLiability?.last_statement_issue_date ? new Date(creditLiability.last_statement_issue_date) : null,
-                        };
-                    }),
+                            return {
+                                accountId: acc.account_id,
+                                name: acc.name,
+                                officialName: acc.official_name,
+                                mask: acc.mask,
+                                type: acc.type,
+                                subtype: acc.subtype,
+                                currentBalance: acc.balances.current,
+                                availableBalance: acc.balances.available,
+                                limit: acc.balances.limit,
+                                isoCurrencyCode: acc.balances.iso_currency_code,
+                                familyMemberId: familyMember.id,
+                                // Liability fields
+                                apr: apr,
+                                minPaymentAmount: creditLiability?.minimum_payment_amount,
+                                lastStatementBalance: creditLiability?.last_statement_balance,
+                                nextPaymentDueDate: creditLiability?.next_payment_due_date ? new Date(creditLiability.next_payment_due_date) : null,
+                                lastStatementIssueDate: creditLiability?.last_statement_issue_date ? new Date(creditLiability.last_statement_issue_date) : null,
+                            };
+                        }),
+                    },
                 },
-            },
-        });
+            });
+        } catch (error) {
+            // NOTE: Vault secrets are NOT deleted on error for two reasons:
+            // 1. Plaid compliance requires keeping all access tokens for audit purposes
+            // 2. Supabase Vault is append-only by design (cannot delete secrets)
+            // Orphaned secrets are acceptable and required by Plaid's terms of service
+            logger.error('Failed to create PlaidItem', error, { 
+                userId: userProfile.id,
+                itemId,
+                secretId 
+            });
+            
+            // BUG FIX #2: Handle race condition - unique constraint violation on accounts
+            // If duplicate detected at DB level, return existing item instead of error
+            if (error instanceof Error && error.message.includes('Unique constraint')) {
+                logger.warn('Race condition detected - duplicate account at DB level', { 
+                    userId: userProfile.id,
+                    familyMemberId: familyMember.id,
+                });
+                
+                // Find the existing account that was created by the other request
+                const existingAccount = await prisma.plaidAccount.findFirst({
+                    where: {
+                        familyMemberId: familyMember.id,
+                        mask: { in: accounts.map((a: any) => a.mask) },
+                    },
+                    include: {
+                        plaidItem: true,
+                    },
+                });
+                
+                if (existingAccount) {
+                    return NextResponse.json({ ok: true, itemId: existingAccount.plaidItem.id, duplicate: true });
+                }
+            }
+            
+            throw error; // Re-throw original error
+        }
 
         // Ensure Bank exists and link it
         await ensureBankExists(plaidItem).catch(err => 

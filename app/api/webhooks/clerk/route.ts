@@ -10,6 +10,7 @@ import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * Process Clerk webhook events
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
       "svix-signature": svix_signature,
     }) as any;
   } catch (err) {
-    console.error('Error verifying webhook:', err);
+    logger.error('Error verifying webhook', err);
     return new Response('Error occurred', {
       status: 400
     });
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
     const lastName = evt.data.last_name;
     const avatar = evt.data.image_url;
 
-    console.log(`New user created: ${userId}`);
+    logger.info('New user created', { userId });
 
     try {
       // Create UserProfile in DB
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
         }
       });
     } catch (error) {
-      console.error('Error creating user profile:', error);
+      logger.error('Error creating user profile', error, { userId });
     }
   }
 
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
         }
       });
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      logger.error('Error updating user profile', error, { userId });
     }
   }
 
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
     const userId = evt.data.id;
     const publicMetadata = evt.data.public_metadata;
 
-    console.log(`User updated: ${userId}`, publicMetadata);
+    logger.info('User updated', { userId, publicMetadata });
   }
 
   return new Response('', { status: 200 });

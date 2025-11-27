@@ -10,6 +10,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 import { env } from '@/env';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +109,7 @@ export async function GET(
         });
 
     } catch (error) {
-        console.error('Error checking item status:', error);
+        logger.error('Error checking item status', error);
         return new NextResponse("Internal Server Error", { status: 500 });
     }
 }

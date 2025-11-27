@@ -19,11 +19,37 @@ This document defines all business rules for the PointMax Velocity application.
 
 ### **[BR-001]** User Profile Creation
 **Category:** Authentication  
-**Description:** When a new user registers via Clerk, a UserProfile must be automatically created in the database with their Clerk ID, name, and avatar. A primary family member must also be created.
+**Description:** When a new user registers via Clerk, a UserProfile must be automatically created in the database with their Clerk ID, name, and avatar. A primary family member must also be created. **CRITICAL:** All users MUST be created through Clerk webhooks in production - direct database creation bypasses authentication and is prohibited.
 
 **User Stories:** [US-001], [US-002]  
-**Code:** `lib/webhooks/handlers/user.ts::handleUserCreated` (lines 48-90)  
-**Tests:** None
+**Code:** `lib/webhooks/handlers/user.ts::handleUserCreated` (lines 66-96)  
+**Tests:** 
+- Integration tests (Jest): `__tests__/lib/test-user-helper.ts::createTestUserViaClerk` simulates webhook behavior by creating database records directly
+- E2E tests (Playwright): Use `@clerk/testing` to create real Clerk users
+- Example: `__tests__/api/plaid/exchange-public-token.integration.test.ts` (lines 105-111)
+
+---
+
+### **[BR-001A]** Clerk Sync (Self-Healing)
+**Category:** Authentication  
+**Description:** Clerk is the source of truth for user authentication. If a Clerk webhook fails to fire (network issues, downtime, etc.), the system must have a mechanism to sync Clerk users to the database. This ensures data consistency and prevents orphaned Clerk accounts. The sync process creates UserProfile and primary FamilyMember for any Clerk user missing from the database.
+
+**Trigger Options:**
+1. **Manual:** Admin can trigger via API endpoint `/api/admin/sync-clerk`
+2. **Automated:** Cron job runs daily to catch any missed webhooks
+3. **On-Demand:** User login triggers sync check for their account
+
+**User Stories:** [US-001]  
+**Code:** 
+- Sync function: `lib/clerk-sync.ts::syncClerkUser` (lines 32-122)
+- API endpoint: `app/api/admin/sync-clerk/route.ts::POST` (lines 27-48)
+- CLI script: `scripts/sync-missing-clerk-users.ts`
+
+**Tests:** 
+- Unit tests: `__tests__/lib/clerk-sync.test.ts` (to be created)
+- Integration test: Verify sync creates missing UserProfile and FamilyMember
+
+**Related:** [BR-001] - User Profile Creation
 
 ---
 
@@ -75,21 +101,44 @@ This document defines all business rules for the PointMax Velocity application.
 
 ### **[BR-006]** Primary Member Protection
 **Category:** Data Integrity  
-**Description:** The primary family member cannot be deleted as they represent the account owner. Attempts to delete return 400 Bad Request.
+**Description:** The primary family member (marked with `isPrimary: true`) represents the account owner and cannot be deleted by the user. This member is automatically created during user registration and is tied to the UserProfile. Only account deletion (via Clerk) can remove the primary member.
+
+**Rationale:**
+- Primary member = account owner
+- Deleting would orphan the account
+- User must delete entire account via Clerk if they want to remove themselves
+
+**Error Message:** "Cannot delete the primary family member"
 
 **User Stories:** [US-005]  
-**Code:** `app/api/user/family/[memberId]/route.ts` (lines 91-94)  
-**Tests:** None
+**Code:** `app/api/user/family/[memberId]/route.ts` (lines 125-128)  
+**Tests:** `__tests__/api/user/family-delete.test.ts:46-101` ✅ Tested (2 tests)
 
 ---
 
 ### **[BR-007]** Bank Connection Dependency
 **Category:** Data Integrity  
-**Description:** Family members with active bank connections cannot be deleted. All bank items must be reassigned or removed first.
+**Description:** Family members with active bank connections (PlaidItems) cannot be deleted. User must first either:
+1. Reassign the bank connections to another family member, OR
+2. Disconnect/remove the bank connections entirely
+
+**Rationale:**
+- Prevents orphaned bank accounts
+- Forces explicit decision about bank data
+- Maintains data integrity
+
+**Error Message:** "Cannot delete [Name] because they have X active bank connection(s). Please reassign or remove the bank connections first."
+
+**User Flow:**
+1. User attempts to delete family member with banks
+2. System shows error with count of connections
+3. User must go to Settings > Connected Banks
+4. User either disconnects banks or reassigns to different family member
+5. User can then delete the family member
 
 **User Stories:** [US-005]  
-**Code:** `app/api/user/family/[memberId]/route.ts` (lines 96-102)  
-**Tests:** None
+**Code:** `app/api/user/family/[memberId]/route.ts` (lines 130-136)  
+**Tests:** `__tests__/api/user/family-delete.test.ts:103-183` ✅ Tested (4 tests)
 
 ---
 
@@ -106,12 +155,19 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-009]** Secure Token Storage
-**Category:** Security  
+**Category:** Security & Compliance  
 **Description:** Plaid access tokens must be encrypted and stored in Supabase Vault, never in plain text in the database. Only the vault secret ID is stored in the database.
 
+**CRITICAL COMPLIANCE REQUIREMENT:** Per Plaid's Terms of Service, access tokens MUST be retained permanently for audit and compliance purposes. Tokens cannot be deleted, even if the associated PlaidItem is deleted or fails to create. Orphaned vault secrets are acceptable and required by Plaid policy.
+
+**Technical Implementation:**
+- Supabase Vault is append-only by design (cannot delete secrets)
+- If PlaidItem creation fails after Vault secret is created, the secret remains in Vault
+- This is intentional and compliant behavior
+
 **User Stories:** [US-006]  
-**Code:** `app/api/plaid/exchange-public-token/route.ts` (lines 115-125)  
-**Tests:** None
+**Code:** `app/api/plaid/exchange-public-token/route.ts` (lines 132-197)  
+**Tests:** `__tests__/COMPREHENSIVE_SUITE.test.ts` (lines 157-217)
 
 ---
 
@@ -413,12 +469,155 @@ This document defines all business rules for the PointMax Velocity application.
 
 ---
 
+### **[BR-035]** Account Deletion & Data Privacy
+**Category:** Privacy / Compliance  
+**Description:** When a user requests account deletion (not just payment cancellation), ALL personal data must be deleted from the database to comply with GDPR/privacy regulations, EXCEPT Plaid access tokens which must be retained in Vault per Plaid's Terms of Service. This creates a dual-compliance scenario.
+
+**Data Deletion Scope:**
+- ✅ DELETE: UserProfile record
+- ✅ DELETE: All FamilyMember records (cascade)
+- ✅ DELETE: All PlaidItem records (cascade)
+- ✅ DELETE: All PlaidAccount records (cascade)
+- ✅ DELETE: All PlaidTransaction records (cascade)
+- ✅ DELETE: All TransactionExtended records (cascade)
+- ✅ DELETE: All BenefitUsage records (cascade)
+- ❌ RETAIN: Plaid access tokens in Supabase Vault (Plaid compliance - cannot delete)
+
+**Important Distinctions:**
+
+1. **Lame Duck Account** (payment ended, subscription inactive):
+   - User data: RETAINED
+   - Access tokens: RETAINED
+   - Account status: Inactive but recoverable
+   - User can reactivate by resuming payment
+
+2. **Deleted Account** (user-requested deletion via Clerk):
+   - User data: DELETED (GDPR compliance)
+   - Access tokens: RETAINED (Plaid compliance)
+   - Account status: Permanently deleted
+   - Cannot be recovered
+
+**Triggered By:**
+- Clerk `user.deleted` webhook event
+- User deletes account from Clerk dashboard
+- Component: Webhook handler
+
+**Technical Implementation:**
+- Prisma cascade deletes configured in schema
+- All relations use `onDelete: Cascade` from UserProfile
+- Vault tokens remain (append-only, Plaid requirement)
+- Detailed logging of deleted data counts
+
+**User Stories:** [US-021]  
+**Code:** `lib/webhooks/handlers/user.ts::handleUserDeleted` (lines 189-250)  
+**Tests:** None (webhook handlers need integration tests)
+
+---
+
+### **[BR-036]** Full Transaction Reload & Data Loss Warning
+**Category:** Data Management / User Safety  
+**Description:** Users can request a full transaction reload (dump and reload) to recover from cursor corruption or start fresh. This operation deletes ALL existing transactions and benefit tracking for the bank account, resets the Plaid cursor to null, and fetches the complete transaction history. Due to the destructive nature, users must see explicit warnings and confirm the action.
+
+**Data Deletion Scope (Per Bank Account):**
+- ✅ DELETE: All PlaidTransaction records for the item
+- ✅ DELETE: All TransactionExtended records (cascades)
+- ✅ DELETE: All BenefitUsage records linked to those transactions
+- ✅ RESET: PlaidItem.nextCursor = null
+- ✅ RESET: PlaidItem.lastSyncedAt = null
+
+**Required User Warnings:**
+1. **Primary Warning:** "This will delete ALL existing transactions and benefit tracking history"
+2. **Irreversible:** "This action cannot be undone"
+3. **Confirmation Required:** User must type "RELOAD" to proceed
+4. **Rate Limit Warning:** "May hit Plaid API limits for large histories"
+
+**User Safety Measures:**
+- Modal confirmation dialog (not just a button click)
+- Explicit text input required ("RELOAD")
+- Clear explanation of consequences
+- Success message with transaction count
+
+**Technical Flow:**
+1. Validate user owns the PlaidItem
+2. Show warning modal (frontend)
+3. User confirms by typing "RELOAD"
+4. Backend: Delete transactions in database transaction
+5. Backend: Reset cursor to null
+6. Backend: Call Plaid sync with cursor=null (fetches all history)
+7. Backend: Re-run benefit matching
+8. Return success with count
+
+**Error Handling:**
+- If Plaid sync fails mid-reload, cursor remains null (can retry)
+- If database delete fails, transaction rolls back (no data loss)
+- Rate limit errors should be surfaced to user
+
+**User Stories:** [US-022]  
+**Code:** `app/api/plaid/items/[itemId]/reload-transactions/route.ts` (needs implementation)  
+**Tests:** None (needs implementation)
+
+---
+
+### **[BR-037]** Payment Cycle Status Calculation
+**Category:** Data Management / User Experience  
+**Description:** Credit card accounts are automatically categorized into 4 payment cycle statuses based on Plaid liability data and user actions. Status updates automatically when new data syncs from Plaid.
+
+**The 4 Payment Cycle Statuses:**
+
+1. **STATEMENT_GENERATED** (Payment Needed 🔴)
+   - Recent statement issued (< 30 days since `last_statement_issue_date`)
+   - Current balance > 0 (not paid off)
+   - OR: `last_statement_balance` was $0 (new charges accruing)
+
+2. **PAYMENT_SCHEDULED** (Payment Made ⏳)
+   - User manually marked payment as paid (`paymentMarkedPaidDate` is set)
+   - OR: Statement > 30 days old, not paid, `last_statement_balance` > 0 but marked
+
+3. **PAID_AWAITING_STATEMENT** (Paid, New Cycle 🟢)
+   - Statement > 30 days old since `last_statement_issue_date`
+   - Current balance ≤ 0 (paid off)
+   - Waiting for next statement to generate
+
+4. **DORMANT** (Inactive ⚪)
+   - `last_statement_balance` = $0 AND `current_balance` = $0
+   - OR: Statement > 90 days old AND paid off
+   - Card not being used
+
+**Calculation Logic** (from Google Apps Script):
+```javascript
+const daysSinceIssue = (now - last_statement_issue_date) / (1000 * 60 * 60 * 24);
+const isRecentStatement = daysSinceIssue < 30;
+const isPaid = current_balance <= 0;
+const isDormant = (last_statement_balance == 0 && current_balance == 0) || 
+                  (daysSinceIssue > 90 && isPaid);
+
+if (isDormant) return "DORMANT";
+if (isRecentStatement && !isPaid) return "STATEMENT_GENERATED";
+if (isRecentStatement && isPaid) return "PAYMENT_SCHEDULED"; // or check user flag
+if (!isRecentStatement && isPaid) return "PAID_AWAITING_STATEMENT";
+// else check if user marked paid or overdue
+```
+
+**Data Requirements:**
+- Plaid Fields: `last_statement_balance`, `last_statement_issue_date`, `current_balance`
+- User Fields: `paymentMarkedPaidDate`, `paymentMarkedPaidAmount`
+- Calculated: Days since statement issue
+
+**User Stories:** [US-023]  
+**Code:** `lib/payment-cycle.ts` (needs implementation)  
+**Tests:** None (needs implementation)
+
+---
+
 ## Summary Statistics
 
-**Total Business Rules:** 34 (was 32)  
-**Rules with Tests:** 15 (44%, was 41%)  
-**Rules without Tests:** 19 (56%, was 59%)  
-**NEW: Compliance Tests Added:** BR-033 (status check), BR-034 (token preservation) ✅
+**Total Business Rules:** 37 (was 36)  
+**Rules with Tests:** 15 (41%)  
+**Rules without Tests:** 22 (59%)  
+**NEW Rules:** 
+- BR-035 (Account Deletion & Data Privacy - dual GDPR/Plaid compliance)
+- BR-036 (Full Transaction Reload with Data Loss Warnings)
+- BR-037 (Payment Cycle Status Calculation)
 
 ### Rules by Category
 

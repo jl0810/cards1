@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,11 +30,10 @@ export async function POST(
     req: Request,
     { params }: { params: Promise<{ itemId: string }> }
 ) {
+    const { itemId } = await params;
+
     try {
         const { userId } = await auth();
-        const resolvedParams = await params;
-        const { itemId } = resolvedParams;
-
         if (!userId) return new NextResponse("Unauthorized", { status: 401 });
         if (!itemId || itemId.trim() === '') return new NextResponse("Item ID is required", { status: 400 });
 
@@ -64,7 +64,7 @@ export async function POST(
         return NextResponse.json({ success: true });
 
     } catch (error) {
-        console.error('Error disconnecting item:', error);
+        logger.error('Error disconnecting item', error, { itemId: itemId });
         return new NextResponse("Internal Server Error", { status: 500 });
     }
 }

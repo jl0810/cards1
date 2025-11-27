@@ -65,6 +65,12 @@ export async function GET(req: Request) {
             return Errors.notFound('User profile');
         }
 
+        logger.info('Fetching items for user', { 
+            clerkId: userId, 
+            userProfileId: userProfile.id,
+            userName: userProfile.name 
+        });
+
         const items = await prisma.plaidItem.findMany({
             where: { userId: userProfile.id },
             include: {

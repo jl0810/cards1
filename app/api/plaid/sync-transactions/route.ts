@@ -114,13 +114,25 @@ export async function POST(req: Request) {
         }
 
         if (iterations >= PLAID_SYNC_CONFIG.MAX_ITERATIONS) {
-            logger.warn('Transaction sync hit maximum iterations', { 
-                maxIterations: PLAID_SYNC_CONFIG.MAX_ITERATIONS, 
-                itemId 
+            logger.warn('Transaction sync hit maximum iterations', {
+                maxIterations: PLAID_SYNC_CONFIG.MAX_ITERATIONS,
+                itemId
             });
         }
 
-        // Wrap all database operations in a transaction for atomicity
+        // BUG FIX #4: Fetch balances BEFORE transaction to include in atomic operation
+        let balanceData: any[] = [];
+        try {
+            const balanceResponse = await plaidClient.accountsBalanceGet({
+                access_token: accessToken,
+            });
+            balanceData = balanceResponse.data.accounts;
+        } catch (balanceError) {
+            logger.error('Error fetching balances', balanceError, { itemId });
+            // Continue with sync even if balance fetch fails
+        }
+
+        // Wrap ALL database operations in a transaction for atomicity
         await prisma.$transaction(async (tx) => {
             // 1. Handle Added Transactions
             for (const txn of added) {
@@ -171,17 +183,61 @@ export async function POST(req: Request) {
                         category: txn.category || [],
                         pending: txn.pending,
                     }
-                }).catch(e => logger.debug('Transaction not found for update, skipping', { transactionId: txn.transaction_id, error: e }));
+                }).catch(e => {
+                    // BUG FIX: Log as ERROR not debug - this is a data integrity issue
+                    logger.error('Transaction not found for update - data integrity issue', e, {
+                        transactionId: txn.transaction_id,
+                        itemId
+                    });
+                });
             }
 
             // 3. Handle Removed Transactions
             for (const txn of removed) {
                 await tx.plaidTransaction.delete({
                     where: { transactionId: txn.transaction_id },
-                }).catch(e => logger.debug('Transaction already deleted or not found', { transactionId: txn.transaction_id }));
+                }).catch(e => {
+                    // BUG FIX: Log as WARNING not debug - transaction may have been manually deleted
+                    logger.warn('Transaction not found for deletion', {
+                        transactionId: txn.transaction_id,
+                        itemId
+                    });
+                });
             }
 
-            // 4. Update Cursor on PlaidItem
+            // 4. BUG FIX #4: Update balances INSIDE transaction for atomicity
+            for (const account of balanceData) {
+                await tx.plaidAccount.upsert({
+                    where: { accountId: account.account_id },
+                    update: {
+                        currentBalance: account.balances.current,
+                        availableBalance: account.balances.available,
+                        limit: account.balances.limit,
+                        name: account.name,
+                        officialName: account.official_name,
+                        mask: account.mask,
+                        type: account.type,
+                        subtype: account.subtype,
+                        isoCurrencyCode: account.balances.iso_currency_code,
+                    },
+                    create: {
+                        plaidItemId: itemId,
+                        accountId: account.account_id,
+                        name: account.name,
+                        officialName: account.official_name,
+                        mask: account.mask,
+                        type: account.type,
+                        subtype: account.subtype,
+                        currentBalance: account.balances.current,
+                        availableBalance: account.balances.available,
+                        limit: account.balances.limit,
+                        isoCurrencyCode: account.balances.iso_currency_code,
+                        familyMemberId: item.familyMemberId,
+                    }
+                });
+            }
+
+            // 5. Update Cursor on PlaidItem
             await tx.plaidItem.update({
                 where: { itemId: itemId },
                 data: {
@@ -192,32 +248,6 @@ export async function POST(req: Request) {
         }, {
             timeout: PLAID_SYNC_CONFIG.DB_TIMEOUT_MS // Increase timeout for large batches
         });
-
-        // --- UPDATE ACCOUNT BALANCES ---
-        try {
-            const balanceResponse = await plaidClient.accountsBalanceGet({
-                access_token: accessToken,
-            });
-
-            for (const account of balanceResponse.data.accounts) {
-                await prisma.plaidAccount.update({
-                    where: { accountId: account.account_id },
-                    data: {
-                        currentBalance: account.balances.current,
-                        availableBalance: account.balances.available,
-                        limit: account.balances.limit,
-                        name: account.name,
-                        officialName: account.official_name,
-                        mask: account.mask,
-                        type: account.type,
-                        subtype: account.subtype,
-                    }
-                }).catch(e => logger.debug('Account not found in DB, skipping update', { accountId: account.account_id }));
-            }
-        } catch (balanceError) {
-            logger.error('Error updating balances', balanceError, { itemId });
-            // Don't fail the whole sync if balance update fails
-        }
 
         // --- MATCH BENEFITS (Async, don't block response) ---
         // Automatically scan and match benefits for the user (handles both new and old transactions)

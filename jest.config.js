@@ -12,7 +12,7 @@ const customJestConfig = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     // Mock ESM modules that Jest can't parse
-    '^@clerk/backend(.*)$': '<rootDir>/__mocks__/@clerk/backend.js',
+    // Note: @clerk/backend is NOT mocked - we use the real module for integration tests
     '^uncrypto$': '<rootDir>/__mocks__/uncrypto.js',
     '^@upstash/redis$': '<rootDir>/__mocks__/@upstash/redis.js',
   },

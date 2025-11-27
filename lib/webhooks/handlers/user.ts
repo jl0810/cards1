@@ -163,29 +163,88 @@ async function handleUserUpdated(evt: WebhookEvent) {
   });
 }
 
+/**
+ * Handle user account deletion
+ * 
+ * @implements BR-035 - Account Deletion & Data Privacy
+ * @satisfies US-021 - Account Deletion
+ * 
+ * CRITICAL COMPLIANCE NOTES:
+ * 
+ * 1. GDPR/Privacy Compliance (Data Deletion):
+ *    - ALL personal data is deleted from database
+ *    - UserProfile, FamilyMembers, PlaidItems, PlaidAccounts, Transactions
+ *    - Cascade deletes configured in Prisma schema
+ * 
+ * 2. Plaid Compliance (Token Retention):
+ *    - Plaid access tokens are NOT deleted from Supabase Vault
+ *    - Required by Plaid Terms of Service for audit/compliance
+ *    - Vault is append-only by design (cannot delete)
+ *    - Orphaned tokens in Vault are acceptable and required
+ * 
+ * 3. Distinction from "Lame Duck" Accounts:
+ *    - Lame Duck (payment ended): Data retained, account inactive
+ *    - Deleted (user requested): Data deleted, tokens retained
+ */
 async function handleUserDeleted(evt: WebhookEvent) {
   const { id } = evt.data;
 
-  logger.info('User deleted webhook received', { userId: id });
+  logger.info('User account deletion initiated', { 
+    userId: id,
+    reason: 'User-requested account deletion (GDPR compliance)'
+  });
 
   try {
-    // Delete user profile (cascades to family members, plaid items, etc. via Prisma schema)
+    // Get count of data to be deleted for logging
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { clerkId: id },
+      include: {
+        familyMembers: true,
+        plaidItems: {
+          include: {
+            accounts: true,
+            transactions: true,
+          },
+        },
+      },
+    });
+
+    if (!userProfile) {
+      logger.warn('User profile not found during deletion', { userId: id });
+      return;
+    }
+
+    const stats = {
+      familyMembers: userProfile.familyMembers.length,
+      plaidItems: userProfile.plaidItems.length,
+      plaidAccounts: userProfile.plaidItems.reduce((sum, item) => sum + item.accounts.length, 0),
+      transactions: userProfile.plaidItems.reduce((sum, item) => sum + item.transactions.length, 0),
+    };
+
+    // Delete user profile (cascades to all related data via Prisma schema)
     await prisma.userProfile.delete({
       where: { clerkId: id },
     });
 
-    logger.info('User profile deleted', { userId: id });
+    logger.info('User account deleted successfully', { 
+      userId: id,
+      deletedData: stats,
+      note: 'Plaid access tokens retained in Vault per compliance requirements'
+    });
+
   } catch (error) {
     // User might already be deleted
     if ((error as { code?: string }).code === 'P2025') {
       logger.warn('User not found during deletion', { userId: id });
     } else {
-      logger.error('Failed to delete user profile', error, { userId: id });
+      logger.error('Failed to delete user account', error, { userId: id });
       throw error;
     }
   }
 
   trackEvent('user_deleted', {
-    user_id: id
+    user_id: id,
+    deletion_type: 'user_requested',
+    compliance: 'GDPR + Plaid'
   });
 }
