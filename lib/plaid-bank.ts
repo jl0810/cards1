@@ -1,5 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { Configuration, PlaidApi, PlaidEnvironments, CountryCode } from 'plaid';
+import { PlaidInstitutionExtendedSchema } from '@/lib/validations';
+import type { z } from 'zod';
+
+type PlaidInstitutionExtended = z.infer<typeof PlaidInstitutionExtendedSchema>;
 
 const plaidClient = new PlaidApi(
     new Configuration({
@@ -46,8 +50,8 @@ export async function fetchInstitutionInfo(institutionId: string, institutionNam
             country_codes: [CountryCode.Us],
         });
         const { institution } = resp.data;
-        // Cast to any because Plaid types might be missing logo_url
-        const inst = institution as any;
+        // Cast to PlaidInstitutionExtended because Plaid types might be missing logo_url
+        const inst = institution as PlaidInstitutionExtended;
 
         // Prefer Plaid's logo (Base64) or URL
         logoUrl = inst.logo ? `data:image/png;base64,${inst.logo}` : (inst.logo_url ?? null);

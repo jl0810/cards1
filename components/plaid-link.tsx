@@ -4,7 +4,21 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner'; // Assuming sonner is used, or I'll check
+import { toast } from 'sonner';
+
+interface PlaidMetadata {
+    institution?: {
+        institution_id: string;
+        name: string;
+    } | null;
+    accounts?: Array<{
+        id: string;
+        name: string;
+        type: string;
+        subtype: string;
+    }>;
+    link_session_id?: string;
+}
 
 export default function PlaidLink() {
     const [token, setToken] = useState<string | null>(null);
@@ -12,7 +26,7 @@ export default function PlaidLink() {
     const [shouldOpen, setShouldOpen] = useState(false);
     const router = useRouter();
 
-    const onSuccess = useCallback(async (public_token: string, metadata: any) => {
+    const onSuccess = useCallback(async (public_token: string, metadata: PlaidMetadata) => {
         try {
             const response = await fetch('/api/plaid/exchange-public-token', {
                 method: 'POST',

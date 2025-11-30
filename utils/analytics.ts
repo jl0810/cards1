@@ -1,10 +1,10 @@
 'use client'
 
 import posthog from 'posthog-js'
+import { AnalyticsEventSchema } from '@/lib/validations'
+import type { z } from 'zod'
 
-type EventProperties = {
-  [key: string]: any
-}
+type EventProperties = z.infer<typeof AnalyticsEventSchema>
 
 export const trackEvent = (eventName: string, properties?: EventProperties) => {
   try {

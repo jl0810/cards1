@@ -5,7 +5,7 @@
  * @module app/api/plaid/exchange-public-token
  */
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
@@ -13,6 +13,10 @@ import { assertFamilyMemberOwnership, ensurePrimaryFamilyMember } from '@/lib/fa
 import { ensureBankExists } from '@/lib/plaid-bank';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { PlaidExchangeTokenSchema, PlaidAccountSchema, PlaidCreditLiabilitySchema } from '@/lib/validations';
+import { validateBody } from '@/lib/validation-middleware';
+import { z } from 'zod';
 
 /**
  * Exchanges a Plaid public token for an access token and creates a new PlaidItem.
@@ -36,7 +40,13 @@ import { logger } from '@/lib/logger';
  * @param {Request} req - The request object containing public_token, metadata, and optional familyMemberId.
  * @returns {NextResponse} JSON response with success status and itemId, or error message.
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    // Rate limit: 10 token exchanges per minute (sensitive operation)
+    const limited = await rateLimit(req, RATE_LIMITS.auth);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     try {
         const { userId } = await auth();
 
@@ -44,7 +54,13 @@ export async function POST(req: Request) {
             return Errors.unauthorized();
         }
 
-        const { public_token, metadata, familyMemberId } = await req.json();
+        // Validate request body
+        const bodyValidation = await validateBody(PlaidExchangeTokenSchema, req);
+        if (!bodyValidation.success) {
+            return bodyValidation.error;
+        }
+
+        const { public_token, metadata, familyMemberId } = bodyValidation.data;
 
         // 2. Get UserProfile
         const userProfile = await prisma.userProfile.findUnique({
@@ -67,7 +83,7 @@ export async function POST(req: Request) {
             });
         }
 
-        const institutionId = metadata?.institution?.institution_id;
+        const institutionId = metadata?.institution?.id;
         const institutionName = metadata?.institution?.name || "Unknown Institution";
         const newAccounts = metadata?.accounts || [];
 
@@ -77,7 +93,7 @@ export async function POST(req: Request) {
         const duplicateAccounts = await prisma.plaidAccount.findMany({
             where: {
                 familyMemberId: familyMember.id,
-                OR: newAccounts.map((acc: any) => ({
+                OR: newAccounts.map((acc: z.infer<typeof PlaidAccountSchema>) => ({
                     mask: acc.mask,
                     // Note: officialName not available in metadata, will be checked after liabilitiesGet
                 })),
@@ -107,7 +123,7 @@ export async function POST(req: Request) {
 
         // 3. Get Accounts info (Fetch from Plaid since metadata might be incomplete for full details like balances)
         let accounts;
-        let liabilitiesData: Record<string, any> = {};
+        const liabilitiesData: Record<string, z.infer<typeof PlaidCreditLiabilitySchema>> = {};
 
         try {
             const liabilitiesResponse = await plaidClient.liabilitiesGet({
@@ -117,8 +133,10 @@ export async function POST(req: Request) {
 
             // Map liabilities by account_id for easy lookup
             if (liabilitiesResponse.data.liabilities?.credit) {
-                liabilitiesResponse.data.liabilities.credit.forEach((l: any) => {
-                    liabilitiesData[l.account_id] = l;
+                liabilitiesResponse.data.liabilities.credit.forEach((l: z.infer<typeof PlaidCreditLiabilitySchema>) => {
+                    if (l.account_id) {
+                        liabilitiesData[l.account_id] = l;
+                    }
                 });
             }
         } catch (err) {
@@ -156,24 +174,27 @@ export async function POST(req: Request) {
                     institutionId: institutionId,
                     institutionName: institutionName,
                     accounts: {
-                        create: accounts.map((acc: any) => {
-                            const creditLiability = liabilitiesData[acc.account_id];
+                        create: accounts.map((acc: unknown) => {
+                            const account = acc as { account_id: string; name: string; official_name: string; mask: string; type: string; subtype: string[]; balances: { current: number; available: number; limit?: number; iso_currency_code?: string } };
+                            const creditLiability = liabilitiesData[account.account_id] as z.infer<typeof PlaidCreditLiabilitySchema> | undefined;
                             // Find purchase APR or take the first one
-                            const apr = creditLiability?.aprs?.find((a: any) => a.apr_type === 'purchase_apr')?.apr_percentage
+                            const apr = creditLiability?.aprs?.find((a: { apr_type: string; apr_percentage: number }) => a.apr_type === 'purchase_apr')?.apr_percentage
                                 || creditLiability?.aprs?.[0]?.apr_percentage;
 
                             return {
-                                accountId: acc.account_id,
-                                name: acc.name,
-                                officialName: acc.official_name,
-                                mask: acc.mask,
-                                type: acc.type,
-                                subtype: acc.subtype,
-                                currentBalance: acc.balances.current,
-                                availableBalance: acc.balances.available,
-                                limit: acc.balances.limit,
-                                isoCurrencyCode: acc.balances.iso_currency_code,
-                                familyMemberId: familyMember.id,
+                                accountId: account.account_id,
+                                name: account.name,
+                                officialName: account.official_name,
+                                mask: account.mask,
+                                type: account.type,
+                                subtype: account.subtype?.[0] || null,
+                                currentBalance: account.balances.current,
+                                availableBalance: account.balances.available,
+                                limit: account.balances.limit,
+                                isoCurrencyCode: account.balances.iso_currency_code,
+                                familyMember: {
+                                    connect: { id: familyMember.id }
+                                },
                                 // Liability fields
                                 apr: apr,
                                 minPaymentAmount: creditLiability?.minimum_payment_amount,
@@ -210,7 +231,7 @@ export async function POST(req: Request) {
                 const existingAccount = await prisma.plaidAccount.findFirst({
                     where: {
                         familyMemberId: familyMember.id,
-                        mask: { in: accounts.map((a: any) => a.mask) },
+                        mask: { in: accounts.map((a: unknown) => (a as { mask: string }).mask) },
                     },
                     include: {
                         plaidItem: true,
@@ -230,7 +251,7 @@ export async function POST(req: Request) {
             logger.error('Failed to ensure bank exists', err, { itemId: plaidItem.id })
         );
 
-        let plaidItemDbId = plaidItem.id;
+        const plaidItemDbId = plaidItem.id;
 
         // 7. Trigger Initial Transaction Sync (Async)
         // We pass the itemId (Plaid ID) or our DB ID. The sync endpoint expects 'itemId' which usually refers to the Plaid Item ID string in this codebase context, 

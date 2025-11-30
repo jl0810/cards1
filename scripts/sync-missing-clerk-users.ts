@@ -11,27 +11,29 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClerkClient } from '@clerk/backend';
 import pkg from 'pg';
+import { DatabaseRowSchema, ClerkUserSchema } from '../lib/validations';
+import type { z } from 'zod';
 const { Pool } = pkg;
+
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+
+type DatabaseRow = z.infer<typeof DatabaseRowSchema>;
+type ClerkUser = z.infer<typeof ClerkUserSchema>;
 
 const pool = new Pool({
   connectionString: process.env.DIRECT_URL,
 });
 
 async function main() {
-  console.log('🔍 Finding Clerk users missing from database...\n');
-
-  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
-
-  // Get all Clerk users
-  const clerkUsers = await clerk.users.getUserList({ limit: 100 });
-  console.log(`Found ${clerkUsers.data.length} users in Clerk\n`);
-
-  // Get all database users
+  console.log('🔍 Fetching Clerk users...');
+  const clerkUsers = await clerkClient.users.getUserList();
+  
+  console.log('🔍 Fetching database users...');
   const dbResult = await pool.query('SELECT "clerkId" FROM user_profiles');
-  const dbClerkIds = new Set(dbResult.rows.map((r: any) => r.clerkId));
+  const dbClerkIds = new Set(dbResult.rows.map((r: DatabaseRow) => r.clerkId));
 
   // Find missing users
-  const missingUsers = clerkUsers.data.filter(u => !dbClerkIds.has(u.id));
+  const missingUsers = clerkUsers.data.filter((u: ClerkUser) => !dbClerkIds.has(u.id));
 
   if (missingUsers.length === 0) {
     console.log('✅ All Clerk users exist in database!');
@@ -77,8 +79,9 @@ async function main() {
       );
 
       console.log(`  ✅ Created UserProfile and primary FamilyMember\n`);
-    } catch (error: any) {
-      console.error(`  ❌ Failed: ${error.message}\n`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`  ❌ Failed: ${errorMessage}\n`);
     }
   }
 

@@ -10,6 +10,10 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
+import { BenefitUsageSchema } from '@/lib/validations';
+import type { z } from 'zod';
+
+type BenefitUsage = z.infer<typeof BenefitUsageSchema>;
 
 /**
  * Get benefit usage for user's cards
@@ -96,7 +100,7 @@ export async function GET(req: Request) {
         });
 
         // Collect all unique benefits from linked cards
-        const benefits = new Map<string, any>();
+        const benefits = new Map<string, BenefitUsage>();
 
         accounts.forEach(account => {
             const cardProduct = account.extended?.cardProduct;

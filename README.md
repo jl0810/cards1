@@ -137,7 +137,7 @@ npx tsx scripts/add-indexes.ts
 npm run dev
 ```
 
-Visit `http://localhost:3000`
+Visit `http://localhost:3001`
 
 ### Making Your First Admin User
 

@@ -49,8 +49,13 @@ import { POST } from '@/app/api/plaid/items/[itemId]/reload-transactions/route';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
 import * as plaidModule from 'plaid';
+import { MockPlaidModuleSchema, ClerkAuthMockSchema } from '@/lib/validations';
+import type { z } from 'zod';
 
-const mockTransactionsSync = (plaidModule as any).__mockTransactionsSync;
+type MockPlaidModule = z.infer<typeof MockPlaidModuleSchema>;
+type ClerkAuthMock = z.infer<typeof ClerkAuthMockSchema>;
+
+const mockTransactionsSync = (plaidModule as MockPlaidModule).__mockTransactionsSync;
 
 describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
   let testUserId: string;
@@ -199,7 +204,7 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
   });
 
   it('should require confirmation "RELOAD" (BR-036)', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: testClerkId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
 
     const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
       method: 'POST',
@@ -214,7 +219,7 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
   });
 
   it('should delete all existing transactions and reload from Plaid (BR-036)', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: testClerkId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
 
     // Mock Plaid to return new transactions
     mockTransactionsSync.mockResolvedValue({
@@ -289,7 +294,7 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
   });
 
   it('should reset cursor to null before fetching (BR-036)', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: testClerkId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
 
     mockTransactionsSync.mockResolvedValue({
       data: {
@@ -316,7 +321,7 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
   });
 
   it('should return 401 if not authenticated', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: null });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: null });
 
     const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
       method: 'POST',
@@ -329,7 +334,7 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
   });
 
   it('should return 404 if item not found or not owned', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'wrong_user' });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'wrong_user' });
 
     const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
       method: 'POST',
@@ -342,7 +347,7 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
   });
 
   it('should handle Plaid API errors gracefully', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: testClerkId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
     mockTransactionsSync.mockRejectedValue(new Error('Plaid API error'));
 
     const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {

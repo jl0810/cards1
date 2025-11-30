@@ -297,9 +297,14 @@ export function BenefitsDashboard({ accountId, period = 'month' }: BenefitsDashb
     );
 }
 
+import { TransactionSchema } from "@/lib/validations";
+import type { z } from "zod";
+
+type Transaction = z.infer<typeof TransactionSchema>;
+
 function BenefitTile({ benefit, urgency = 'upcoming' }: { benefit: BenefitProgress; urgency?: 'urgent' | 'soon' | 'upcoming' | 'completed' }) {
     const [showTransactions, setShowTransactions] = useState(false);
-    const [transactions, setTransactions] = useState<any[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loadingTx, setLoadingTx] = useState(false);
 
     const isCredit = benefit.maxAmount > 0;
@@ -439,9 +444,9 @@ function BenefitTile({ benefit, urgency = 'upcoming' }: { benefit: BenefitProgre
                                 </div>
                             ) : (() => {
                                 // Group transactions by period
-                                const groupedByPeriod: { [key: string]: any[] } = {};
+                                const groupedByPeriod: { [key: string]: Transaction[] } = {};
 
-                                transactions.forEach((tx: any) => {
+                                transactions.forEach((tx: Transaction) => {
                                     const date = new Date(tx.date);
                                     let periodKey = '';
 
@@ -490,7 +495,7 @@ function BenefitTile({ benefit, urgency = 'upcoming' }: { benefit: BenefitProgre
 
                                                     {/* Transactions in this period */}
                                                     <div className="space-y-2 mb-4">
-                                                        {periodTransactions.map((tx: any) => (
+                                                        {periodTransactions.map((tx: Transaction) => (
                                                             <div key={tx.id} className="bg-white/5 rounded-xl p-3 flex items-center justify-between ml-2">
                                                                 <div className="flex-1">
                                                                     <p className="text-sm font-medium text-white">{tx.name}</p>

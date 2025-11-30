@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, ArrowUpRight, CreditCard, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { TransactionSchema, PlaidItemSchema } from "@/lib/validations";
+import type { z } from "zod";
+
+type Transaction = z.infer<typeof TransactionSchema>;
+type PlaidItem = z.infer<typeof PlaidItemSchema>;
 
 const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => (
   <motion.div
@@ -15,7 +20,7 @@ const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode, delay?: nu
 );
 
 export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
@@ -55,7 +60,7 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
       }
 
       // Sync all items
-      const syncPromises = items.map((item: any) =>
+      const syncPromises = items.map((item: PlaidItem) =>
         fetch('/api/plaid/sync-transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

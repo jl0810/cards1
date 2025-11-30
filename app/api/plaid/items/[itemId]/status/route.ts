@@ -32,7 +32,7 @@ const plaidClient = new PlaidApi(configuration);
  * @route GET /api/plaid/items/[itemId]/status
  * @implements BR-033 - Connection Health Monitoring
  * @satisfies US-020 - Monitor Bank Connection Health
- * @tested None (HIGH PRIORITY - needs integration test)
+ * @tested __tests__/api/plaid/items/status.integration.test.ts
  * 
  * @param {Request} req - HTTP request
  * @param {Object} params - Route parameters

@@ -12,8 +12,29 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
 import { PLAID_SYNC_CONFIG } from '@/lib/constants';
+import { logger } from '@/lib/logger';
+import { Errors } from '@/lib/api-errors';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+
+export interface PlaidTransaction {
+  transaction_id: string;
+  account_id: string;
+  amount: number;
+  date: string;
+  name: string;
+  merchant_name?: string | null;
+  category?: string[] | null;
+  pending: boolean;
+  original_description?: string | null;
+  payment_channel?: string | null;
+  transaction_code?: string | null;
+  personal_finance_category?: {
+    primary?: string | null;
+    detailed?: string | null;
+  } | null;
+}
+
 import { scanAndMatchBenefits } from '@/lib/benefit-matcher';
 
 export const dynamic = 'force-dynamic';
@@ -37,12 +58,18 @@ export async function POST(
     req: Request,
     { params }: { params: Promise<{ itemId: string }> }
 ) {
+    // Rate limit: 5 per minute (destructive operation)
+    const limited = await rateLimit(req, RATE_LIMITS.sensitive);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     try {
         const { itemId } = await params;
         const { userId } = await auth();
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return Errors.unauthorized();
         }
 
         // Verify confirmation
@@ -127,7 +154,7 @@ export async function POST(
         // STEP 2: Fetch ALL transactions from Plaid (cursor = null means start from beginning)
         let hasMore = true;
         let nextCursor: string | null = null;
-        let allTransactions: any[] = [];
+        let allTransactions: PlaidTransaction[] = [];
         let iterations = 0;
 
         while (hasMore && iterations < PLAID_SYNC_CONFIG.MAX_ITERATIONS) {

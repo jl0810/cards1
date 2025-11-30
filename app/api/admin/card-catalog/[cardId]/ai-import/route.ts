@@ -190,7 +190,12 @@ export async function POST(
             let updatedCount = 0;
             let draftCount = 0; // Benefits marked as draft due to changes
             let removedCount = 0;
-            let errors: any[] = [];
+            interface ImportError {
+    benefitName: string;
+    error: string;
+}
+
+const errors: ImportError[] = [];
 
             // Get all existing benefits for comparison
             const existingBenefitsMap = new Map(
@@ -295,10 +300,11 @@ export async function POST(
                             importedCount++;
                         }
                     }
-                } catch (error: any) {
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                     errors.push({
-                        benefit: benefitData.benefit,
-                        error: error.message
+                        benefitName: benefitData.benefit || 'Unknown benefit',
+                        error: errorMessage
                     });
                 }
             }
@@ -310,10 +316,11 @@ export async function POST(
                         where: { id: benefit.id }
                     });
                     removedCount++;
-                } catch (error: any) {
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                     errors.push({
-                        benefit: benefit.benefitName,
-                        error: `Failed to remove obsolete benefit: ${error.message}`
+                        benefitName: benefit.benefitName,
+                        error: `Failed to remove obsolete benefit: ${errorMessage}`
                     });
                 }
             }
@@ -329,10 +336,11 @@ export async function POST(
                 errors: errors.length,
                 errorDetails: errors
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Import failed';
             console.error('AI import error:', error);
             return NextResponse.json(
-                { error: error.message || 'Import failed' },
+                { error: errorMessage },
                 { status: 500 }
             );
         }

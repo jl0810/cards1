@@ -5,6 +5,10 @@ import { ErrorBoundary as SentryErrorBoundary } from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { ReactErrorInfoSchema } from "@/lib/validations";
+import type { z } from "zod";
+
+type ReactErrorInfo = z.infer<typeof ReactErrorInfoSchema>;
 
 export function ErrorBoundary({
   children,
@@ -23,7 +27,7 @@ export function ErrorBoundary({
               Something went wrong
             </h2>
             <p className="text-gray-600 mb-6">
-              We're sorry, but something unexpected happened. Our team has been notified.
+              We&apos;re sorry, but something unexpected happened. Our team has been notified.
             </p>
             <div className="space-y-3">
               <Button onClick={resetError} className="w-full">
@@ -52,12 +56,12 @@ export function ErrorBoundary({
       )}
       onError={(error, errorInfo) => {
         logger.error('Error caught by boundary', error, {
-          componentStack: (errorInfo as any).componentStack || 'No component stack available',
+          componentStack: (errorInfo as ReactErrorInfo) || 'No component stack available',
         });
         Sentry.captureException(error, {
           contexts: {
             react: {
-              componentStack: (errorInfo as any).componentStack || 'No component stack available',
+              componentStack: (errorInfo as ReactErrorInfo) || 'No component stack available',
             },
           },
         });

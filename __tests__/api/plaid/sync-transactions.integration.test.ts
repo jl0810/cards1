@@ -71,9 +71,14 @@ import * as plaidModule from 'plaid';
 import { PrismaClient } from '../../../generated/prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { MockPlaidModuleSchema, ClerkAuthMockSchema } from '@/lib/validations';
+import type { z } from 'zod';
 
-const mockTransactionsSync = (plaidModule as any).__mockTransactionsSync;
-const mockAccountsBalanceGet = (plaidModule as any).__mockAccountsBalanceGet;
+type MockPlaidModule = z.infer<typeof MockPlaidModuleSchema>;
+type ClerkAuthMock = z.infer<typeof ClerkAuthMockSchema>;
+
+const mockTransactionsSync = (plaidModule as MockPlaidModule).__mockTransactionsSync;
+const mockAccountsBalanceGet = (plaidModule as MockPlaidModule).__mockAccountsBalanceGet;
 
 // CRITICAL: Use DIRECT_URL for Vault access (not pooled connection)
 const directUrl = process.env.DIRECT_URL;
@@ -174,7 +179,7 @@ describeIf('REAL Integration: Transaction Sync (US-007)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (auth as jest.Mock).mockResolvedValue({ userId: testClerkId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
     (rateLimit as jest.Mock).mockResolvedValue(false); // Not rate limited
   });
 
@@ -578,7 +583,7 @@ describeIf('REAL Integration: Transaction Sync (US-007)', () => {
 
   describe('Error Handling', () => {
     it('should return 401 if user not authenticated', async () => {
-      (auth as jest.Mock).mockResolvedValue({ userId: null });
+      (auth as ClerkAuthMock).mockResolvedValue({ userId: null });
 
       const request = new Request('http://localhost/api/plaid/sync-transactions', {
         method: 'POST',

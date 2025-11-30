@@ -22,6 +22,10 @@ jest.mock('@/env', () => ({
 }));
 
 import { env } from '@/env';
+import { EnvObjectSchema } from '@/lib/validations';
+import type { z } from 'zod';
+
+type EnvObject = z.infer<typeof EnvObjectSchema>;
 
 describe('Environment Variables', () => {
     const originalEnv = process.env;
@@ -58,8 +62,8 @@ describe('Environment Variables', () => {
         // or we can check the schema shape if needed. 
         // For now, just checking they exist in the validated object is sufficient.
         
-        // Note: We cast to any because we're iterating keys
-        const envObj = env as any;
+        // Note: We cast to EnvObject because we're iterating keys
+        const envObj = env as EnvObject;
         
         requiredKeys.forEach(key => {
              // Some keys might be optional in the schema (like SERVICE_ROLE_KEY) 

@@ -24,6 +24,48 @@ export interface BenefitMatchCriteria {
     annualLimit?: number; // Max credit per year
 }
 
+/**
+ * Type for benefit match result
+ */
+export interface BenefitMatch {
+    benefit: {
+        id: string;
+        benefitName: string;
+        type: string;
+        description?: string | null;
+        timing: string;
+        maxAmount?: number | null;
+        keywords: string[];
+        ruleConfig?: Record<string, unknown> | null;
+        active: boolean;
+        cardProductId: string;
+        createdAt: Date;
+        updatedAt: Date;
+    };
+    confidence: number;
+    matchReason: string;
+}
+
+/**
+ * Type for benefit in trackEvent calls
+ */
+export interface BenefitEvent {
+    id: string;
+    timing: string;
+    maxAmount: number | null;
+}
+
+/**
+ * Type for Prisma where clause
+ */
+type PlaidAccountWhereClause = {
+    extended: {
+        cardProductId: { not: null };
+    };
+    accountId?: { in: string[] };
+    plaidItem?: { userId: string };
+};
+
 // Define matching rules for known benefits
 export const BENEFIT_MATCHING_RULES: Record<string, BenefitMatchCriteria[]> = {
     // Amex Platinum Schwab benefits
@@ -137,11 +179,7 @@ export async function matchTransactionToBenefits(transaction: {
     const transactionName = (transaction.merchantName || transaction.name).toLowerCase();
     const originalDesc = (transaction.originalDescription || '').toLowerCase();
 
-    const matches: Array<{
-        benefit: any;
-        confidence: number;
-        matchReason: string;
-    }> = [];
+    const matches: BenefitMatch[] = [];
 
     // Check each benefit using DB keywords
     for (const benefit of cardBenefits) {
@@ -164,9 +202,12 @@ export async function matchTransactionToBenefits(transaction: {
             }
 
             matches.push({
-                benefit: benefit,
-                confidence: 100,
-                matchReason: `Matched credit keyword: "${matchedKeyword}"`
+                benefit: {
+                    ...benefit,
+                    ruleConfig: benefit.ruleConfig as Record<string, unknown> | null,
+                },
+                confidence: 0.8,
+                matchReason: `Keyword match: "${matchedKeyword}"`,
             });
         }
     }
@@ -320,9 +361,9 @@ export async function linkTransactionToBenefit(
                 periodStart,
                 periodEnd,
                 usedAmount: amountToAdd,
-                // @ts-ignore
+                // @ts-expect-error - benefit.maxAmount type is compatible but not properly typed
                 maxAmount: benefit.maxAmount,
-                // @ts-ignore
+                // @ts-expect-error - remainingAmount calculation is correct but type not inferred
                 remainingAmount: remainingAmount
             }
         });
@@ -369,7 +410,7 @@ export async function scanAndMatchBenefits(userId: string, specificAccountIds?: 
     if (!userProfile) return { matched: 0, checked: 0 };
 
     // Get accounts to check
-    const whereClause: any = {
+    const whereClause: PlaidAccountWhereClause = {
         extended: {
             cardProductId: { not: null }
         }
@@ -459,7 +500,11 @@ export async function scanAndMatchBenefits(userId: string, specificAccountIds?: 
                             amount: transaction.amount,
                             plaidAccountId: internalAccountId
                         },
-                        bestMatch.benefit,
+                        {
+                            id: bestMatch.benefit.id,
+                            timing: bestMatch.benefit.timing,
+                            maxAmount: bestMatch.benefit.maxAmount ?? null,
+                        },
                         bestMatch.matchReason
                     );
                     matchCount++;

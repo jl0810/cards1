@@ -74,10 +74,15 @@ import { PrismaClient } from '../../../generated/prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { createTestUserViaClerk, cleanupTestUser, type TestUserData } from '@/__tests__/lib/test-user-helper';
+import { MockPlaidModuleSchema, ClerkAuthMockSchema } from '@/lib/validations';
+import type { z } from 'zod';
 
-const mockItemPublicTokenExchange = (plaidModule as any).__mockItemPublicTokenExchange;
-const mockLiabilitiesGet = (plaidModule as any).__mockLiabilitiesGet;
-const mockAccountsGet = (plaidModule as any).__mockAccountsGet;
+type MockPlaidModule = z.infer<typeof MockPlaidModuleSchema>;
+type ClerkAuthMock = z.infer<typeof ClerkAuthMockSchema>;
+
+const mockItemPublicTokenExchange = (plaidModule as MockPlaidModule).__mockItemPublicTokenExchange;
+const mockLiabilitiesGet = (plaidModule as MockPlaidModule).__mockLiabilitiesGet;
+const mockAccountsGet = (plaidModule as MockPlaidModule).__mockAccountsGet;
 
 // CRITICAL: Use DIRECT_URL for Vault access (not pooled connection)
 const directUrl = process.env.DIRECT_URL;
@@ -120,7 +125,7 @@ describeIf('REAL Integration: Bank Linking (US-006)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (auth as jest.Mock).mockResolvedValue({ userId: testUser.clerkId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testUser.clerkId });
   });
 
   describe('BR-009: Secure Token Storage', () => {
@@ -518,7 +523,7 @@ describeIf('REAL Integration: Bank Linking (US-006)', () => {
 
   describe('Error Handling', () => {
     it('should return 401 if user not authenticated', async () => {
-      (auth as jest.Mock).mockResolvedValue({ userId: null });
+      (auth as ClerkAuthMock).mockResolvedValue({ userId: null });
 
       const request = new Request('http://localhost/api/plaid/exchange-public-token', {
         method: 'POST',
@@ -533,7 +538,7 @@ describeIf('REAL Integration: Bank Linking (US-006)', () => {
     });
 
     it('should return 404 if user profile not found', async () => {
-      (auth as jest.Mock).mockResolvedValue({ userId: 'nonexistent_clerk_id' });
+      (auth as ClerkAuthMock).mockResolvedValue({ userId: 'nonexistent_clerk_id' });
 
       const request = new Request('http://localhost/api/plaid/exchange-public-token', {
         method: 'POST',

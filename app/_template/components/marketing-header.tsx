@@ -12,7 +12,7 @@ import {
 } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Zap, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -25,6 +25,12 @@ LinkComponent.displayName = "LinkComponent";
 
 export function MarketingHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering auth UI after mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -74,24 +80,28 @@ export function MarketingHeader() {
         {/* Desktop Auth & Theme */}
         <div className="hidden md:flex items-center justify-end gap-3">
           <ThemeToggle />
-          <SignedOut>
-            <SignInButton mode="modal">
-              <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-white/10">
-                Sign In
-              </Button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <Button size="sm" className="bg-white text-black hover:bg-gray-200">Sign Up</Button>
-            </SignUpButton>
-          </SignedOut>
-          <SignedIn>
-            <Button asChild variant="outline" size="sm" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-              <LinkComponent href="/dashboard">
-                Dashboard
-              </LinkComponent>
-            </Button>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
+          {isMounted && (
+            <>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-white/10">
+                    Sign In
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button size="sm" className="bg-white text-black hover:bg-gray-200">Sign Up</Button>
+                </SignUpButton>
+              </SignedOut>
+              <SignedIn>
+                <Button asChild variant="outline" size="sm" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+                  <LinkComponent href="/dashboard">
+                    Dashboard
+                  </LinkComponent>
+                </Button>
+                <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+            </>
+          )}
         </div>
       </div>
 
@@ -119,29 +129,33 @@ export function MarketingHeader() {
                 </Link>
               ))}
               <div className="border-t border-white/10 pt-4 flex flex-col gap-3">
-                <SignedOut>
-                  <SignInButton mode="modal">
-                    <Button variant="ghost" className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10">
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <Button className="w-full bg-white text-black hover:bg-gray-200">Sign Up</Button>
-                  </SignUpButton>
-                </SignedOut>
-                <SignedIn>
-                  <Button asChild variant="outline" className="w-full justify-start border-white/10 bg-white/5 text-white hover:bg-white/10">
-                    <Link href="/dashboard">
-                      Dashboard
-                    </Link>
-                  </Button>
-                  <div className="flex items-center justify-between text-gray-300">
-                    <span className="font-medium">
-                      Account
-                    </span>
-                    <UserButton afterSignOutUrl="/" />
-                  </div>
-                </SignedIn>
+                {isMounted && (
+                  <>
+                    <SignedOut>
+                      <SignInButton mode="modal">
+                        <Button variant="ghost" className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10">
+                          Sign In
+                        </Button>
+                      </SignInButton>
+                      <SignUpButton mode="modal">
+                        <Button className="w-full bg-white text-black hover:bg-gray-200">Sign Up</Button>
+                      </SignUpButton>
+                    </SignedOut>
+                    <SignedIn>
+                      <Button asChild variant="outline" className="w-full justify-start border-white/10 bg-white/5 text-white hover:bg-white/10">
+                        <Link href="/dashboard">
+                          Dashboard
+                        </Link>
+                      </Button>
+                      <div className="flex items-center justify-between text-gray-300">
+                        <span className="font-medium">
+                          Account
+                        </span>
+                        <UserButton afterSignOutUrl="/" />
+                      </div>
+                    </SignedIn>
+                  </>
+                )}
                 <div className="flex items-center justify-between text-gray-300">
                   <span className="font-medium">
                     Theme

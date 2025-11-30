@@ -10,7 +10,7 @@ echo "🚀 Starting Localtunnel (subdomain: $SUBDOMAIN)..."
 
 # 3. Start localtunnel in the background and save output to a log file
 # We use nohup to keep it running
-nohup npx localtunnel --port 3000 --subdomain "$SUBDOMAIN" > tunnel.log 2>&1 &
+nohup npx localtunnel --port 3001 --subdomain "$SUBDOMAIN" > tunnel.log 2>&1 &
 
 # 4. Wait for it to initialize
 echo "⏳ Waiting for tunnel URL..."

@@ -35,7 +35,9 @@ export async function GET(req: Request) {
     const authHeader = req.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // SECURITY: Reject if secret is missing OR doesn't match
+    // This prevents bypass when CRON_SECRET env var is unset
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       logger.warn('Unauthorized cron request', {
         hasAuth: !!authHeader,
         hasCronSecret: !!cronSecret,

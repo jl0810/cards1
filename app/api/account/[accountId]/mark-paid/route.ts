@@ -1,22 +1,45 @@
+/**
+ * Mark Account Paid API
+ * Allows users to mark credit card payments as made
+ * 
+ * @module app/api/account/[accountId]/mark-paid
+ * @implements BR-017 - Payment Tracking
+ * @satisfies US-010 - Track Payments
+ */
+
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { Errors } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 const markPaidSchema = z.object({
     amount: z.number().optional(),
     date: z.string().datetime().optional(), // ISO date string
 });
 
-export async function POST(req: Request, { params }: { params: { accountId: string } }) {
+/**
+ * Mark an account payment as paid
+ * 
+ * @route POST /api/account/[accountId]/mark-paid
+ * @tested None (needs test)
+ */
+export async function POST(req: Request, { params }: { params: Promise<{ accountId: string }> }) {
+    // Rate limit: 20 writes per minute
+    const limited = await rateLimit(req, RATE_LIMITS.write);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     try {
         const { userId } = await auth();
+        const { accountId } = await params;
         if (!userId) {
             return Errors.unauthorized();
         }
 
-        const { accountId } = params;
         const body = await req.json();
 
         const result = markPaidSchema.safeParse(body);
@@ -58,7 +81,7 @@ export async function POST(req: Request, { params }: { params: { accountId: stri
         });
 
     } catch (error) {
-        console.error("Error marking account as paid:", error);
+        logger.error("Error marking account as paid:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

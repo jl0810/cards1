@@ -77,7 +77,7 @@ export default function PricingPage() {
             Simple, transparent pricing
           </h2>
           <p className="mt-6 text-lg leading-8 text-muted-foreground">
-            Choose the plan that's right for your team. Cancel anytime.
+            Choose the plan that&apos;s right for your team. Cancel anytime.
           </p>
         </div>
 

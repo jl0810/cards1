@@ -35,7 +35,7 @@ export function AuthLayout({ children, title, description }: AuthLayoutProps) {
         <div className="z-10">
           <blockquote className="space-y-2">
             <p className="text-xl font-medium">
-              "I've earned over $5,000 in travel rewards since I started using PointMax. It completely changed how I manage my cards."
+              &quot;I&apos;ve earned over $5,000 in travel rewards since I started using PointMax. It completely changed how I manage my cards.&quot;
             </p>
             <footer className="text-sm font-medium opacity-80">
               - Alex Chen, Platinum Member

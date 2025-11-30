@@ -1,35 +1,48 @@
+/**
+ * User Preferences API
+ * Get and update user settings
+ * 
+ * @module app/api/user/preferences
+ * @implements BR-019 - User Preferences
+ * @satisfies US-013 - User Settings
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { UserProfileExtendedSchema, UpdateUserPreferencesSchema, safeValidateSchema } from '@/lib/validations';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import type { z } from 'zod';
 
+type UserProfileExtended = z.infer<typeof UserProfileExtendedSchema>;
+
+/**
+ * Get user preferences
+ * @route GET /api/user/preferences
+ */
 export async function GET() {
   try {
     const { userId } = await auth();
 
     if (!userId) {
-      console.error('No userId found in auth');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return Errors.unauthorized();
     }
-
-    console.log('Fetching preferences for userId:', userId);
 
     // Get user preferences from Supabase
     const userProfile = await prisma.userProfile.findUnique({
       where: { clerkId: userId },
     });
 
-    console.log('User profile found:', !!userProfile);
-
     if (!userProfile) {
       // Create default preferences for new user
-      console.log('Creating default profile for user:', userId);
       const defaultProfile = await prisma.userProfile.create({
         data: {
           clerkId: userId,
         },
       });
 
-      console.log('Default profile created:', defaultProfile.id);
       return NextResponse.json({
         theme: defaultProfile.theme || 'system',
         language: defaultProfile.language || 'en',
@@ -39,11 +52,11 @@ export async function GET() {
         marketingEmails: false, // Default since not in schema
         newsletter: false, // Map to marketing emails
         notifications: defaultProfile.pushNotifications ?? false, // Map to push notifications
-        defaultDashboard: (defaultProfile as any).defaultDashboard || 'main',
-        sidebarCollapsed: (defaultProfile as any).sidebarCollapsed ?? false,
+        defaultDashboard: (defaultProfile as UserProfileExtended).defaultDashboard || 'main',
+        sidebarCollapsed: (defaultProfile as UserProfileExtended).sidebarCollapsed ?? false,
         compactMode: false, // Default since not in schema
-        betaFeatures: (defaultProfile as any).betaFeatures ?? false,
-        analyticsSharing: (defaultProfile as any).analyticsSharing ?? true,
+        betaFeatures: (defaultProfile as UserProfileExtended).betaFeatures ?? false,
+        analyticsSharing: (defaultProfile as UserProfileExtended).analyticsSharing ?? true,
         crashReporting: true, // Default since not in schema
         autoSave: true, // Default since not in schema
         keyboardShortcuts: true, // Default since not in schema
@@ -51,7 +64,6 @@ export async function GET() {
       });
     }
 
-    console.log('Returning existing user preferences');
     return NextResponse.json({
       theme: userProfile.theme,
       language: userProfile.language,
@@ -61,11 +73,11 @@ export async function GET() {
       marketingEmails: false, // Default since not in schema
       newsletter: false, // Map to marketing emails
       notifications: userProfile.pushNotifications, // Map to push notifications
-      defaultDashboard: (userProfile as any).defaultDashboard || 'main',
-      sidebarCollapsed: (userProfile as any).sidebarCollapsed ?? false,
+      defaultDashboard: (userProfile as UserProfileExtended).defaultDashboard || 'main',
+      sidebarCollapsed: (userProfile as UserProfileExtended).sidebarCollapsed ?? false,
       compactMode: false, // Default since not in schema
-      betaFeatures: (userProfile as any).betaFeatures ?? false,
-      analyticsSharing: (userProfile as any).analyticsSharing ?? true,
+      betaFeatures: (userProfile as UserProfileExtended).betaFeatures ?? false,
+      analyticsSharing: (userProfile as UserProfileExtended).analyticsSharing ?? true,
       crashReporting: true, // Default since not in schema
       autoSave: true, // Default since not in schema
       keyboardShortcuts: true, // Default since not in schema
@@ -73,24 +85,35 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('Error fetching user preferences:', error);
-    return NextResponse.json({
-      error: 'Failed to fetch preferences',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    }, { status: 500 });
+    logger.error('Error fetching user preferences:', error);
+    return Errors.internal();
   }
 }
 
+/**
+ * Update user preferences
+ * @route PUT /api/user/preferences
+ */
 export async function PUT(request: NextRequest) {
+  const limited = await rateLimit(request, RATE_LIMITS.write);
+  if (limited) {
+    return new Response('Too many requests', { status: 429 });
+  }
+
   try {
     const { userId } = await auth();
 
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return Errors.unauthorized();
     }
 
-    const preferences = await request.json();
+    const body = await request.json();
+    const validation = safeValidateSchema(UpdateUserPreferencesSchema, body);
+    if (!validation.success) {
+      return Errors.badRequest('Invalid preferences data');
+    }
+    
+    const preferences = validation.data;
 
     // Update user preferences in Supabase
     const updatedProfile = await prisma.userProfile.upsert({
@@ -100,7 +123,7 @@ export async function PUT(request: NextRequest) {
         language: preferences.language,
         timezone: preferences.timezone,
         emailNotifications: preferences.emailNotifications,
-        pushNotifications: preferences.notifications || preferences.pushNotifications, // Handle both field names
+        pushNotifications: preferences.pushNotifications,
         // Note: Extended preference fields will be handled separately if schema is updated
         updatedAt: new Date(),
       },
@@ -110,7 +133,7 @@ export async function PUT(request: NextRequest) {
         language: preferences.language,
         timezone: preferences.timezone,
         emailNotifications: preferences.emailNotifications,
-        pushNotifications: preferences.notifications || preferences.pushNotifications, // Handle both field names
+        pushNotifications: preferences.pushNotifications,
         // Note: Extended preference fields will be handled separately if schema is updated
       },
     });
@@ -126,11 +149,11 @@ export async function PUT(request: NextRequest) {
         marketingEmails: false,
         newsletter: false, // Map to marketing emails
         notifications: updatedProfile.pushNotifications, // Map to push notifications
-        defaultDashboard: (updatedProfile as any).defaultDashboard || 'main',
-        sidebarCollapsed: (updatedProfile as any).sidebarCollapsed ?? false,
+        defaultDashboard: (updatedProfile as UserProfileExtended).defaultDashboard || 'main',
+        sidebarCollapsed: (updatedProfile as UserProfileExtended).sidebarCollapsed ?? false,
         compactMode: false,
-        betaFeatures: (updatedProfile as any).betaFeatures ?? false,
-        analyticsSharing: (updatedProfile as any).analyticsSharing ?? true,
+        betaFeatures: (updatedProfile as UserProfileExtended).betaFeatures ?? false,
+        analyticsSharing: (updatedProfile as UserProfileExtended).analyticsSharing ?? true,
         crashReporting: true,
         autoSave: true,
         keyboardShortcuts: true,
@@ -139,10 +162,7 @@ export async function PUT(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error updating user preferences:', error);
-    return NextResponse.json({
-      error: 'Failed to update preferences',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    logger.error('Error updating user preferences:', error);
+    return Errors.internal();
   }
 }

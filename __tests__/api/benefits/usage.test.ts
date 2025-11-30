@@ -21,7 +21,7 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-const { auth } = require('@clerk/nextjs/server');
+import { auth } from '@clerk/nextjs/server';
 
 /**
  * US-011: View Benefit Usage Tests

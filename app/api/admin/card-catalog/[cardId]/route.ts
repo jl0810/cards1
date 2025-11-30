@@ -1,7 +1,34 @@
+/**
+ * Admin Card Product Detail API
+ * Manage individual card products
+ * 
+ * @module app/api/admin/card-catalog/[cardId]
+ * @implements BR-031 - Admin Role Required
+ * @satisfies US-019 - Card Catalog Management
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/admin';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
+const UpdateCardSchema = z.object({
+    productName: z.string().min(1).max(200).optional(),
+    issuer: z.string().min(1).max(100).optional(),
+    cardType: z.string().nullable().optional(),
+    annualFee: z.number().nonnegative().nullable().optional(),
+    signupBonus: z.string().max(500).nullable().optional(),
+    imageUrl: z.string().url().nullable().optional(),
+    active: z.boolean().optional(),
+});
+
+/**
+ * Get card product details
+ * @route GET /api/admin/card-catalog/[cardId]
+ */
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ cardId: string }> }
@@ -20,24 +47,42 @@ export async function GET(
         });
 
         if (!card) {
-            return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+            return Errors.notFound('Card product');
         }
 
         return NextResponse.json(card);
     } catch (error) {
-        console.error('Error fetching card:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        logger.error('Error fetching card:', error);
+        return Errors.internal();
     }
 }
 
+/**
+ * Update card product
+ * @route PATCH /api/admin/card-catalog/[cardId]
+ */
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ cardId: string }> }
 ) {
+    // Rate limit admin writes
+    const limited = await rateLimit(request, RATE_LIMITS.write);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     try {
         await requireAdmin();
         const { cardId } = await params;
-        const data = await request.json();
+        const body = await request.json();
+
+        // Validate input
+        const validation = UpdateCardSchema.safeParse(body);
+        if (!validation.success) {
+            return Errors.badRequest('Invalid card data');
+        }
+
+        const data = validation.data;
 
         // Update Card Product Only (not benefits)
         const updatedCard = await prisma.cardProduct.update({
@@ -59,7 +104,7 @@ export async function PATCH(
         return NextResponse.json({ success: true, card: updatedCard });
 
     } catch (error) {
-        console.error('Error updating card:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        logger.error('Error updating card:', error);
+        return Errors.internal();
     }
 }

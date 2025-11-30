@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { withAdmin } from '@/lib/admin';
 import { prisma } from '@/lib/prisma';
+import { BenefitRuleConfigSchema, PrismaJsonSchema } from '@/lib/validations';
+import type { z } from 'zod';
+
+type BenefitRuleConfig = z.infer<typeof BenefitRuleConfigSchema>;
+type PrismaJson = z.infer<typeof PrismaJsonSchema>;
 
 interface CardProductData {
     issuer: string;
@@ -210,9 +215,20 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: 'Invalid AI response format after batch processing' }, { status: 500 });
             }
 
-            // Import products into database
-            let imported: any[] = [];
-            let errors: any[] = [];
+            interface ImportResult {
+    success: boolean;
+    product?: CardProductData;
+    error?: string;
+}
+
+interface ImportError {
+    product: CardProductData;
+    error: string;
+}
+
+// Import products into database
+            const imported: ImportResult[] = [];
+            const errors: ImportError[] = [];
 
             for (const productData of products) {
                 try {
@@ -256,7 +272,7 @@ export async function POST(req: Request) {
                                         timing: benefitData.timing || 'Annually',
                                         maxAmount: benefitData.max_amount,
                                         keywords: benefitData.keywords || [],
-                                        ruleConfig: (benefitData.rule_config || undefined) as any,
+                                        ruleConfig: benefitData.rule_config ? JSON.parse(JSON.stringify(benefitData.rule_config)) : null, // Deep clone for Prisma JSON
                                         isApproved: false, // MARK AS DRAFT (Requires Admin Review)
                                         changeNotes: 'AI-generated benefit - pending review'
                                     }
@@ -266,14 +282,14 @@ export async function POST(req: Request) {
                     }
 
                     imported.push({
-                        issuer: product.issuer,
-                        productName: product.productName,
-                        benefitsCount: productData.cash_benefits?.length || 0
+                        success: true,
+                        product: productData
                     });
-                } catch (error: any) {
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                     errors.push({
-                        product: productData.product_name,
-                        error: error.message
+                        product: productData,
+                        error: errorMessage
                     });
                 }
             }
@@ -285,10 +301,11 @@ export async function POST(req: Request) {
                 products: imported,
                 errorDetails: errors
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Import failed';
             console.error('AI import error:', error);
             return NextResponse.json(
-                { error: error.message || 'Import failed' },
+                { error: errorMessage },
                 { status: 500 }
             );
         }

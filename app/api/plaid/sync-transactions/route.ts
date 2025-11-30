@@ -5,15 +5,53 @@
  * @module app/api/plaid/sync-transactions
  */
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { plaidClient } from '@/lib/plaid';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-import { matchTransactionToBenefits, linkTransactionToBenefit, scanAndMatchBenefits } from '@/lib/benefit-matcher';
+import { scanAndMatchBenefits } from '@/lib/benefit-matcher';
 import { logger } from '@/lib/logger';
 import { PLAID_SYNC_CONFIG } from '@/lib/constants';
+import { validateBody } from '@/lib/validation-middleware';
+import { z } from 'zod';
+
+/**
+ * Plaid Transaction Sync schemas
+ */
+export const SyncTransactionsSchema = z.object({
+  itemId: z.string().uuid('Invalid item ID'),
+  cursor: z.string().optional(),
+  count: z.number().min(1).max(500).optional().default(100),
+});
+
+export interface PlaidTransaction {
+  transaction_id: string;
+  account_id: string;
+  amount: number;
+  date: string;
+  name: string;
+  merchant_name?: string | null;
+  category?: string[] | null;
+  pending: boolean;
+  original_description?: string | null;
+  payment_channel?: string | null;
+  transaction_code?: string | null;
+  personal_finance_category?: {
+    primary?: string | null;
+    detailed?: string | null;
+  } | null;
+}
+
+export interface PlaidBalance {
+  account_id: string;
+  balance: {
+    current: number;
+    available: number;
+    limit?: number;
+  };
+}
 
 /**
  * Sync transactions from Plaid for a specific item
@@ -28,7 +66,7 @@ import { PLAID_SYNC_CONFIG } from '@/lib/constants';
  * @param {Request} req - Contains itemId and optional cursor
  * @returns {Promise<NextResponse>} Sync statistics (added, modified, removed, hasMore)
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     // Apply rate limiting: max 10 syncs per hour per user
     const limited = await rateLimit(req, RATE_LIMITS.plaidSync);
     if (limited) {
@@ -54,12 +92,13 @@ export async function POST(req: Request) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const body = await req.json();
-        const { itemId, cursor } = body; // Expect itemId now
-
-        if (!itemId) {
-            return new NextResponse("Missing item ID", { status: 400 });
+        // Validate request body
+        const bodyValidation = await validateBody(SyncTransactionsSchema, req);
+        if (!bodyValidation.success) {
+            return bodyValidation.error;
         }
+
+        const { itemId, cursor } = bodyValidation.data;
 
         // 1. Get PlaidItem to find the secret ID
         const item = await prisma.plaidItem.findUnique({
@@ -86,9 +125,9 @@ export async function POST(req: Request) {
         // --- SYNC TRANSACTIONS ---
         let hasMore = true;
         let nextCursor = cursor || item.nextCursor; // Use stored cursor if not provided
-        let added: any[] = [];
-        let modified: any[] = [];
-        let removed: any[] = [];
+        let added: PlaidTransaction[] = [];
+        let modified: PlaidTransaction[] = [];
+        let removed: string[] = [];
         let iterations = 0;
 
         // Fetch all updates since cursor (with safety limits)
@@ -96,13 +135,13 @@ export async function POST(req: Request) {
             try {
                 const response = await plaidClient.transactionsSync({
                     access_token: accessToken,
-                    cursor: nextCursor,
+                    cursor: nextCursor || undefined,
                 });
 
                 const data = response.data;
                 added = added.concat(data.added);
                 modified = modified.concat(data.modified);
-                removed = removed.concat(data.removed);
+                removed = removed.concat(data.removed.map(r => r.transaction_id));
                 hasMore = data.has_more;
                 nextCursor = data.next_cursor;
                 iterations++;
@@ -121,12 +160,19 @@ export async function POST(req: Request) {
         }
 
         // BUG FIX #4: Fetch balances BEFORE transaction to include in atomic operation
-        let balanceData: any[] = [];
+        let balanceData: PlaidBalance[] = [];
         try {
             const balanceResponse = await plaidClient.accountsBalanceGet({
                 access_token: accessToken,
             });
-            balanceData = balanceResponse.data.accounts;
+            balanceData = balanceResponse.data.accounts.map(account => ({
+                account_id: account.account_id,
+                balance: {
+                    current: account.balances?.current || 0,
+                    available: account.balances?.available || 0,
+                    limit: account.balances?.limit || undefined,
+                },
+            }));
         } catch (balanceError) {
             logger.error('Error fetching balances', balanceError, { itemId });
             // Continue with sync even if balance fetch fails
@@ -195,11 +241,11 @@ export async function POST(req: Request) {
             // 3. Handle Removed Transactions
             for (const txn of removed) {
                 await tx.plaidTransaction.delete({
-                    where: { transactionId: txn.transaction_id },
-                }).catch(e => {
+                    where: { transactionId: txn },
+                }).catch(_e => {
                     // BUG FIX: Log as WARNING not debug - transaction may have been manually deleted
                     logger.warn('Transaction not found for deletion', {
-                        transactionId: txn.transaction_id,
+                        transactionId: txn,
                         itemId
                     });
                 });
@@ -207,33 +253,18 @@ export async function POST(req: Request) {
 
             // 4. BUG FIX #4: Update balances INSIDE transaction for atomicity
             for (const account of balanceData) {
-                await tx.plaidAccount.upsert({
+                await tx.plaidAccount.update({
                     where: { accountId: account.account_id },
-                    update: {
-                        currentBalance: account.balances.current,
-                        availableBalance: account.balances.available,
-                        limit: account.balances.limit,
-                        name: account.name,
-                        officialName: account.official_name,
-                        mask: account.mask,
-                        type: account.type,
-                        subtype: account.subtype,
-                        isoCurrencyCode: account.balances.iso_currency_code,
+                    data: {
+                        currentBalance: account.balance.current,
+                        availableBalance: account.balance.available,
+                        limit: account.balance.limit,
                     },
-                    create: {
-                        plaidItemId: itemId,
+                }).catch(_e => {
+                    // Account might not exist, that's okay
+                    logger.debug('Account not found for balance update', {
                         accountId: account.account_id,
-                        name: account.name,
-                        officialName: account.official_name,
-                        mask: account.mask,
-                        type: account.type,
-                        subtype: account.subtype,
-                        currentBalance: account.balances.current,
-                        availableBalance: account.balances.available,
-                        limit: account.balances.limit,
-                        isoCurrencyCode: account.balances.iso_currency_code,
-                        familyMemberId: item.familyMemberId,
-                    }
+                    });
                 });
             }
 

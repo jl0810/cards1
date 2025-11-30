@@ -7,6 +7,10 @@ import {
   API_MESSAGES,
   USER_ROLES,
 } from '@/lib/constants';
+import { DateTimeFormatOptionsSchema } from '@/lib/validations';
+import type { z } from 'zod';
+
+type DateTimeFormatOptions = z.infer<typeof DateTimeFormatOptionsSchema>;
 
 describe('Constants', () => {
   describe('USER_AVATAR_COLORS', () => {
@@ -78,7 +82,7 @@ describe('Constants', () => {
 
     it('should format dates correctly', () => {
       const testDate = new Date('2025-01-15');
-      const shortFormat = new Intl.DateTimeFormat('en-US', DATE_FORMATS.SHORT as any).format(testDate);
+      const shortFormat = new Intl.DateTimeFormat('en-US', DATE_FORMATS.SHORT as DateTimeFormatOptions).format(testDate);
       // Format is "Jan 15, 2025" not "1/15/2025" with these options
       expect(shortFormat).toMatch(/[A-Za-z]{3}\s+\d{1,2},\s+\d{4}/);
     });

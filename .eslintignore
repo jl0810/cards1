@@ -1,0 +1,39 @@
+# Generated files
+generated/
+*.generated.ts
+*.generated.js
+
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+
+# Environment files
+.env*
+.env.local
+
+# Coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Config files (require() is appropriate here)
+jest.config.js
+jest.setup.js
+tailwind.config.js
+*.config.js
+
+# Scripts and tests (console.log is appropriate here)
+scripts/
+__tests__/
+*.test.ts
+*.test.js
+*.test.tsx
+
+# Mocks (console.log is appropriate here)
+__mocks__/

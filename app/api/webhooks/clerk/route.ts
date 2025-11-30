@@ -12,6 +12,7 @@ import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { ClerkWebhookEventSchema, ClerkWebhookHeadersSchema, safeValidateSchema } from '@/lib/validations';
+import { z } from 'zod';
 
 /**
  * Type for Clerk webhook event
@@ -31,7 +32,7 @@ type WebhookHeaders = z.infer<typeof ClerkWebhookHeadersSchema>;
  * @implements BR-002 - Welcome Email (via webhook handler)
  * @satisfies US-001 - User Registration
  * @satisfies US-002 - User Profile Management
- * @tested None (webhook endpoints need tests)
+ * @tested __tests__/api/webhooks/clerk.test.ts
  * 
  * @param {NextRequest} req - Clerk webhook payload
  * @returns {Promise<NextResponse>} Status 200 on success
@@ -45,9 +46,9 @@ export async function POST(req: NextRequest) {
 
   // Validate headers using Zod
   const headerValidation = safeValidateSchema(ClerkWebhookHeadersSchema, {
-    'svix-id': svix_id,
-    'svix-timestamp': svix_timestamp,
-    'svix-signature': svix_signature,
+    'svix-id': svix_id || '',
+    'svix-timestamp': svix_timestamp || '',
+    'svix-signature': svix_signature || '',
   });
 
   if (!headerValidation.success) {
@@ -69,9 +70,9 @@ export async function POST(req: NextRequest) {
   // Verify the payload with the headers
   try {
     const verifiedEvent = wh.verify(body, {
-      "svix-id": svix_id,
-      "svix-timestamp": svix_timestamp,
-      "svix-signature": svix_signature,
+      "svix-id": svix_id || '',
+      "svix-timestamp": svix_timestamp || '',
+      "svix-signature": svix_signature || '',
     });
 
     // Validate the event structure using Zod
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
   if (eventType === 'user.created') {
     // Handle new user creation
     const userId = evt.data.id;
-    const email = evt.data.email_addresses[0]?.email_address;
+    const email = evt.data.email_addresses?.[0]?.email_address;
     const firstName = evt.data.first_name;
     const lastName = evt.data.last_name;
     const avatar = evt.data.image_url;
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest) {
 
   if (eventType === 'user.updated') {
     const userId = evt.data.id;
-    const email = evt.data.email_addresses[0]?.email_address;
+    const email = evt.data.email_addresses?.[0]?.email_address;
     const firstName = evt.data.first_name;
     const lastName = evt.data.last_name;
     const avatar = evt.data.image_url;

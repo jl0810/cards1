@@ -23,6 +23,329 @@
 import { z } from 'zod';
 
 /**
+ * Plaid API validation schemas
+ * 
+ * @implements BR-008 - Duplicate Detection
+ * @implements BR-009 - Secure Token Storage
+ * @satisfies US-006 - Link Bank Account
+ * @tested __tests__/lib/validations.test.ts (lines 380-387)
+ */
+
+export const PlaidAccountSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mask: z.string(),
+  type: z.string(),
+  subtype: z.array(z.string()),
+  verification_status: z.string().optional(),
+});
+
+export const PlaidCreditLiabilitySchema = z.object({
+  account_id: z.string().nullable(),
+  aprs: z.array(z.object({
+    apr_type: z.string(),
+    apr_percentage: z.number(),
+    balance_subject_to_apr: z.number().nullable().optional(),
+  })),
+  minimum_payment_amount: z.number().nullable().optional(),
+  last_statement_balance: z.number().nullable().optional(),
+  next_payment_due_date: z.string().nullable().optional(),
+  last_statement_issue_date: z.string().nullable().optional(),
+  last_payment_amount: z.number().nullable().optional(),
+  last_payment_date: z.string().nullable().optional(),
+});
+
+export const PlaidExchangeTokenSchema = z.object({
+  public_token: z.string().min(1, 'Public token is required'),
+  familyMemberId: z.string().optional(),
+  metadata: z.object({
+    institution: z.object({
+      id: z.string(),
+      name: z.string(),
+    }),
+    accounts: z.array(PlaidAccountSchema),
+    link_session_id: z.string().optional(),
+  }),
+});
+
+export const PlaidWebhookSchema = z.object({
+  webhook_type: z.string(),
+  webhook_code: z.string(),
+  item_id: z.string(),
+  error: z.any().optional(), // Plaid errors can vary
+});
+
+/**
+ * UI Component validation schemas
+ * 
+ * @implements BR-026 - Input Validation Required
+ * @satisfies US-015 - Input Validation
+ * @tested __tests__/lib/validations.test.ts (lines 387-400)
+ */
+
+export const TransactionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  amount: z.number(),
+  date: z.string(),
+  category: z.string().optional(),
+  pending: z.boolean(),
+  accountName: z.string().optional(),
+  merchantName: z.string().optional(),
+  plaidItem: z.object({
+    id: z.string(),
+    itemId: z.string(),
+    institutionName: z.string(),
+    familyMemberId: z.string(),
+  }).optional(),
+});
+
+export const PlaidItemSchema = z.object({
+  id: z.string(),
+  itemId: z.string(),
+  institutionName: z.string(),
+  familyMemberId: z.string().optional(),
+  bankId: z.string().optional(),
+  accounts: z.array(z.any()).optional(), // Complex nested structure
+});
+
+export const AccountSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  bank: z.string(),
+  balance: z.number(),
+  userId: z.string(),
+  due: z.string(),
+  color: z.string(),
+  liabilities: z.object({
+    apr: z.string(),
+    aprType: z.string(),
+    aprBalanceSubjectToApr: z.string(),
+    aprInterestChargeAmount: z.string(),
+    limit: z.string(),
+    min_due: z.string(),
+    last_statement: z.string(),
+    next_due_date: z.string(),
+    last_statement_date: z.string(),
+    last_payment_amount: z.string(),
+    last_payment_date: z.string(),
+    status: z.string(),
+  }),
+  // Extended account properties
+  lastStatementBalance: z.number().optional(),
+  lastStatementIssueDate: z.string().optional(),
+  currentBalance: z.number().optional(),
+  lastPaymentAmount: z.number().optional(),
+  lastPaymentDate: z.string().optional(),
+  nextPaymentDueDate: z.string().optional(),
+  subtype: z.string().optional(),
+  apr: z.number().optional(),
+  aprType: z.string().optional(),
+  aprBalanceSubjectToApr: z.number().optional(),
+  aprInterestChargeAmount: z.number().optional(),
+  isoCurrencyCode: z.string().optional(),
+  limit: z.number().optional(),
+  minPaymentAmount: z.number().optional(),
+  isOverdue: z.boolean().optional(),
+  familyMemberId: z.string().optional(),
+  officialName: z.string().optional(),
+  extended: z.object({
+    paymentMarkedPaidDate: z.string().optional(),
+    nickname: z.string().optional(),
+  }).optional(),
+});
+
+export const UserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  avatar: z.string().optional(),
+  role: z.string().optional(),
+});
+
+export const FamilyMemberSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  avatar: z.string().optional(),
+  role: z.string().optional(),
+  color: z.string().optional(),
+});
+
+export const BenefitSchema = z.object({
+  id: z.string().optional(),
+  benefitName: z.string(),
+  isApproved: z.boolean(),
+});
+
+export const ProductSchema = z.object({
+  id: z.string(),
+  issuer: z.string(),
+  productName: z.string(),
+  cardType: z.string().nullable(),
+  annualFee: z.number().nullable(),
+  signupBonus: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
+  active: z.boolean(),
+  benefits: z.array(BenefitSchema),
+});
+
+/**
+ * Analytics validation schemas
+ * 
+ * @implements BR-026 - Input Validation Required
+ * @satisfies US-015 - Input Validation
+ * @tested __tests__/lib/validations.test.ts (lines 387-400)
+ */
+
+/**
+ * Script validation schemas
+ * 
+ * @implements BR-026 - Input Validation Required
+ * @satisfies US-015 - Input Validation
+ * @tested __tests__/lib/validations.test.ts (lines 387-400)
+ */
+
+export const ScriptPlaidItemSchema = z.object({
+  id: z.string(),
+  itemId: z.string(),
+  institutionId: z.string().nullable(),
+  institutionName: z.string().nullable(),
+  isTest: z.boolean(),
+  nextCursor: z.string().nullable(),
+  accessTokenId: z.string(),
+  familyMemberId: z.string().nullable(),
+  lastSyncedAt: z.date().nullable(),
+  bankId: z.string().nullable(),
+  status: z.string(),
+  userId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const DatabaseRowSchema = z.object({
+  clerkId: z.string(),
+});
+
+export const ClerkUserSchema = z.object({
+  id: z.string(),
+});
+
+/**
+ * Test validation schemas
+ * 
+ * @implements BR-026 - Input Validation Required
+ * @satisfies US-015 - Input Validation
+ * @tested __tests__/lib/validations.test.ts (lines 387-400)
+ */
+
+export const JestMockSchema = z.object({
+  mockRejectedValue: z.function().args(z.any()).returns(z.any()),
+  mockResolvedValue: z.function().args(z.any()).returns(z.any()),
+});
+
+export const ClerkAuthMockSchema = z.any(); // Clerk auth functions have complex types, using any for mock compatibility
+
+export const EnvObjectSchema = z.record(z.unknown()); // For iterating over environment keys
+
+export const PlaidProductSchema = z.enum(['transactions', 'auth', 'identity', 'income', 'assets', 'investments', 'liabilities', 'payment_initiation', 'transfer']);
+
+export const DateTimeFormatOptionsSchema = z.object({
+  year: z.string().optional(),
+  month: z.string().optional(),
+  day: z.string().optional(),
+});
+
+export const BenefitRuleConfigSchema = z.record(z.unknown()); // Flexible rule configuration for benefits
+
+// Prisma-compatible JSON type
+export const PrismaJsonSchema = z.unknown(); // For Prisma JSON fields
+
+export const BenefitUsageSchema = z.object({
+  id: z.string(),
+  benefitName: z.string(),
+  description: z.string().nullable().optional(),
+  type: z.string().optional(),
+  timing: z.string().optional(),
+  maxAmount: z.number().nullable().optional(),
+  keywords: z.array(z.string()).optional(),
+  ruleConfig: z.unknown().optional(), // More flexible for Prisma JSONValue
+  // Additional runtime properties
+  cardProductName: z.string().optional(),
+  cardIssuer: z.string().optional(),
+  accountId: z.string().optional(),
+});
+
+export const UserProfileExtendedSchema = z.object({
+  defaultDashboard: z.string().optional(),
+  sidebarCollapsed: z.boolean().optional(),
+  betaFeatures: z.boolean().optional(),
+  analyticsSharing: z.boolean().optional(),
+});
+
+export const ReactErrorInfoSchema = z.string(); // React's onError receives errorInfo as a string
+
+export const PlaidInstitutionExtendedSchema = z.object({
+  institution_id: z.string(),
+  name: z.string(),
+  logo: z.string().optional(),
+  logo_url: z.string().optional(),
+  primary_color: z.string().optional(),
+});
+
+export const ClerkPrivateMetadataSchema = z.object({
+  role: z.string().optional(),
+});
+
+export const MockPlaidModuleSchema = z.object({
+  __mockItemPublicTokenExchange: z.any(),
+  __mockLiabilitiesGet: z.any(),
+  __mockAccountsGet: z.any(),
+  __mockTransactionsSync: z.any(),
+  __mockItemGet: z.any(),
+  __mockAccountsBalanceGet: z.any(),
+});
+
+export const TestClerkUserSchema = z.object({
+  id: z.string(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  emailAddresses: z.array(z.object({
+    emailAddress: z.string(),
+  })).optional(),
+});
+
+export const TestUserProfileSchema = z.object({
+  id: z.string(),
+  clerkId: z.string(),
+  role: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const TestFamilyMemberSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  role: z.string(),
+  color: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const TestUserDataSchema = z.object({
+  clerkUser: TestClerkUserSchema,
+  userProfile: TestUserProfileSchema,
+  primaryFamilyMember: TestFamilyMemberSchema,
+  clerkId: z.string(),
+  userId: z.string(),
+  familyMemberId: z.string(),
+});
+
+export const AnalyticsEventSchema = z.record(z.unknown());
+export type AnalyticsEvent = z.infer<typeof AnalyticsEventSchema>;
+
+/**
  * Family Member validation schemas
  * 
  * @implements BR-004 - Family Member Name Requirements
@@ -287,3 +610,100 @@ export type SuccessResponse<T = unknown> = {
   data: T;
   message?: string;
 };
+
+/**
+ * Pagination schemas
+ */
+export const PaginationSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+});
+
+/**
+ * ID validation schemas
+ */
+export const IdSchema = z.string().uuid('Invalid ID format');
+
+/**
+ * Date range schemas
+ */
+export const DateRangeSchema = z.object({
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+});
+
+/**
+ * Family Member API schemas
+ */
+export const FamilyMemberParamsSchema = z.object({
+  familyMemberId: IdSchema,
+});
+
+/**
+ * Account API schemas
+ */
+export const AccountParamsSchema = z.object({
+  accountId: z.string().min(1, 'Account ID is required'),
+});
+
+/**
+ * Plaid Item schemas
+ */
+export const PlaidItemParamsSchema = z.object({
+  itemId: IdSchema,
+});
+
+/**
+ * Sync Transactions schemas (enhanced)
+ */
+export const SyncTransactionsEnhancedSchema = SyncTransactionsSchema.extend({
+  count: z.coerce.number().min(1).max(1000).optional(),
+});
+
+/**
+ * Card Product Query schemas
+ */
+export const CardProductQuerySchema = z.object({
+  issuer: z.string().optional(),
+  cardType: z.string().optional(),
+  activeOnly: z.string().transform(val => val === 'true').optional(),
+});
+
+/**
+ * User Profile Update schemas
+ */
+export const UserProfileUpdateSchema = z.object({
+  name: z.string().min(1).max(100).trim().optional(),
+  avatar: z.string().url().nullable().optional(),
+  preferences: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Transaction Search schemas
+ */
+export const TransactionSearchSchema = z.object({
+  query: z.string().min(1).max(200).optional(),
+  categoryId: z.string().uuid().optional(),
+  minAmount: z.coerce.number().optional(),
+  maxAmount: z.coerce.number().optional(),
+  dateFrom: z.string().datetime().optional(),
+  dateTo: z.string().datetime().optional(),
+  ...PaginationSchema.shape,
+});
+
+/**
+ * Bulk Operations schemas
+ */
+export const BulkOperationSchema = z.object({
+  operation: z.enum(['delete', 'update', 'create']),
+  items: z.array(z.record(z.unknown())).min(1).max(100),
+});
+
+/**
+ * Webhook signature validation schema
+ */
+export const WebhookSignatureSchema = z.object({
+  signature: z.string().min(1),
+  timestamp: z.string().min(1),
+  payload: z.string().min(1),
+});

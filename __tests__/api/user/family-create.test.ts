@@ -11,7 +11,7 @@ jest.mock('@clerk/nextjs/server');
 jest.mock('@/lib/family-operations');
 jest.mock('@/lib/rate-limit');
 
-const { auth } = require('@clerk/nextjs/server');
+import { auth } from '@clerk/nextjs/server';
 
 /**
  * US-003/004: Family Member API Tests

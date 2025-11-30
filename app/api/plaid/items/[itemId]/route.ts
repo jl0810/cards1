@@ -1,13 +1,33 @@
+/**
+ * Plaid Item Management API
+ * Assign items to family members
+ * 
+ * @module app/api/plaid/items/[itemId]
+ * @implements BR-010 - Family Member Assignment
+ * @satisfies US-006 - Link Bank Account
+ */
+
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { AssignPlaidItemSchema, safeValidateSchema, Errors } from '@/lib/validations';
+import { AssignPlaidItemSchema, safeValidateSchema } from '@/lib/validations';
+import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
+/**
+ * Assign a Plaid item to a family member
+ * @route PATCH /api/plaid/items/[itemId]
+ */
 export async function PATCH(
     req: Request,
     { params }: { params: Promise<{ itemId: string }> }
 ) {
+    const limited = await rateLimit(req, RATE_LIMITS.write);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     try {
         const { userId } = await auth();
         if (!userId) {

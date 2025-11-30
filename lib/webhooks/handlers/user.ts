@@ -15,6 +15,39 @@ import { logger } from '@/lib/logger';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { trackEvent } from '@/utils/analytics';
 import { EmailService, sendEmail } from '@/utils/email';
+import { z } from 'zod';
+
+/**
+ * Type for Clerk user webhook data
+ */
+interface ClerkUserWebhookData {
+  id: string;
+  email_addresses?: Array<{
+    email_address: string;
+    id: string;
+  }>;
+  first_name?: string;
+  last_name?: string;
+  image_url?: string;
+  created_at?: number;
+  updated_at?: number;
+}
+
+/**
+ * Zod schema for validating Clerk webhook user data
+ */
+const ClerkUserWebhookDataSchema: z.ZodSchema<ClerkUserWebhookData> = z.object({
+  id: z.string(),
+  email_addresses: z.array(z.object({
+    email_address: z.string().email(),
+    id: z.string(),
+  })).optional(),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  image_url: z.string().url().optional(),
+  created_at: z.number().optional(),
+  updated_at: z.number().optional(),
+});
 
 /**
  * Handle Clerk user-related webhook events
@@ -64,9 +97,9 @@ export async function handleUserEvent(evt: WebhookEvent) {
  * @satisfies US-001 - User Registration
  */
 async function handleUserCreated(evt: WebhookEvent) {
-  // Type assertion for user data
-  const userData = evt.data as any; // Clerk user event data
-  const { id, email_addresses, first_name, last_name, image_url, created_at } = userData;
+  // Validate and type the webhook data
+  const userData = ClerkUserWebhookDataSchema.parse(evt.data);
+  const { id, email_addresses, first_name, image_url, created_at } = userData;
 
   logger.info('User created webhook received', { 
     userId: id, 
@@ -128,9 +161,9 @@ async function handleUserCreated(evt: WebhookEvent) {
 }
 
 async function handleUserUpdated(evt: WebhookEvent) {
-  // Type assertion for user data
-  const userData = evt.data as any; // Clerk user event data
-  const { id, email_addresses, first_name, last_name, image_url, updated_at } = userData;
+  // Validate and type the webhook data
+  const userData = ClerkUserWebhookDataSchema.parse(evt.data);
+  const { id, email_addresses, first_name, image_url, updated_at } = userData;
 
   logger.info('User updated webhook received', { userId: id });
 
@@ -141,7 +174,7 @@ async function handleUserUpdated(evt: WebhookEvent) {
       data: {
         name: first_name || undefined,
         avatar: image_url || undefined,
-        updatedAt: new Date(updated_at),
+        updatedAt: updated_at ? new Date(updated_at) : new Date(),
       },
     });
 
@@ -187,7 +220,9 @@ async function handleUserUpdated(evt: WebhookEvent) {
  *    - Deleted (user requested): Data deleted, tokens retained
  */
 async function handleUserDeleted(evt: WebhookEvent) {
-  const { id } = evt.data;
+  // Validate and type the webhook data
+  const userData = ClerkUserWebhookDataSchema.parse(evt.data);
+  const { id } = userData;
 
   logger.info('User account deletion initiated', { 
     userId: id,

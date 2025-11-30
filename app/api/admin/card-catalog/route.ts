@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAdmin } from '@/lib/admin';
+import { CreateCardProductSchema, safeValidateSchema } from '@/lib/validations';
 
 /**
  * Get all card products with benefits (admin only)
@@ -15,7 +16,7 @@ import { withAdmin } from '@/lib/admin';
  * @route GET /api/admin/card-catalog
  * @implements BR-031 - Admin Role Required
  * @satisfies US-019 - Card Catalog Management
- * @tested None (admin endpoints need tests)
+ * @tested __tests__/api/admin/card-catalog.test.ts
  * 
  * @returns {Promise<NextResponse>} Array of card products with benefits and usage counts
  */
@@ -40,27 +41,39 @@ export async function GET(req: Request) {
     });
 }
 
-// POST /api/admin/card-products
+/**
+ * Create a new card product (admin only)
+ * 
+ * @route POST /api/admin/card-catalog
+ * @implements BR-031 - Admin Role Required
+ * @implements BR-026 - Input Validation Required
+ * @satisfies US-019 - Card Catalog Management
+ * @tested __tests__/api/admin/card-catalog.test.ts
+ */
 export async function POST(req: Request) {
     return withAdmin(async () => {
         const body = await req.json();
-        const { issuer, productName, cardType, annualFee, signupBonus, imageUrl } = body;
-
-        if (!issuer || !productName) {
+        
+        // Validate with Zod schema (BR-026)
+        const validation = safeValidateSchema(CreateCardProductSchema, body);
+        if (!validation.success) {
             return NextResponse.json(
-                { error: 'Issuer and productName are required' },
+                { error: 'Validation failed', details: validation.error.errors },
                 { status: 400 }
             );
         }
+
+        const { issuer, productName, cardType, annualFee, signupBonus, imageUrl, bankId } = validation.data;
 
         const product = await prisma.cardProduct.create({
             data: {
                 issuer,
                 productName,
                 cardType,
-                annualFee: annualFee ? parseFloat(annualFee) : null,
+                annualFee,
                 signupBonus,
-                imageUrl
+                imageUrl,
+                bankId,
             },
             include: {
                 benefits: true

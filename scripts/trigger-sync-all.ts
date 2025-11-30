@@ -1,6 +1,9 @@
 import { PrismaClient } from '../generated/prisma/client';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 import * as dotenv from 'dotenv';
+import { logger } from '../lib/logger';
+import { ScriptPlaidItemSchema } from '../lib/validations';
+import type { z } from 'zod';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -8,7 +11,7 @@ dotenv.config();
 const prisma = new PrismaClient({});
 
 const configuration = new Configuration({
-    basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
+    basePath: PlaidEnvironments[process.env.PLAID_ENV as keyof typeof PlaidEnvironments] || PlaidEnvironments.sandbox,
     baseOptions: {
         headers: {
             'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
@@ -19,8 +22,10 @@ const configuration = new Configuration({
 
 const plaidClient = new PlaidApi(configuration);
 
-async function syncItem(item: any) {
-    console.log(`Syncing item: ${item.institutionName} (${item.id})...`);
+type ScriptPlaidItem = z.infer<typeof ScriptPlaidItemSchema>;
+
+async function syncItem(item: ScriptPlaidItem) {
+    console.log(`Syncing item: ${item.institutionName || 'Unknown Institution'} (${item.id})...`);
 
     try {
         // Retrieve Access Token from Vault
@@ -89,8 +94,9 @@ async function syncItem(item: any) {
 
         console.log(`  Synced ${addedCount} new transactions.`);
 
-    } catch (error: any) {
-        console.error(`  Error syncing item ${item.id}:`, error.response?.data || error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`  Error syncing item ${item.id}:`, errorMessage);
     }
 }
 

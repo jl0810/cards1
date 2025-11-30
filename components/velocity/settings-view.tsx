@@ -8,7 +8,13 @@ import { ConnectedBanksSection } from "./connected-banks-section";
 
 type PanelView = 'main' | 'family' | 'banks';
 
-export function SettingsView({ users, accounts, onAddMember, onUpdateMember, onDeleteMember, onLinkBank }: { users: any[], accounts: any[], onAddMember: (name: string) => void, onUpdateMember: (id: string, name: string) => void, onDeleteMember: (id: string) => void, onLinkBank: (bank: string, userId: string) => void }) {
+import { UserSchema, AccountSchema } from "@/lib/validations";
+import type { z } from "zod";
+
+type User = z.infer<typeof UserSchema>;
+type Account = z.infer<typeof AccountSchema>;
+
+export function SettingsView({ users, accounts, onAddMember, onUpdateMember, onDeleteMember, onLinkBank }: { users: User[], accounts: Account[], onAddMember: (name: string) => void, onUpdateMember: (id: string, name: string) => void, onDeleteMember: (id: string) => void, onLinkBank: (bank: string, userId: string) => void }) {
   const { user } = useUser();
   const clerk = useClerk();
   const [activePanel, setActivePanel] = useState<PanelView>('main');
@@ -25,7 +31,7 @@ export function SettingsView({ users, accounts, onAddMember, onUpdateMember, onD
     }
   }
 
-  const startEditing = (user: any) => {
+  const startEditing = (user: User) => {
     setEditingId(user.id);
     setEditName(user.name);
   };

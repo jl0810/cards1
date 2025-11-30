@@ -54,7 +54,7 @@ interface PlaidItem {
 
 function BankConnectionCard({ item, familyMembers, onReassign, onRefresh, onDisconnect, onAccountLinked }: {
     item: PlaidItem;
-    familyMembers: any[];
+    familyMembers: FamilyMember[];
     onReassign: (itemId: string, memberId: string) => void;
     onRefresh: (itemId: string) => void;
     onDisconnect: (itemId: string) => void;
@@ -265,7 +265,14 @@ function BankConnectionCard({ item, familyMembers, onReassign, onRefresh, onDisc
     );
 }
 
-export function ConnectedBanksSection({ familyMembers }: { familyMembers: any[] }) {
+import { FamilyMemberSchema, BenefitSchema, ProductSchema } from "@/lib/validations";
+import type { z } from "zod";
+
+type FamilyMember = z.infer<typeof FamilyMemberSchema>;
+type Benefit = z.infer<typeof BenefitSchema>;
+type Product = z.infer<typeof ProductSchema>;
+
+export function ConnectedBanksSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
     const [items, setItems] = useState<PlaidItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showDisconnected, setShowDisconnected] = useState(false);

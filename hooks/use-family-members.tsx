@@ -2,6 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import type { FamilyMember } from '@/types/dashboard';
 
+interface DatabaseFamilyMember {
+    id: string;
+    name: string;
+    avatar?: string;
+    role?: string;
+    isPrimary?: boolean;
+}
+
 interface UseFamilyMembersReturn {
     members: FamilyMember[];
     loading: boolean;
@@ -35,7 +43,7 @@ export function useFamilyMembers(): UseFamilyMembersReturn {
 
             // Transform to UI format
             const colors = ['bg-pink-500', 'bg-orange-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-purple-500'];
-            const formattedMembers: FamilyMember[] = data.map((u: any, index: number) => ({
+            const formattedMembers: FamilyMember[] = data.map((u: DatabaseFamilyMember, index: number) => ({
                 id: u.id,
                 name: u.name,
                 avatar: u.avatar || u.name[0],

@@ -39,7 +39,7 @@ export function EmailLayout({ children, previewText }: EmailLayoutProps) {
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              You're receiving this email because you signed up for our service.
+              You&apos;re receiving this email because you signed up for our service.
             </Text>
             <Text style={footerText}>
               <Link href="#" style={link}>Unsubscribe</Link> |

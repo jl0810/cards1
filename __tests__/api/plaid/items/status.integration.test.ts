@@ -49,7 +49,13 @@ import { auth } from '@clerk/nextjs/server';
 import * as plaidModule from 'plaid';
 
 // Get the mock function from the mocked module
-const mockItemGetFn = (plaidModule as any).__mockItemGet;
+import { MockPlaidModuleSchema, ClerkAuthMockSchema } from '@/lib/validations';
+import type { z } from 'zod';
+
+type MockPlaidModule = z.infer<typeof MockPlaidModuleSchema>;
+type ClerkAuthMock = z.infer<typeof ClerkAuthMockSchema>;
+
+const mockItemGetFn = (plaidModule as MockPlaidModule).__mockItemGet;
 
 describe('REAL Integration: Plaid Item Status', () => {
   let testUserId: string;
@@ -118,7 +124,7 @@ describe('REAL Integration: Plaid Item Status', () => {
 
   it('should retrieve token from REAL Vault and call Plaid', async () => {
     // Mock external services only
-    (auth as jest.Mock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
@@ -145,7 +151,7 @@ describe('REAL Integration: Plaid Item Status', () => {
   });
 
   it('should fail if Vault secret does not exist', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
 
     // Create item with non-existent secret ID
     const badItem = await prisma.plaidItem.create({
@@ -171,7 +177,7 @@ describe('REAL Integration: Plaid Item Status', () => {
   });
 
   it('should detect needs_reauth status (BR-033)', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
@@ -200,7 +206,7 @@ describe('REAL Integration: Plaid Item Status', () => {
   });
 
   it('should detect error status for other Plaid errors (BR-033)', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
@@ -225,7 +231,7 @@ describe('REAL Integration: Plaid Item Status', () => {
   });
 
   it('should update lastSyncedAt timestamp (BR-033)', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
@@ -291,7 +297,7 @@ describe('REAL Integration: Plaid Item Status', () => {
   });
 
   it('should include consent expiration time if available', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
     const expirationTime = '2025-12-31T23:59:59Z';
     mockItemGetFn.mockResolvedValue({
       data: {
@@ -313,7 +319,7 @@ describe('REAL Integration: Plaid Item Status', () => {
   });
 
   it('should handle Plaid API errors gracefully', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
     mockItemGetFn.mockRejectedValue(new Error('Plaid API timeout'));
 
     const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);

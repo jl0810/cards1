@@ -4,6 +4,10 @@
 
 import { describe, expect, it, beforeAll } from '@jest/globals';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
+import { PlaidProductSchema } from '@/lib/validations';
+import type { z } from 'zod';
+
+type PlaidProduct = z.infer<typeof PlaidProductSchema>;
 
 /**
  * Plaid Sandbox Integration Tests
@@ -53,7 +57,7 @@ describeIf('Plaid Sandbox Integration', () => {
       // Create a public token with Plaid sandbox
       const createResponse = await plaidClient.sandboxPublicTokenCreate({
         institution_id: 'ins_109508',  // Chase sandbox institution
-        initial_products: ['transactions' as any],
+        initial_products: ['transactions' as PlaidProduct],
       });
 
       expect(createResponse.data.public_token).toBeDefined();

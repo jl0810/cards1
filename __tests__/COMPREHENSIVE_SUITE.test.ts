@@ -60,7 +60,11 @@ import { POST as syncTransactions } from '@/app/api/plaid/sync-transactions/rout
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
 import { logger } from '@/lib/logger';
+import { JestMockSchema } from '@/lib/validations';
 import * as plaid from 'plaid';
+import type { z } from 'zod';
+
+type JestMock = z.infer<typeof JestMockSchema>;
 
 describe('COMPREHENSIVE TEST SUITE - All Business Rules', () => {
   let testUserId: string;
@@ -178,7 +182,7 @@ describe('COMPREHENSIVE TEST SUITE - All Business Rules', () => {
 
         // Force PlaidItem.create to fail
         const originalCreate = prisma.plaidItem.create;
-        (prisma.plaidItem.create as any) = jest.fn().mockRejectedValue(new Error('DB constraint violation'));
+        (prisma.plaidItem.create as JestMock) = jest.fn().mockRejectedValue(new Error('DB constraint violation'));
 
         const response = await exchangeToken(new Request('http://localhost/api/plaid/exchange-public-token', {
           method: 'POST',

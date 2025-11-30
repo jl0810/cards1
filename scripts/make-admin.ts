@@ -8,6 +8,10 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import { createClerkClient } from '@clerk/backend';
+import { ClerkPrivateMetadataSchema } from '../lib/validations';
+import type { z } from 'zod';
+
+type ClerkPrivateMetadata = z.infer<typeof ClerkPrivateMetadataSchema>;
 
 // Load environment variables
 config({ path: resolve(process.cwd(), '.env.local') });
@@ -30,7 +34,7 @@ async function listUsers() {
     for (const user of response.data) {
         const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'No name';
         const email = user.emailAddresses[0]?.emailAddress || 'No email';
-        const role = (user.privateMetadata as any)?.role || 'user';
+        const role = (user.privateMetadata as ClerkPrivateMetadata)?.role || 'user';
         const isAdmin = role === 'admin';
 
         console.log(`${isAdmin ? '👑' : '👤'} ${name}`);
@@ -55,8 +59,9 @@ async function makeAdmin(userId: string) {
         });
 
         console.log(`✅ User ${userId} is now an admin\n`);
-    } catch (error: any) {
-        console.error('❌ Error making user admin:', error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('❌ Error making user admin:', errorMessage);
         process.exit(1);
     }
 }

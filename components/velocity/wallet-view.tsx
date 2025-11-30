@@ -18,7 +18,20 @@ const FadeIn = ({ children, delay = 0, className }: { children: React.ReactNode,
   </motion.div>
 );
 
-export function WalletView({ users, accounts, activeUser }: { users: any[], accounts: any[], activeUser: string }) {
+import { UserSchema, AccountSchema } from "@/lib/validations";
+import type { z } from "zod";
+
+type User = z.infer<typeof UserSchema>;
+type Account = z.infer<typeof AccountSchema>;
+
+interface Bank {
+  id: string;
+  name: string;
+  totalBalance: number;
+  accounts: Account[];
+}
+
+export function WalletView({ users, accounts, activeUser }: { users: User[], accounts: Account[], activeUser: string }) {
   const [layout, setLayout] = useState('grid');
   const [activeBank, setActiveBank] = useState('all');
 
@@ -38,7 +51,7 @@ export function WalletView({ users, accounts, activeUser }: { users: any[], acco
 
       <div className="flex justify-center">
         <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-1 bg-glass-100 rounded-full border border-white/5 max-w-full">
-          {banks.map((bank: any) => (
+          {banks.map((bank: string) => (
             <button key={bank} onClick={() => setActiveBank(bank)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all capitalize whitespace-nowrap ${activeBank === bank ? 'bg-white text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}>
               {bank}
             </button>

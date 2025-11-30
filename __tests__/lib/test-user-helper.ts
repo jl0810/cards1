@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { TestUserDataSchema, TestClerkUserSchema, TestUserProfileSchema, TestFamilyMemberSchema } from '@/lib/validations';
+import type { z } from 'zod';
 
 /**
  * Test helper for creating test users in integration tests
@@ -21,14 +23,10 @@ import { prisma } from '@/lib/prisma';
  * @tested Integration tests
  */
 
-export interface TestUserData {
-  clerkUser: any;
-  userProfile: any;
-  primaryFamilyMember: any;
-  clerkId: string;
-  userId: string;
-  familyMemberId: string;
-}
+export type TestUserData = z.infer<typeof TestUserDataSchema>;
+export type TestClerkUser = z.infer<typeof TestClerkUserSchema>;
+export type TestUserProfile = z.infer<typeof TestUserProfileSchema>;
+export type TestFamilyMember = z.infer<typeof TestFamilyMemberSchema>;
 
 /**
  * Creates a test user through Clerk Backend API for Jest tests

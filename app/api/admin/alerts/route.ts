@@ -1,26 +1,52 @@
+/**
+ * Admin Alerts API
+ * Send system alerts to users via Novu
+ * 
+ * @module app/api/admin/alerts
+ * @implements BR-031 - Admin Role Required
+ * @satisfies US-023 - Admin Notifications
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { z } from 'zod';
 import { Novu } from '@novu/node';
+import { requireAdmin } from '@/lib/admin';
+import { Errors } from '@/lib/api-errors';
+import { logger } from '@/lib/logger';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 const novu = new Novu(process.env.NOVU_API_KEY!);
 
+const AlertSchema = z.object({
+    title: z.string().min(1).max(200),
+    message: z.string().min(1).max(2000),
+    type: z.enum(['info', 'warning', 'error', 'success']).default('info'),
+    priority: z.enum(['low', 'medium', 'high']).default('medium'),
+    targetUserId: z.string().optional(),
+    actionUrl: z.string().url().optional(),
+    actionText: z.string().max(50).optional(),
+});
+
+/**
+ * Send an admin alert
+ * @route POST /api/admin/alerts
+ */
 export async function POST(request: NextRequest) {
+  const limited = await rateLimit(request, RATE_LIMITS.write);
+  if (limited) {
+    return new Response('Too many requests', { status: 429 });
+  }
+
   try {
-    const { userId } = await auth();
+    const admin = await requireAdmin();
     
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await request.json();
+    const validation = AlertSchema.safeParse(body);
+    if (!validation.success) {
+      return Errors.badRequest('Invalid alert data');
     }
 
-    const { title, message, type = 'info', priority = 'medium', targetUserId, actionUrl, actionText } = await request.json();
-
-    // Validate required fields
-    if (!title || !message) {
-      return NextResponse.json({ error: 'Title and message are required' }, { status: 400 });
-    }
-
-    // In a real app, you'd check if the user is an admin
-    // For demo purposes, we'll allow any authenticated user
+    const { title, message, type, priority, targetUserId, actionUrl, actionText } = validation.data;
 
     // Create the notification trigger
     const result = await novu.trigger('admin-alert', {
@@ -32,7 +58,7 @@ export async function POST(request: NextRequest) {
         priority,
         actionUrl,
         actionText,
-        sentBy: userId,
+        sentBy: admin.userId,
         sentAt: new Date().toISOString()
       }
     });
@@ -44,21 +70,18 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error sending admin alert:', error);
-    return NextResponse.json({ 
-      error: 'Failed to send alert',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    logger.error('Error sending admin alert:', error);
+    return Errors.internal();
   }
 }
 
+/**
+ * Get alert history
+ * @route GET /api/admin/alerts
+ */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requireAdmin();
 
     // Fetch recent alerts (for admin dashboard)
     // This is a placeholder - you'd implement actual alert history
@@ -68,7 +91,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching alerts:', error);
-    return NextResponse.json({ error: 'Failed to fetch alerts' }, { status: 500 });
+    logger.error('Error fetching alerts:', error);
+    return Errors.internal();
   }
 }

@@ -11,7 +11,7 @@ Skip complex E2E tests. Use these **simple, effective** methods:
 ### **1. Chrome DevTools (Fastest)**
 ```bash
 npm run dev
-# Open http://localhost:3000
+# Open http://localhost:3001
 # Press: Cmd+Opt+I (DevTools)
 # Press: Cmd+Shift+M (Toggle Device Toolbar)
 ```
@@ -58,7 +58,7 @@ ipconfig getifaddr en1  # Mac Ethernet
 npm run dev
 
 # On your phone, visit:
-http://YOUR_IP:3000
+http://YOUR_IP:3001
 ```
 
 ### **Option 2: iOS Simulator** (Mac only)

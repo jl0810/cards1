@@ -128,11 +128,12 @@ export async function withAdmin(handler: (adminUser: AdminUser) => Promise<Respo
     try {
         const adminUser = await requireAdmin();
         return await handler(adminUser);
-    } catch (error: any) {
-        if (error.message === 'Unauthorized') {
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        if (errorMessage === 'Unauthorized') {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
         }
-        if (error.message.includes('Forbidden')) {
+        if (errorMessage.includes('Forbidden')) {
             return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
         }
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

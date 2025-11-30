@@ -33,7 +33,7 @@ export function errorResponse(
             success: false,
             error: message,
             status,
-            ...(details && { details }),
+            ...(details !== undefined && { details }),
         },
         { status }
     );

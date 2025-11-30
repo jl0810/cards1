@@ -7,10 +7,10 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
 import { scanAndMatchBenefits } from '@/lib/benefit-matcher';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
  * Matches all unmatched transactions to card benefits
@@ -24,6 +24,12 @@ import { logger } from '@/lib/logger';
  * @returns {Promise<NextResponse>} Match statistics (matched count, scanned count)
  */
 export async function POST(req: Request) {
+    // Rate limit: 20 writes per minute
+    const limited = await rateLimit(req, RATE_LIMITS.write);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     const { userId } = await auth();
 
     if (!userId) {

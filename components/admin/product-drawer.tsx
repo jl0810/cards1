@@ -129,7 +129,7 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
         }
     };
 
-    const updateBenefit = async (index: number, field: keyof Benefit, value: any) => {
+    const updateBenefit = async (index: number, field: keyof Benefit, value: Benefit[keyof Benefit]) => {
         if (!card) return;
 
         // If updating isApproved, save to database immediately
@@ -148,7 +148,8 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
 
                 // Update local state
                 const newBenefits = [...card.benefits];
-                newBenefits[index] = { ...newBenefits[index], [field]: value };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                newBenefits[index] = { ...newBenefits[index], [field]: value as any };
                 setCard({ ...card, benefits: newBenefits });
 
                 toast.success(value ? 'Benefit approved' : 'Benefit marked as draft');

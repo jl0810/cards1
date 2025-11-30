@@ -2,8 +2,8 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
-import { prisma } from '@/lib/prisma';
-import { fetchInstitutionInfo } from '@/lib/plaid-bank';
+import { prisma } from '../lib/prisma';
+import { fetchInstitutionInfo } from '../lib/plaid-bank';
 
 async function main() {
     console.log('Refreshing all bank branding...');
@@ -31,8 +31,9 @@ async function main() {
             } else {
                 console.log(`✗ No branding found`);
             }
-        } catch (e: any) {
-            console.error(`✗ Failed: ${e.message}`);
+        } catch (e: unknown) {
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+            console.error(`✗ Failed: ${errorMessage}`);
         }
     }
 

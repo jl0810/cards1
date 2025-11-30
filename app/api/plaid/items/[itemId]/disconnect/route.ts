@@ -9,6 +9,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { Errors } from '@/lib/api-errors';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +21,7 @@ export const dynamic = 'force-dynamic';
  * @implements BR-034 - Access Token Preservation
  * @satisfies US-006 - Link Bank Account (disconnect capability)
  * @satisfies US-020 - Monitor Bank Connection Health
- * @tested None (HIGH PRIORITY - needs test)
+ * @tested __tests__/api/plaid/items/disconnect.test.ts
  * 
  * @param {Request} req - HTTP request
  * @param {Object} params - Route parameters
@@ -30,19 +32,25 @@ export async function POST(
     req: Request,
     { params }: { params: Promise<{ itemId: string }> }
 ) {
+    // Rate limit: 5 disconnects per minute (sensitive/destructive operation)
+    const limited = await rateLimit(req, RATE_LIMITS.sensitive);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     const { itemId } = await params;
 
     try {
         const { userId } = await auth();
-        if (!userId) return new NextResponse("Unauthorized", { status: 401 });
-        if (!itemId || itemId.trim() === '') return new NextResponse("Item ID is required", { status: 400 });
+        if (!userId) return Errors.unauthorized();
+        if (!itemId || itemId.trim() === '') return Errors.badRequest('Item ID is required');
 
         const userProfile = await prisma.userProfile.findUnique({
             where: { clerkId: userId },
         });
-        if (!userProfile) return new NextResponse("User not found", { status: 404 });
+        if (!userProfile) return Errors.notFound('User profile');
 
-        // Verify ownership
+        // Verify ownership (IDOR protection)
         const plaidItem = await prisma.plaidItem.findFirst({
             where: {
                 id: itemId,
@@ -50,7 +58,7 @@ export async function POST(
             }
         });
 
-        if (!plaidItem) return new NextResponse("Item not found", { status: 404 });
+        if (!plaidItem) return Errors.notFound('Plaid item');
 
         // Update status to disconnected
         // IMPORTANT: We do NOT delete the access_token from Vault per Plaid's requirement
@@ -65,6 +73,6 @@ export async function POST(
 
     } catch (error) {
         logger.error('Error disconnecting item', error, { itemId: itemId });
-        return new NextResponse("Internal Server Error", { status: 500 });
+        return Errors.internal();
     }
 }

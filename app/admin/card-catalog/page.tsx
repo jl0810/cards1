@@ -100,9 +100,10 @@ export default function AdminCardCatalogPage() {
                 : `Updated ${cardName}: ${data.imported} new, ${data.updated} updated, ${data.removed} removed benefits`;
             toast.success(message, { id: toastId });
             fetchProducts();
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to import benefits';
             console.error('AI Import error:', error);
-            toast.error(error.message || 'Failed to import benefits', { id: toastId });
+            toast.error(errorMessage, { id: toastId });
         }
     };
 

@@ -106,7 +106,7 @@ export function useUserPreferences() {
   };
 
   // Update single preference
-  const updatePreference = async (key: keyof UserPreferences, value: any) => {
+  const updatePreference = async (key: keyof UserPreferences, value: UserPreferences[keyof UserPreferences]) => {
     await updatePreferences({ [key]: value });
   };
 

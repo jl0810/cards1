@@ -1,5 +1,3 @@
-"use server";
-
 /**
  * Account Nickname API
  * Allows users to set custom nicknames for bank accounts
@@ -12,6 +10,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { Errors, successResponse } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { UpdateAccountNicknameSchema, safeValidateSchema } from '@/lib/validations';
 
 /**
@@ -28,6 +27,12 @@ import { UpdateAccountNicknameSchema, safeValidateSchema } from '@/lib/validatio
  * @returns {Promise<NextResponse>} Success response
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ accountId: string }> }) {
+    // Rate limit: 20 writes per minute
+    const limited = await rateLimit(req, RATE_LIMITS.write);
+    if (limited) {
+        return new Response('Too many requests', { status: 429 });
+    }
+
     const { userId } = await auth();
     if (!userId) return Errors.unauthorized();
 

@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
  * @implements BR-014 - Account Balance Display
  * @implements BR-015 - Due Date Calculation
  * @satisfies US-008 - View Connected Accounts
- * @tested None (needs integration test)
+ * @tested __tests__/api/plaid/items.test.ts
  * 
  * @returns {Promise<NextResponse>} Array of Plaid items with accounts and balances
  */
