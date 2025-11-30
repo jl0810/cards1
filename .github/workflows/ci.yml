@@ -1,0 +1,47 @@
+name: CI - Code Quality & Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:  # ← Allows manual trigger
+
+jobs:
+  quality-checks:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Type check (Strict Mode - NO any)
+        run: npm run type-check
+      
+      - name: Lint code
+        run: npm run lint
+      
+      - name: Check for forbidden 'any' types
+        run: |
+          echo "Scanning for 'any' types in source code..."
+          if find src/ app/ components/ lib/ hooks/ -name "*.ts" -o -name "*.tsx" 2>/dev/null | xargs grep -n ":\s*any\b" 2>/dev/null; then
+            echo "❌ ERROR: Found forbidden 'any' type usage (see lines above)"
+            echo "Use 'unknown' with type narrowing instead"
+            exit 1
+          else
+            echo "✅ No 'any' types found"
+          fi
+      
+      - name: Run unit tests
+        run: npm run test --if-present
+      
+      - name: Build project
+        run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: true

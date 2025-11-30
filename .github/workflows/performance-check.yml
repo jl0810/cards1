@@ -1,0 +1,58 @@
+name: Performance Budget
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  bundle-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project
+        run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: true
+      
+      - name: Check bundle sizes
+        run: |
+          echo "Analyzing bundle sizes..."
+          
+          if [ -d ".next/static/chunks" ]; then
+            LARGE_CHUNKS=$(find .next/static/chunks -name "*.js" -size +50k)
+            
+            if [ -n "$LARGE_CHUNKS" ]; then
+              echo "⚠️  Found large client bundles (>50KB):"
+              ls -lh $LARGE_CHUNKS
+              echo ""
+              echo "Consider using next/dynamic for heavy components"
+            else
+              echo "✅ All chunks are under 50KB"
+            fi
+          fi
+      
+      - name: Check Leaf Pattern compliance
+        run: |
+          echo "Checking for 'use client' in page.tsx and layout.tsx..."
+          
+          VIOLATIONS=$(find src/app -name "page.tsx" -o -name "layout.tsx" | xargs grep -l "'use client'" 2>/dev/null || true)
+          
+          if [ -n "$VIOLATIONS" ]; then
+            echo "❌ ERROR: Found 'use client' in page/layout files:"
+            echo "$VIOLATIONS"
+            echo ""
+            echo "Violates Leaf Pattern - push 'use client' to leaf components only"
+            exit 1
+          else
+            echo "✅ Leaf Pattern compliance verified"
+          fi

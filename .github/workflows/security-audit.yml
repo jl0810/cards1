@@ -1,0 +1,61 @@
+name: Security Audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Mondays
+
+jobs:
+  security-checks:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+      
+      - name: Check for secrets in client code
+        run: |
+          echo "Checking for leaked secrets in client components..."
+          
+          # Check for non-public env vars in client components
+          VIOLATIONS=$(find src/app src/components -name "*.tsx" -o -name "*.ts" | while read file; do
+            if grep -q "'use client'" "$file"; then
+              if grep "process.env" "$file" | grep -v "NEXT_PUBLIC_"; then
+                echo "⚠️  $file: Non-public env var in client component"
+              fi
+            fi
+          done)
+          
+          if [ -n "$VIOLATIONS" ]; then
+            echo "$VIOLATIONS"
+            echo "❌ ERROR: Found non-public env vars in client components"
+            exit 1
+          else
+            echo "✅ No secrets leaked to client"
+          fi
+      
+      - name: Check for missing Zod validation in Server Actions
+        run: |
+          echo "Checking Server Actions for Zod validation..."
+          
+          if [ -d "src/app/actions" ]; then
+            find src/app/actions -name "*.ts" | while read file; do
+              if grep -q "'use server'" "$file"; then
+                if ! grep -q "from ['\"]zod['\"]" "$file"; then
+                  echo "⚠️  $file: Server Action missing Zod import"
+                fi
+              fi
+            done
+          fi

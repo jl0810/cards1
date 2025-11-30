@@ -1,0 +1,45 @@
+name: Documentation Sync Check
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check if documentation was updated
+        run: |
+          echo "Checking if documentation was updated with code changes..."
+          
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          
+          CODE_CHANGED=$(echo "$CHANGED_FILES" | grep -E "(src|app|components|lib)/.*\.(ts|tsx)$" || true)
+          DOCS_CHANGED=$(echo "$CHANGED_FILES" | grep -E "^docs/.*\.md$" || true)
+          
+          if [ -n "$CODE_CHANGED" ] && [ -z "$DOCS_CHANGED" ]; then
+            echo "⚠️  WARNING: Code changed but no documentation updated"
+            echo ""
+            echo "Consider updating:"
+            echo "  - docs/USER_STORIES.md (if UI flow changed)"
+            echo "  - docs/BUSINESS_RULES.md (if logic changed)"
+            echo "  - docs/TRACEABILITY_MATRIX.md (if features added)"
+            echo "  - docs/UI_MAPPING.md (if UI elements changed)"
+            echo ""
+            echo "Changed code files:"
+            echo "$CODE_CHANGED" | head -10
+            
+            # Don't fail, just warn
+            exit 0
+          else
+            echo "✅ Documentation appears up to date"
+          fi
