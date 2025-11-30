@@ -1,10 +1,24 @@
 "use client";
 
+/**
+ * Credit Card Display Component
+ * 
+ * @module components/velocity/credit-card
+ * @implements BR-032 - Card Product Matching
+ * @implements BR-037 - Payment Cycle Status Calculation
+ * @implements BR-042 - XSS Prevention (SVG sanitization)
+ * @satisfies US-019 - Link Card Product
+ * @satisfies US-023 - Payment Cycle Status Tracking
+ * @satisfies US-036 - Secure Content Display
+ * @tested __tests__/components/velocity/credit-card.test.ts
+ */
+
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wifi, Landmark, Globe, CheckCircle, AlertCircle, Clock, Info } from "lucide-react";
+import { Wifi, Landmark, Globe, CheckCircle } from "lucide-react";
 import { useBankBrand } from "@/hooks/use-bank-brand";
 import { getPaymentCycleColor, getPaymentCycleLabel, PaymentCycleStatus } from "@/lib/payment-cycle";
+import { sanitizeSvg } from "@/lib/sanitize";
 
 interface Account {
   id: string;
@@ -238,7 +252,7 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
                     <div 
                       className="brightness-0 invert"
                       style={{ width: '100%', height: '100%' }}
-                      dangerouslySetInnerHTML={{ __html: brand.logoSvg }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeSvg(brand.logoSvg || '') }}
                     />
                   </div>
                 ) : brand?.logoUrl ? (

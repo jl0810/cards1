@@ -10,7 +10,7 @@ import {
   SignUpButton,
   UserButton,
 } from "@clerk/nextjs";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Zap, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";

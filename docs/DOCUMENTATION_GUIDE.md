@@ -20,6 +20,10 @@ docs/
 
 Source Code:
 ├── JSDoc comments            ← Implementation details + references
+│   ├── @module               ← File location
+│   ├── @implements           ← Business rules implemented
+│   ├── @satisfies            ← User stories satisfied
+│   └── @tested               ← Test file locations
 └── Code implements rules
 
 Tests:

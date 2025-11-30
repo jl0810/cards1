@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
-import { MarketingHeader } from "@/app/_template/components/marketing-header";
+import { MarketingHeader } from "@/components/marketing/marketing-header";
 
 
 // Define our plan data

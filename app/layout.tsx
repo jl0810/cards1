@@ -8,6 +8,7 @@ import { dark } from '@clerk/themes';
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { SkipLink } from "@/components/shared/skip-link";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -47,6 +48,9 @@ export default function RootLayout({
           <link rel="dns-prefetch" href="https://sought-spider-1.clerk.accounts.dev" />
         </head>
         <body className={`${font.className} antialiased`}>
+          <SkipLink href="#main-content">
+            Skip to main content
+          </SkipLink>
           <PostHogProvider>
             <ThemeProvider
               defaultTheme="dark"

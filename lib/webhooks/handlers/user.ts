@@ -13,8 +13,8 @@ import type { UserJSON } from '@clerk/backend';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { WebhookEvent } from '@clerk/nextjs/server';
-import { trackEvent } from '@/utils/analytics';
-import { EmailService, sendEmail } from '@/utils/email';
+import { trackEvent } from '@/lib/analytics-utils';
+import { EmailService, sendEmail } from '@/lib/email-utils';
 import { z } from 'zod';
 
 /**

@@ -1,4 +1,4 @@
-import { AppShell } from "@/app/components/app-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import { UserProfile } from "@clerk/nextjs";
 
 

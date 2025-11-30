@@ -10,6 +10,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { Errors, successResponse } from '@/lib/api-errors';
+import { IdSchema } from '@/lib/validations';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ bankId: 
     }
 
     const { bankId } = await params;
+    
+    // Input validation (BR-026)
+    const validatedId = IdSchema.safeParse(bankId);
+    if (!validatedId.success) {
+        return Errors.badRequest('Invalid bank ID format');
+    }
+    
     const bank = await prisma.bank.findUnique({
         where: { id: bankId },
         select: { logoUrl: true, logoSvg: true, brandColor: true, name: true },

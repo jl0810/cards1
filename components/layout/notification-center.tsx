@@ -18,21 +18,15 @@ export function NotificationCenter() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
+        <Button variant="ghost" size="sm">
           <Bell className="h-4 w-4" />
-          {/* Unread indicator will be shown by Novu */}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
-        <div className="h-96">
-          <Inbox
-            applicationIdentifier={process.env.NEXT_PUBLIC_NOVU_APPLICATION_ID || ''}
-            subscriberId={user.id}
-            onNotificationClick={(notification) => {
-              console.log('Notification clicked:', notification);
-            }}
-          />
-        </div>
+        <Inbox
+          applicationIdentifier={process.env.NEXT_PUBLIC_NOVU_APP_ID || ''}
+          subscriberId={user.id}
+        />
       </PopoverContent>
     </Popover>
   );

@@ -7,7 +7,7 @@
  * @satisfies US-022 - Visual Loading Feedback
  */
 
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, CardSkeleton, DashboardSkeleton } from '@/components/shared/skeleton';
 
 export default function DashboardLoading() {
   return (

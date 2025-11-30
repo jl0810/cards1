@@ -2,8 +2,8 @@
 
 import { PostHogProvider as PHProvider } from 'posthog-js/react'
 import { useEffect, useState, useMemo } from 'react'
-import PostHogPageView from '@/components/PostHogPageView'
-import { initPostHog } from '@/utils/posthog'
+import PostHogPageView from '@/components/shared/PostHogPageView'
+import { initPostHog } from '@/lib/posthog-utils'
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false)

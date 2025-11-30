@@ -6,5 +6,5 @@ export { BillingNotification } from './templates/BillingNotification';
 export { EmailLayout } from './components/Layout';
 
 // Email service
-export { EmailService, sendEmail } from '../utils/email';
-export type { EmailConfig } from '../utils/email';
+export { EmailService, sendEmail } from '../lib/email-utils';
+export type { EmailConfig } from '../lib/email-utils';

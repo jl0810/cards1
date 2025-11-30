@@ -1,8 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
-import { ClerkLogo } from "../_template/components/clerk-logo";
-import { NextLogo } from "../_template/components/next-logo";
-import { AdminAlertPanel } from "@/components/admin-alert-panel";
+import { ClerkLogo } from "@/components/marketing/clerk-logo";
+import { NextLogo } from "@/components/marketing/next-logo";
+import { AdminAlertPanel } from "@/components/admin/admin-alert-panel";
 import Link from "next/link";
 
 export default async function AdminPage() {

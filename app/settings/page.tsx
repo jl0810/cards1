@@ -1,5 +1,5 @@
-import { AppShell } from "@/app/components/app-shell";
-import { UserPreferencesSettings } from "@/components/user-preferences-settings";
+import { AppShell } from "@/components/layout/app-shell";
+import { UserPreferencesSettings } from "@/components/shared/user-preferences-settings";
 import {
   Card,
   CardContent,

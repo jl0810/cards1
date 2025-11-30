@@ -1,5 +1,5 @@
 import { WebhookEvent } from '@clerk/nextjs/server';
-import { trackEvent } from '@/utils/analytics';
+import { trackEvent } from '@/lib/analytics-utils';
 
 /**
  * Handle Clerk subscription-related webhook events

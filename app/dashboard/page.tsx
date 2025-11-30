@@ -463,7 +463,7 @@ export default function DashboardPage() {
       </AppHeader>
 
       {/* MAIN CONTENT */}
-      <main className="px-5 pt-4">
+      <main id="main-content" className="px-5 pt-4">
         <AnimatePresence mode="wait">
           {activeTab === "wallet" && (
             <motion.div

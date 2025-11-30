@@ -3,7 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Building2, CreditCard, Plus, Trash2, RefreshCw, Users, Link as LinkIcon } from 'lucide-react';
-import PlaidLink from '@/components/plaid-link';
+import dynamic from 'next/dynamic';
+
+const PlaidLink = dynamic(() => import('@/components/shared/plaid-link').then(mod => ({ default: mod.default })), {
+  loading: () => <div className="h-11 flex items-center justify-center"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div></div>,
+  ssr: false
+});
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useBankBrand } from '@/hooks/use-bank-brand';
