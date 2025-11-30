@@ -180,6 +180,8 @@ export async function POST(req: Request) {
                                 lastStatementBalance: creditLiability?.last_statement_balance,
                                 nextPaymentDueDate: creditLiability?.next_payment_due_date ? new Date(creditLiability.next_payment_due_date) : null,
                                 lastStatementIssueDate: creditLiability?.last_statement_issue_date ? new Date(creditLiability.last_statement_issue_date) : null,
+                                lastPaymentAmount: creditLiability?.last_payment_amount,
+                                lastPaymentDate: creditLiability?.last_payment_date ? new Date(creditLiability.last_payment_date) : null,
                             };
                         }),
                     },

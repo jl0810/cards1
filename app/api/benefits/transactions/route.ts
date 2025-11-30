@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
+import { TransactionQuerySchema, safeValidateSchema, ApiError } from '@/lib/validations';
 
 export async function GET(req: Request) {
     try {
@@ -12,8 +13,13 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const benefitId = searchParams.get('benefitId');
 
-        if (!benefitId) {
-            return NextResponse.json({ error: 'benefitId is required' }, { status: 400 });
+        // Validate query parameters using Zod
+        const queryValidation = safeValidateSchema(TransactionQuerySchema, { benefitId });
+        if (!queryValidation.success) {
+            return NextResponse.json({ 
+                error: 'Invalid query parameters',
+                details: queryValidation.error.errors 
+            }, { status: 400 });
         }
 
         // Get all matched transactions for this benefit
@@ -41,14 +47,28 @@ export async function GET(req: Request) {
         }));
 
         return NextResponse.json({
-            transactions,
-            count: transactions.length
+            success: true,
+            data: {
+                transactions,
+                count: transactions.length
+            }
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error fetching benefit transactions:', error);
+        
+        // Type-safe error handling
+        const apiError: ApiError = {
+            message: error instanceof Error ? error.message : 'Failed to fetch transactions',
+            status: 500
+        };
+        
         return NextResponse.json(
-            { error: error.message || 'Failed to fetch transactions' },
-            { status: 500 }
+            { 
+                success: false,
+                error: apiError.message,
+                ...(process.env.NODE_ENV === 'development' && { details: error })
+            },
+            { status: apiError.status || 500 }
         );
     }
 }

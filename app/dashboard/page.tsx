@@ -9,6 +9,7 @@ import { useIsAdmin } from "@/hooks/use-admin";
 import { logger } from "@/lib/logger";
 import { USER_AVATAR_COLORS, DEFAULT_CURRENCY, DATE_FORMATS } from "@/lib/constants";
 import type { FamilyMember, Account } from "@/types/dashboard";
+import { calculatePaymentCycleStatus } from "@/lib/payment-cycle";
 import { WalletView } from "@/components/velocity/wallet-view";
 import { ActivityView } from "@/components/velocity/activity-view";
 import { SettingsView } from "@/components/velocity/settings-view";
@@ -269,39 +270,52 @@ export default function DashboardPage() {
 
       // Transform Plaid items/accounts into WalletView format
       const allAccounts = items.flatMap((item: any) =>
-        item.accounts.map((acc: any) => ({
-          id: acc.id,
-          userId: acc.familyMemberId || item.familyMemberId,
-          bank: item.institutionName || 'Unknown Bank',
-          bankId: item.bankId, // Pass through the bankId from PlaidItem
-          name: acc.extended?.nickname ?? acc.officialName ?? acc.name,
-          balance: acc.currentBalance || 0,
-          due: acc.nextPaymentDueDate
-            ? (() => {
-              const diffDays = Math.ceil((new Date(acc.nextPaymentDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              if (diffDays < 0) return 'Overdue';
-              if (diffDays === 0) return 'Today';
-              if (diffDays === 1) return 'Tomorrow';
-              return `${diffDays} days`;
-            })()
-            : 'N/A',
-          type: acc.subtype || acc.type,
-          color: 'from-slate-800 to-slate-900', // Default color
-          liabilities: {
-            apr: formatPercent(acc.apr),
-            aprType: acc.aprType || 'N/A',
-            aprBalanceSubjectToApr: formatCurrency(acc.aprBalanceSubjectToApr, acc.isoCurrencyCode),
-            aprInterestChargeAmount: formatCurrency(acc.aprInterestChargeAmount, acc.isoCurrencyCode),
-            limit: formatCurrency(acc.limit, acc.isoCurrencyCode),
-            min_due: formatCurrency(acc.minPaymentAmount, acc.isoCurrencyCode),
-            last_statement: formatCurrency(acc.lastStatementBalance, acc.isoCurrencyCode),
-            next_due_date: formatDate(acc.nextPaymentDueDate),
-            last_statement_date: formatDate(acc.lastStatementIssueDate),
-            last_payment_amount: formatCurrency(acc.lastPaymentAmount, acc.isoCurrencyCode),
-            last_payment_date: formatDate(acc.lastPaymentDate),
-            status: acc.isOverdue ? 'Overdue' : (acc.nextPaymentDueDate ? 'Current' : 'N/A')
-          }
-        }))
+        item.accounts.map((acc: any) => {
+          // Calculate Payment Cycle Status
+          const paymentCycleStatus = calculatePaymentCycleStatus({
+            lastStatementBalance: acc.lastStatementBalance || 0,
+            lastStatementIssueDate: acc.lastStatementIssueDate ? new Date(acc.lastStatementIssueDate) : null,
+            currentBalance: acc.currentBalance || 0,
+            paymentMarkedPaidDate: acc.extended?.paymentMarkedPaidDate ? new Date(acc.extended.paymentMarkedPaidDate) : null,
+            lastPaymentAmount: acc.lastPaymentAmount || null,
+            lastPaymentDate: acc.lastPaymentDate ? new Date(acc.lastPaymentDate) : null,
+          });
+
+          return {
+            id: acc.id,
+            userId: acc.familyMemberId || item.familyMemberId,
+            bank: item.institutionName || 'Unknown Bank',
+            bankId: item.bankId, // Pass through the bankId from PlaidItem
+            name: acc.extended?.nickname ?? acc.officialName ?? acc.name,
+            balance: acc.currentBalance || 0,
+            paymentCycleStatus, // Add the calculated status
+            due: acc.nextPaymentDueDate
+              ? (() => {
+                const diffDays = Math.ceil((new Date(acc.nextPaymentDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                if (diffDays < 0) return 'Overdue';
+                if (diffDays === 0) return 'Today';
+                if (diffDays === 1) return 'Tomorrow';
+                return `${diffDays} days`;
+              })()
+              : 'N/A',
+            type: acc.subtype || acc.type,
+            color: 'from-slate-800 to-slate-900', // Default color
+            liabilities: {
+              apr: formatPercent(acc.apr),
+              aprType: acc.aprType || 'N/A',
+              aprBalanceSubjectToApr: formatCurrency(acc.aprBalanceSubjectToApr, acc.isoCurrencyCode),
+              aprInterestChargeAmount: formatCurrency(acc.aprInterestChargeAmount, acc.isoCurrencyCode),
+              limit: formatCurrency(acc.limit, acc.isoCurrencyCode),
+              min_due: formatCurrency(acc.minPaymentAmount, acc.isoCurrencyCode),
+              last_statement: formatCurrency(acc.lastStatementBalance, acc.isoCurrencyCode),
+              next_due_date: formatDate(acc.nextPaymentDueDate),
+              last_statement_date: formatDate(acc.lastStatementIssueDate),
+              last_payment_amount: formatCurrency(acc.lastPaymentAmount, acc.isoCurrencyCode),
+              last_payment_date: formatDate(acc.lastPaymentDate),
+              status: acc.isOverdue ? 'Overdue' : (acc.nextPaymentDueDate ? 'Current' : 'N/A')
+            }
+          };
+        })
       );
 
       setAccounts(allAccounts);

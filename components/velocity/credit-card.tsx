@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wifi, Landmark, Globe } from "lucide-react";
+import { Wifi, Landmark, Globe, CheckCircle, AlertCircle, Clock, Info } from "lucide-react";
 import { useBankBrand } from "@/hooks/use-bank-brand";
+import { getPaymentCycleColor, getPaymentCycleLabel, PaymentCycleStatus } from "@/lib/payment-cycle";
 
 interface Account {
   id: string;
@@ -16,6 +17,7 @@ interface Account {
   due: string;
   type: string;
   color: string;
+  paymentCycleStatus?: string;
   liabilities: {
     apr: string;
     aprType: string;
@@ -83,7 +85,7 @@ const NetworkLogo = ({ type }: { type: string }) => {
   if (typeLower.includes('amex') || typeLower.includes('american')) {
     return (
       <div className="bg-[#006fcf] w-10 h-10 rounded flex items-center justify-center border border-white/20">
-        <span className="text-white font-bold text-[8px] text-center leading-none">AMERICAN<br/>EXPRESS</span>
+        <span className="text-white font-bold text-[8px] text-center leading-none">AMERICAN<br />EXPRESS</span>
       </div>
     );
   }
@@ -94,7 +96,7 @@ const NetworkLogo = ({ type }: { type: string }) => {
 const BANK_COLORS: Record<string, string> = {
   'Chase': '#117aca',
   'JPMorgan Chase': '#117aca',
-  'Citi': '#003b70', 
+  'Citi': '#003b70',
   'Citibank': '#003b70',
   'Citibank Online': '#003b70',
   'Wells Fargo': '#cd1409',
@@ -117,12 +119,17 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
   const knownColor = Object.keys(BANK_COLORS).find(key => acc.bank.includes(key)) ? BANK_COLORS[Object.keys(BANK_COLORS).find(key => acc.bank.includes(key)) as string] : null;
   const brandColor = brand?.brandColor || knownColor || null;
 
+  // Get Payment Cycle Status visuals
+  const status = (acc.paymentCycleStatus as PaymentCycleStatus) || 'STATEMENT_GENERATED';
+  const statusConfig = getPaymentCycleColor(status);
+  const statusLabel = getPaymentCycleLabel(status);
+
   // List view doesn't support flip
   if (layout === 'list') {
     return (
       <div className="flex items-center justify-between p-4 rounded-2xl bg-glass-200 border border-white/5 hover:bg-glass-300 transition-colors cursor-pointer">
         <div className="flex items-center gap-4">
-          <div 
+          <div
             className="w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold shadow-md text-white"
             style={{ background: brandColor ? `linear-gradient(135deg, ${brandColor}, #1a1a1a)` : `linear-gradient(to bottom right, ${acc.color})` }}
           >
@@ -130,7 +137,13 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
           </div>
           <div>
             <p className="text-sm font-bold text-white">{acc.name}</p>
-            <p className="text-xs text-slate-400">•••• 4291</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-400">•••• {acc.mask || '4291'}</p>
+              {/* Status Badge in List View */}
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusConfig.bg} ${statusConfig.text} bg-opacity-10 border border-white/5`}>
+                {statusConfig.badge} {statusLabel}
+              </span>
+            </div>
           </div>
         </div>
         <div className="text-right">
@@ -142,6 +155,32 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
       </div>
     );
   }
+
+  // Handle Mark as Paid
+  const handleMarkAsPaid = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card flip
+
+    // Optimistic UI update could happen here in a real app context
+    // For now, we'll just call the API and let the refresh happen
+    try {
+      const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: new Date().toISOString(),
+          amount: acc.liabilities.last_statement ? parseFloat(acc.liabilities.last_statement.replace(/[^0-9.-]+/g, "")) : 0
+        })
+      });
+
+      if (res.ok) {
+        // Trigger a refresh of the accounts data
+        // In a real implementation, we'd want to pass a refresh callback from the parent
+        window.location.reload(); // Brute force refresh for now, ideally use SWR/TanStack Query invalidation
+      }
+    } catch (error) {
+      console.error("Failed to mark as paid", error);
+    }
+  };
 
   // Grid View with Flip Interaction
   return (
@@ -174,30 +213,44 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
           <div
             className="absolute inset-0 bg-[#1a1a1a]"
             style={{
-                background: brandColor
-                  ? `linear-gradient(110deg, ${brandColor} 0%, ${brandColor}cc 60%, #1a1a1a 100%)`
-                  : `linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%)`
+              background: brandColor
+                ? `linear-gradient(110deg, ${brandColor} 0%, ${brandColor}cc 60%, #1a1a1a 100%)`
+                : `linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%)`
             }}
           />
-          
+
           {/* Texture Overlay (Noise) */}
           <div className="absolute inset-0 opacity-[0.15] mix-blend-overlay bg-no-repeat bg-cover pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
-          
+
           {/* Metallic Sheen/Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/40 opacity-50 pointer-events-none"></div>
 
-          <div className="relative z-10 p-6 flex flex-col justify-between h-full">
+          <div className="relative z-10 p-5 flex flex-col h-full">
             {/* Top Row: Bank Name/Logo */}
-            <div className="flex justify-between items-start w-full">
+            <div className="flex justify-between items-start w-full mb-3">
               <div className="flex items-center">
-                {/* Bank Logo - "Silver Foil" Effect (High-Contrast Stencil) */}
-                {brand?.logoUrl ? (
-                  <div className="h-12 flex items-center justify-start mix-blend-screen">
-                    <img 
-                      src={brand.logoUrl} 
-                      alt={acc.bank} 
-                      className="h-full w-auto max-w-[200px] object-contain"
-                      style={{ filter: 'grayscale(100%) brightness(1.1) contrast(500%) invert(100%)' }}
+                {/* Bank Logo - High Quality SVG */}
+                {brand?.logoSvg ? (
+                  <div 
+                    className="flex items-center justify-start opacity-90"
+                    style={{ height: '12px', width: '45px' }}
+                  >
+                    <div 
+                      className="brightness-0 invert"
+                      style={{ width: '100%', height: '100%' }}
+                      dangerouslySetInnerHTML={{ __html: brand.logoSvg }}
+                    />
+                  </div>
+                ) : brand?.logoUrl ? (
+                  <div className="h-8 flex items-center justify-start">
+                    <img
+                      src={brand.logoUrl}
+                      alt={acc.bank}
+                      className={`h-full w-auto max-w-[140px] object-contain ${
+                        brand.logoUrl.includes('simpleicons.org') 
+                          ? 'opacity-90' 
+                          : 'brightness-0 invert opacity-80'
+                      }`}
                     />
                   </div>
                 ) : (
@@ -211,23 +264,24 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
                   </div>
                 )}
               </div>
-              
-              {/* Optional: Status Badge (Subtle) */}
-              {acc.due === 'Overdue' && (
-                <div className="px-2 py-0.5 rounded bg-red-500/20 border border-red-500/30 text-red-200 text-[9px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md">
-                  Overdue
-                </div>
-              )}
+
+              {/* Status Badge (Prominent) */}
+              <div className={`px-2 py-0.5 rounded-full border backdrop-blur-md flex items-center gap-1.5 shadow-sm ${statusConfig.bg} bg-opacity-40 border-white/10`}>
+                <span className="text-xs">{statusConfig.badge}</span>
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${statusConfig.text}`}>
+                  {statusLabel}
+                </span>
+              </div>
             </div>
 
             {/* Middle Row: Chip & Contactless */}
-            <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-4 mt-4">
               <CardChip />
               <Wifi className="w-5 h-5 text-white/60 rotate-90" strokeWidth={2.5} />
             </div>
 
             {/* Bottom Area: Balance & Card Details */}
-            <div className="mt-auto space-y-4">
+            <div className="mt-auto space-y-3">
               {/* Balance - Big & Bold */}
               <div className="space-y-0.5">
                 <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Current Balance</p>
@@ -248,10 +302,10 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
 
                 {/* Expiry or Network Logo */}
                 <div className="flex flex-col items-end gap-1">
-                   <span className="font-mono text-[9px] text-white/60">EXP 09/28</span>
-                   <div className="opacity-80 grayscale-[0.3]">
-                     <NetworkLogo type={acc.type || acc.bank} />
-                   </div>
+                  <span className="font-mono text-[9px] text-white/60">EXP 09/28</span>
+                  <div className="opacity-80 grayscale-[0.3]">
+                    <NetworkLogo type={acc.type || acc.bank} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -264,37 +318,50 @@ export function CreditCard({ acc, layout, onRename }: { acc: Account; layout: st
           style={{ transform: 'rotateY(180deg)', zIndex: isFlipped ? 1 : 0 }}
         >
           <div className="w-full h-10 bg-black mt-5 mb-4 relative">
-             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-20"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-20"></div>
           </div>
-          
-          <div className="px-6 flex gap-4 mb-5 items-center">
-            <div className="flex-1 h-9 bg-white/10 rounded-sm flex items-center px-3 relative overflow-hidden">
-               {/* Signature Pattern */}
-               <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '6px 6px'}}></div>
-              <span className="text-[10px] font-serif text-white/60 italic relative z-10">Authorized Signature</span>
-            </div>
-            <div className="w-12 h-9 bg-white/10 rounded-sm flex items-center justify-center border border-white/5">
-              <span className="text-sm font-mono font-bold text-white/90 italic">923</span>
-            </div>
-          </div>
+
 
           <div className="px-6 pb-6 flex flex-col h-full flex-1">
-            <div className="grid grid-cols-2 gap-3 mb-2">
-              <LiabilityStat label="Min Payment" value={acc.liabilities.min_due} />
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-auto">
               <LiabilityStat label="Statement Bal" value={acc.liabilities.last_statement} />
-              <LiabilityStat label="APR" value={`${acc.liabilities.apr}${acc.liabilities.aprType && acc.liabilities.aprType !== 'N/A' ? ` • ${acc.liabilities.aprType}` : ''}`} accent />
-              <LiabilityStat label="Limit" value={acc.liabilities.limit} />
+              <LiabilityStat label="Min Payment" value={acc.liabilities.min_due} />
+              <LiabilityStat label="Last Payment" value={acc.liabilities.last_payment_amount} />
+              <LiabilityStat label="Payment Date" value={acc.liabilities.last_payment_date} accent />
             </div>
 
-            <div className="mt-auto pt-3 flex items-center justify-between text-[10px] text-slate-400 border-t border-white/5">
-              <div className="flex items-center gap-2">
-                <span>Status:</span>
-                <span className={`px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[9px] ${acc.liabilities.status === 'Overdue' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                  {acc.liabilities.status || 'Active'}
-                </span>
+            {/* Bottom Actions Area */}
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+
+              {/* Status & Action */}
+              <div className="flex items-center gap-3">
+                {status === 'STATEMENT_GENERATED' ? (
+                  <button
+                    onClick={handleMarkAsPaid}
+                    className="group flex items-center gap-1.5 pl-1.5 pr-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/30 rounded-full transition-all duration-200"
+                  >
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
+                      <CheckCircle className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 group-hover:text-emerald-300">
+                      Mark Paid
+                    </span>
+                  </button>
+                ) : (
+                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${statusConfig.bg} bg-opacity-10 border-white/5`}>
+                    <span className="text-xs">{statusConfig.badge}</span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider ${statusConfig.text}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="font-mono">
-                Due: <span className="text-white">{acc.liabilities.next_due_date || 'N/A'}</span>
+
+              {/* Due Date */}
+              <div className="text-right">
+                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Due Date</p>
+                <p className="text-xs font-mono font-bold text-white">{acc.liabilities.next_due_date || 'N/A'}</p>
               </div>
             </div>
           </div>

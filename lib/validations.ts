@@ -211,3 +211,79 @@ export function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown): T {
 export function safeValidateSchema<T>(schema: z.ZodSchema<T>, data: unknown) {
   return schema.safeParse(data);
 }
+
+/**
+ * Clerk Webhook Event Schemas
+ * 
+ * @implements BR-001 - User Profile Creation (via webhook validation)
+ * @satisfies US-001 - User Registration
+ * @tested __tests__/lib/validations.test.ts (webhook validation)
+ */
+export const ClerkWebhookEventSchema = z.object({
+  type: z.string(),
+  data: z.object({
+    id: z.string(),
+    email_addresses: z.array(z.object({
+      email_address: z.string().email(),
+      id: z.string(),
+    })).optional(),
+    first_name: z.string().optional(),
+    last_name: z.string().optional(),
+    image_url: z.string().url().optional(),
+    public_metadata: z.record(z.unknown()).optional(),
+  }),
+});
+
+export const ClerkWebhookHeadersSchema = z.object({
+  'svix-id': z.string().min(1),
+  'svix-timestamp': z.string().min(1),
+  'svix-signature': z.string().min(1),
+});
+
+/**
+ * API Response Schemas
+ */
+export const ApiResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.unknown().optional(),
+  error: z.string().optional(),
+  message: z.string().optional(),
+});
+
+export const ErrorResponseSchema = z.object({
+  success: z.literal(false),
+  error: z.string(),
+  details: z.unknown().optional(),
+});
+
+/**
+ * Transaction Query Schemas
+ */
+export const TransactionQuerySchema = z.object({
+  benefitId: z.string().min(1, 'Benefit ID is required'),
+});
+
+/**
+ * Plaid Item Assignment Schema
+ */
+export const AssignPlaidItemSchema = z.object({
+  familyMemberId: z.string().min(1, 'Family member ID is required'),
+});
+
+/**
+ * Generic API Error type (replaces 'any')
+ */
+export type ApiError = {
+  message: string;
+  status?: number;
+  details?: unknown;
+};
+
+/**
+ * Generic Success Response type
+ */
+export type SuccessResponse<T = unknown> = {
+  success: true;
+  data: T;
+  message?: string;
+};

@@ -11,6 +11,17 @@ import { Webhook } from 'svix';
 import { clerkClient } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { ClerkWebhookEventSchema, ClerkWebhookHeadersSchema, safeValidateSchema } from '@/lib/validations';
+
+/**
+ * Type for Clerk webhook event
+ */
+type ClerkWebhookEvent = z.infer<typeof ClerkWebhookEventSchema>;
+
+/**
+ * Type for webhook headers
+ */
+type WebhookHeaders = z.infer<typeof ClerkWebhookHeadersSchema>;
 
 /**
  * Process Clerk webhook events
@@ -32,9 +43,16 @@ export async function POST(req: NextRequest) {
   const svix_timestamp = headerPayload.get("svix-timestamp");
   const svix_signature = headerPayload.get("svix-signature");
 
-  // If there are no headers, error out
-  if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response('Error occurred -- no svix headers', {
+  // Validate headers using Zod
+  const headerValidation = safeValidateSchema(ClerkWebhookHeadersSchema, {
+    'svix-id': svix_id,
+    'svix-timestamp': svix_timestamp,
+    'svix-signature': svix_signature,
+  });
+
+  if (!headerValidation.success) {
+    logger.error('Invalid webhook headers', headerValidation.error);
+    return new Response('Error occurred -- invalid svix headers', {
       status: 400
     });
   }
@@ -46,15 +64,26 @@ export async function POST(req: NextRequest) {
   // Create a new Svix instance with your secret.
   const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
-  let evt: any;
+  let evt: ClerkWebhookEvent;
 
   // Verify the payload with the headers
   try {
-    evt = wh.verify(body, {
+    const verifiedEvent = wh.verify(body, {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
-    }) as any;
+    });
+
+    // Validate the event structure using Zod
+    const eventValidation = safeValidateSchema(ClerkWebhookEventSchema, verifiedEvent);
+    if (!eventValidation.success) {
+      logger.error('Invalid webhook event structure', eventValidation.error);
+      return new Response('Error occurred -- invalid event structure', {
+        status: 400
+      });
+    }
+
+    evt = eventValidation.data;
   } catch (err) {
     logger.error('Error verifying webhook', err);
     return new Response('Error occurred', {

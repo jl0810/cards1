@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Account, PlaidItem, PlaidAccount } from '@/types/dashboard';
+import { calculatePaymentCycleStatus } from '@/lib/payment-cycle';
 
 interface UseAccountsReturn {
     accounts: Account[];
@@ -68,44 +69,63 @@ export function useAccounts(): UseAccountsReturn {
 
             // Transform Plaid items/accounts into WalletView format
             const allAccounts: Account[] = items.flatMap((item: PlaidItem) =>
-                item.accounts.map((acc: PlaidAccount) => ({
-                    id: acc.id,
-                    userId: 'current-user', // Placeholder as we don't have multi-user auth context in frontend yet
-                    bank: item.institutionName || 'Unknown Bank',
-                    name: acc.extended?.nickname || acc.officialName || acc.name,
-                    balance: acc.currentBalance || 0,
-                    due: acc.nextPaymentDueDate
-                        ? (() => {
-                            const dueDate = new Date(acc.nextPaymentDueDate);
-                            const today = new Date();
-                            // Reset time to start of day for both dates for proper comparison
-                            dueDate.setHours(0, 0, 0, 0);
-                            today.setHours(0, 0, 0, 0);
-                            const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                            if (diffDays < 0) return 'Overdue';
-                            if (diffDays === 0) return 'Today';
-                            if (diffDays === 1) return 'Tomorrow';
-                            if (diffDays <= 7) return `${diffDays} days`;
-                            return formatDate(acc.nextPaymentDueDate);
-                        })()
-                        : 'N/A',
-                    type: acc.subtype || acc.type,
-                    color: 'from-slate-800 to-slate-900', // Default color
-                    liabilities: {
-                        apr: formatPercent(acc.apr),
-                        aprType: acc.aprType || 'N/A',
-                        aprBalanceSubjectToApr: formatCurrency(acc.aprBalanceSubjectToApr, acc.isoCurrencyCode),
-                        aprInterestChargeAmount: formatCurrency(acc.aprInterestChargeAmount, acc.isoCurrencyCode),
-                        limit: formatCurrency(acc.limit, acc.isoCurrencyCode),
-                        min_due: formatCurrency(acc.minPaymentAmount, acc.isoCurrencyCode),
-                        last_statement: formatCurrency(acc.lastStatementBalance, acc.isoCurrencyCode),
-                        next_due_date: formatDate(acc.nextPaymentDueDate),
-                        last_statement_date: formatDate(acc.lastStatementIssueDate),
-                        last_payment_amount: formatCurrency(acc.lastPaymentAmount, acc.isoCurrencyCode),
-                        last_payment_date: formatDate(acc.lastPaymentDate),
-                        status: acc.isOverdue ? 'Overdue' : (acc.nextPaymentDueDate ? 'Current' : 'N/A')
+                item.accounts.map((acc: PlaidAccount) => {
+                    // Calculate Payment Cycle Status
+                    const paymentCycleData = {
+                        lastStatementBalance: acc.lastStatementBalance || 0,
+                        lastStatementIssueDate: acc.lastStatementIssueDate ? new Date(acc.lastStatementIssueDate) : null,
+                        currentBalance: acc.currentBalance || 0,
+                        paymentMarkedPaidDate: acc.extended?.paymentMarkedPaidDate ? new Date(acc.extended.paymentMarkedPaidDate) : null,
+                        lastPaymentAmount: acc.lastPaymentAmount || null,
+                        lastPaymentDate: acc.lastPaymentDate ? new Date(acc.lastPaymentDate) : null,
+                    };
+
+                    if (acc.name.includes('Aviator') || acc.name.includes('Hawaiian')) {
+                        console.log(`[PaymentCycle Debug] ${acc.name}:`, paymentCycleData);
                     }
-                }))
+
+                    const paymentCycleStatus = calculatePaymentCycleStatus(paymentCycleData);
+
+                    return {
+                        id: acc.id,
+                        userId: 'current-user', // Placeholder as we don't have multi-user auth context in frontend yet
+                        bank: item.institutionName || 'Unknown Bank',
+                        name: acc.extended?.nickname || acc.officialName || acc.name,
+                        balance: acc.currentBalance || 0,
+                        paymentCycleStatus, // Expose the calculated status
+                        due: acc.nextPaymentDueDate
+                            ? (() => {
+                                const dueDate = new Date(acc.nextPaymentDueDate);
+                                const today = new Date();
+                                // Reset time to start of day for both dates for proper comparison
+                                dueDate.setHours(0, 0, 0, 0);
+                                today.setHours(0, 0, 0, 0);
+                                const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                if (diffDays < 0) return 'Overdue';
+                                if (diffDays === 0) return 'Today';
+                                if (diffDays === 1) return 'Tomorrow';
+                                if (diffDays <= 7) return `${diffDays} days`;
+                                return formatDate(acc.nextPaymentDueDate);
+                            })()
+                            : 'N/A',
+                        type: acc.subtype || acc.type,
+                        color: 'from-slate-800 to-slate-900', // Default color
+                        liabilities: {
+                            apr: formatPercent(acc.apr),
+                            aprType: acc.aprType || 'N/A',
+                            aprBalanceSubjectToApr: formatCurrency(acc.aprBalanceSubjectToApr, acc.isoCurrencyCode),
+                            aprInterestChargeAmount: formatCurrency(acc.aprInterestChargeAmount, acc.isoCurrencyCode),
+                            limit: formatCurrency(acc.limit, acc.isoCurrencyCode),
+                            min_due: formatCurrency(acc.minPaymentAmount, acc.isoCurrencyCode),
+                            last_statement: formatCurrency(acc.lastStatementBalance, acc.isoCurrencyCode),
+                            next_due_date: formatDate(acc.nextPaymentDueDate),
+                            last_statement_date: formatDate(acc.lastStatementIssueDate),
+                            last_payment_amount: formatCurrency(acc.lastPaymentAmount, acc.isoCurrencyCode),
+                            last_payment_date: formatDate(acc.lastPaymentDate),
+                            status: acc.isOverdue ? 'Overdue' : (acc.nextPaymentDueDate ? 'Current' : 'N/A')
+                        }
+                    };
+                })
             );
 
             setAccounts(allAccounts);

@@ -237,22 +237,38 @@ Each user story follows this format:
 
 **Acceptance Criteria:**
 - ✅ Cards automatically categorized into 4 statuses based on Plaid data
-- ✅ **Status 1: Statement Generated** - Recent statement (< 30 days), payment needed
+- ✅ **Status 1: Statement Generated** - Recent statement (< 30 days), payment needed (Balance > 0)
 - ✅ **Status 2: Payment Scheduled** - User manually marked payment as made
-- ✅ **Status 3: Paid, Awaiting Statement** - Paid off, waiting for next statement (> 30 days)
-- ✅ **Status 4: Dormant** - No activity (balance $0 for > 90 days)
-- ✅ User can manually mark payment as "paid" with date and amount
+- ✅ **Status 3: Paid, Awaiting Statement** - Paid off (Balance ≤ 0), waiting for next statement
+- ✅ **Status 4: Dormant** - No activity for 30+ days (Statement > 30 days AND Balance = $0)
+- ✅ **NEW:** System automatically detects payments from Plaid data (no manual marking needed if payment matches statement)
+- ✅ User can manually mark payment as "paid" via a button on the card back
 - ✅ Status updates automatically when new Plaid data syncs
-- ✅ UI shows clear visual indicators (colors, badges) for each status
+- ✅ UI shows clear visual indicators (Red/Yellow/Green/Gray badges)
+- ✅ **NEW:** Card back displays last payment amount and date instead of APR data
 
 **Data Sources:**
-- Plaid: `last_statement_balance`, `last_statement_issue_date`, `current_balance`, `next_payment_due_date`
-- User Input: Manual "mark as paid" action
-- Calculated: Days since statement issue, payment status
+- Plaid: `last_statement_balance`, `last_statement_issue_date`, `current_balance`, `next_payment_due_date`, **`last_payment_amount`**, **`last_payment_date`**
+- User Input: Manual "mark as paid" action (stored in `AccountExtended`)
+- Calculated: Days since statement issue, days since last payment, payment coverage status
+
+**UI Elements:**
+- Card Back: "Last Payment" field showing amount (e.g., "$1,250.50")
+- Card Back: "Payment Date" field showing date (e.g., "11/15/2024")
+- Replaced: APR and Limit fields removed to prioritize payment tracking data
 
 **Business Rules:** [BR-037]  
-**Code:** `lib/payment-cycle.ts` (needs implementation)  
-**Tests:** None (needs implementation)
+**Code:** 
+- `lib/payment-cycle.ts::calculatePaymentCycleStatus` (lines 39-141) - Enhanced with payment detection
+- `lib/payment-cycle.ts::sortAccountsByPaymentPriority` (lines 234-270) - Multi-tier sorting
+- `app/api/plaid/exchange-public-token/route.ts` (lines 183-184) - Fetch payment data from Plaid
+- `app/dashboard/page.tsx` (lines 275-282) - Dashboard integration with payment data
+- `hooks/use-accounts.ts` (lines 74-81) - Account hook with payment data
+- `components/velocity/credit-card.tsx` (lines 330-331) - Card back display
+
+**Tests:** 
+- Unit tests: `__tests__/lib/payment-cycle.test.ts` (25+ tests) ✅ 100% passing
+- Integration tests: `__tests__/app/dashboard/page.integration.test.tsx` (7 tests) ✅ 100% passing
 
 ---
 

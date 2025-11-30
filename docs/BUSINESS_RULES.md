@@ -560,52 +560,75 @@ This document defines all business rules for the PointMax Velocity application.
 
 ### **[BR-037]** Payment Cycle Status Calculation
 **Category:** Data Management / User Experience  
-**Description:** Credit card accounts are automatically categorized into 4 payment cycle statuses based on Plaid liability data and user actions. Status updates automatically when new data syncs from Plaid.
+**Description:** Credit card accounts are automatically categorized into 4 payment cycle statuses based on Plaid liability data and user actions. Status updates automatically when new data syncs from Plaid. **Enhanced with automatic payment detection** using `last_payment_amount` and `last_payment_date` from Plaid to intelligently detect paid statements even when new charges exist.
 
 **The 4 Payment Cycle Statuses:**
 
-1. **STATEMENT_GENERATED** (Payment Needed 🔴)
-   - Recent statement issued (< 30 days since `last_statement_issue_date`)
-   - Current balance > 0 (not paid off)
-   - OR: `last_statement_balance` was $0 (new charges accruing)
+1.  **STATEMENT_GENERATED** (Payment Needed 🔴)
+    - Recent statement issued (< 30 days since `last_statement_issue_date`)
+    - `last_statement_balance` > 0 (You owe money on this statement)
+    - Action: User needs to pay this bill.
 
-2. **PAYMENT_SCHEDULED** (Payment Made ⏳)
-   - User manually marked payment as paid (`paymentMarkedPaidDate` is set)
-   - OR: Statement > 30 days old, not paid, `last_statement_balance` > 0 but marked
+2.  **PAYMENT_SCHEDULED** (Payment Made ⏳)
+    - User manually marked payment as paid (`paymentMarkedPaidDate` is set)
+    - Note: This is an interim status until the payment clears and balance updates.
 
-3. **PAID_AWAITING_STATEMENT** (Paid, New Cycle 🟢)
-   - Statement > 30 days old since `last_statement_issue_date`
-   - Current balance ≤ 0 (paid off)
-   - Waiting for next statement to generate
+3.  **PAID_AWAITING_STATEMENT** (Paid, New Cycle 🟢)
+    - Current balance ≤ 0 (Paid off or Credit Balance)
+    - OR: **NEW** Recent payment (< 30 days) that covers the statement balance
+    - OR: Statement was $0 (no payment due) but new charges have accrued (`current_balance` > 0)
+    - Action: No payment due right now. Wait for next statement.
 
-4. **DORMANT** (Inactive ⚪)
-   - `last_statement_balance` = $0 AND `current_balance` = $0
-   - OR: Statement > 90 days old AND paid off
-   - Card not being used
+4.  **DORMANT** (Inactive 💤)
+    - `last_statement_balance` = $0 AND `current_balance` = $0
+    - OR: Statement > 90 days old AND `current_balance` = 0
+    - OR: Statement > 30 days old AND `current_balance` = 0 (no activity for 30+ days)
+    - Card is effectively inactive.
 
-**Calculation Logic** (from Google Apps Script):
+**Calculation Logic** (Enhanced with Payment Detection):
 ```javascript
-const daysSinceIssue = (now - last_statement_issue_date) / (1000 * 60 * 60 * 24);
-const isRecentStatement = daysSinceIssue < 30;
-const isPaid = current_balance <= 0;
-const isDormant = (last_statement_balance == 0 && current_balance == 0) || 
-                  (daysSinceIssue > 90 && isPaid);
+// 1. Check Dormant
+if ((statementBalance === 0 && balance === 0) || (daysSinceIssue > 90 && balance === 0) || (daysSinceIssue > 30 && balance === 0)) {
+  return 'DORMANT';
+}
 
-if (isDormant) return "DORMANT";
-if (isRecentStatement && !isPaid) return "STATEMENT_GENERATED";
-if (isRecentStatement && isPaid) return "PAYMENT_SCHEDULED"; // or check user flag
-if (!isRecentStatement && isPaid) return "PAID_AWAITING_STATEMENT";
-// else check if user marked paid or overdue
+// 2. Check Paid/Scheduled (ENHANCED)
+const paymentCoversStatement = paymentAmount > 0 && Math.abs(paymentAmount - statementBalance) < 1.0;
+const isRecentPayment = daysSincePayment < 30;
+
+if (paymentMarkedPaidDate || balance <= 0 || (isRecentPayment && paymentCoversStatement)) {
+  if (balance <= 0) return 'PAID_AWAITING_STATEMENT'; // Cleared
+  if (isRecentPayment && paymentCoversStatement) return 'PAID_AWAITING_STATEMENT'; // Auto-detected payment
+  return 'PAYMENT_SCHEDULED'; // User marked, but balance still shows
+}
+
+// 3. Check Statement Liability
+if (statementBalance > 0) {
+  // You owe money on the statement.
+  // Regardless of age, if it's unpaid (balance > 0), it's a liability.
+  return 'STATEMENT_GENERATED';
+}
+
+// 4. Fallback (Statement was $0)
+return 'PAID_AWAITING_STATEMENT'; // New spend, no bill due
 ```
 
 **Data Requirements:**
-- Plaid Fields: `last_statement_balance`, `last_statement_issue_date`, `current_balance`
-- User Fields: `paymentMarkedPaidDate`, `paymentMarkedPaidAmount`
-- Calculated: Days since statement issue
+- Plaid Fields: `last_statement_balance`, `last_statement_issue_date`, `current_balance`, **`last_payment_amount`**, **`last_payment_date`**
+- User Fields: `paymentMarkedPaidDate`, `paymentMarkedPaidAmount` (in `AccountExtended`)
+- Calculated: Days since statement issue, **days since last payment**
 
 **User Stories:** [US-023]  
-**Code:** `lib/payment-cycle.ts` (needs implementation)  
-**Tests:** None (needs implementation)
+**Code:** 
+- `lib/payment-cycle.ts::calculatePaymentCycleStatus` (lines 39-141)
+- `lib/payment-cycle.ts::sortAccountsByPaymentPriority` (lines 234-270)
+- `app/api/plaid/exchange-public-token/route.ts` (lines 183-184)
+- `app/dashboard/page.tsx` (lines 275-282)
+- `hooks/use-accounts.ts` (lines 74-81)
+
+**Tests:** 
+- Unit tests: `__tests__/lib/payment-cycle.test.ts` (25+ tests)
+- Integration tests: `__tests__/app/dashboard/page.integration.test.tsx` (7 tests)
 
 ---
 

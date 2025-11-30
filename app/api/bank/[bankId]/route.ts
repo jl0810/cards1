@@ -8,7 +8,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ bankId: 
     const { bankId } = await params;
     const bank = await prisma.bank.findUnique({
         where: { id: bankId },
-        select: { logoUrl: true, brandColor: true, name: true },
+        select: { logoUrl: true, logoSvg: true, brandColor: true, name: true },
     });
     if (!bank) return Errors.notFound('Bank');
     return successResponse(bank);

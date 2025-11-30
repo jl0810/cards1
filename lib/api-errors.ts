@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { SuccessResponse } from './validations';
 
 /**
  * Standardized API error handling
@@ -25,10 +26,11 @@ export class ApiError extends Error {
 export function errorResponse(
     message: string,
     status: number = 500,
-    details?: any
+    details?: unknown
 ) {
     return NextResponse.json(
         {
+            success: false,
             error: message,
             status,
             ...(details && { details }),
@@ -40,8 +42,12 @@ export function errorResponse(
 /**
  * Helper to create standardized success responses
  */
-export function successResponse(data: any, status: number = 200) {
-    return NextResponse.json(data, { status });
+export function successResponse<T>(data: T, status: number = 200) {
+    const response: SuccessResponse<T> = {
+        success: true,
+        data,
+    };
+    return NextResponse.json(response, { status });
 }
 
 /**
@@ -52,5 +58,5 @@ export const Errors = {
     forbidden: (message = 'Forbidden') => errorResponse(message, 403),
     notFound: (resource = 'Resource') => errorResponse(`${resource} not found`, 404),
     badRequest: (message = 'Bad Request') => errorResponse(message, 400),
-    internal: (message = 'Internal Server Error') => errorResponse('Internal Server Error', 500), // Always use generic message for security
+    internal: (message = 'Internal Server Error') => errorResponse('Internal Server Error', 500),
 };

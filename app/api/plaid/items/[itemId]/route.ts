@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { AssignPlaidItemSchema, safeValidateSchema, Errors } from '@/lib/validations';
+import { logger } from '@/lib/logger';
 
 export async function PATCH(
     req: Request,
@@ -9,20 +11,25 @@ export async function PATCH(
     try {
         const { userId } = await auth();
         if (!userId) {
-            return new NextResponse("Unauthorized", { status: 401 });
+            return Errors.unauthorized();
         }
 
-        const { familyMemberId } = await req.json();
-        if (!familyMemberId) {
-            return new NextResponse("Missing familyMemberId", { status: 400 });
+        const body = await req.json();
+        
+        // Validate request body using Zod
+        const validation = safeValidateSchema(AssignPlaidItemSchema, body);
+        if (!validation.success) {
+            return Errors.badRequest(validation.error.errors[0]?.message || 'Invalid input');
         }
+
+        const { familyMemberId } = validation.data;
 
         const userProfile = await prisma.userProfile.findUnique({
             where: { clerkId: userId },
         });
 
         if (!userProfile) {
-            return new NextResponse("User profile not found", { status: 404 });
+            return Errors.notFound('User profile');
         }
 
         const { itemId } = await params;
@@ -33,7 +40,7 @@ export async function PATCH(
         });
 
         if (!item || item.userId !== userProfile.id) {
-            return new NextResponse("Item not found or unauthorized", { status: 404 });
+            return Errors.notFound('Plaid item');
         }
 
         // Verify the family member belongs to the user
@@ -42,7 +49,7 @@ export async function PATCH(
         });
 
         if (!familyMember || familyMember.userId !== userProfile.id) {
-            return new NextResponse("Family member not found or unauthorized", { status: 404 });
+            return Errors.notFound('Family member');
         }
 
         // Update the item and all its accounts
@@ -63,9 +70,12 @@ export async function PATCH(
             return updated;
         });
 
-        return NextResponse.json(updatedItem);
-    } catch (error) {
-        console.error('Error updating Plaid item:', error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        return NextResponse.json({
+            success: true,
+            data: updatedItem
+        });
+    } catch (error: unknown) {
+        logger.error('Error updating Plaid item:', error);
+        return Errors.internal(error instanceof Error ? error.message : 'Unknown error');
     }
 }

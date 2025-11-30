@@ -33,6 +33,7 @@ export interface Account {
     type?: string | null;
     color: string;
     liabilities: AccountLiabilities;
+    paymentCycleStatus?: string;
 }
 
 export interface PlaidAccount {
@@ -61,6 +62,8 @@ export interface PlaidAccount {
     extended?: {
         nickname?: string | null;
         cardProductId?: string | null;
+        paymentMarkedPaidDate?: string | null;
+        paymentMarkedPaidAmount?: number | null;
     } | null;
 }
 

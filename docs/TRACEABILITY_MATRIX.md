@@ -69,7 +69,7 @@ This document provides complete traceability from user stories through business 
 | **US-020** Monitor Bank Connection Health | BR-034 | `app/api/plaid/items/[itemId]/disconnect/route.ts:32-39` | `__tests__/api/plaid/items/disconnect.test.ts` | ✅ 93% (13/14 tests passing) |
 | **US-021** Account Deletion | BR-035 | `lib/webhooks/handlers/user.ts:189-250` | None | ⚠️ No test (webhook handler) |
 | **US-022** Full Transaction Reload | BR-036 | `app/api/plaid/items/[itemId]/reload-transactions/route.ts` | `__tests__/api/plaid/items/reload-transactions.integration.test.ts` | ✅ 100% (6/6 tests passing) |
-| **US-023** Payment Cycle Status Tracking | BR-037 | `lib/payment-cycle.ts` | `__tests__/lib/payment-cycle.test.ts` | ✅ 100% (25/25 tests passing) |
+| **US-023** Payment Cycle Status Tracking | BR-037 | `lib/payment-cycle.ts`, `app/dashboard/page.tsx:275-280` | `__tests__/lib/payment-cycle.test.ts` (25 unit), `__tests__/app/dashboard/page.integration.test.tsx` (7 integration) | ✅ 100% (32/32 tests passing) |
 
 ---
 
@@ -81,7 +81,7 @@ This document provides complete traceability from user stories through business 
 - **Without Tests:** 1 (2% - webhook handler)
 - **User Stories:** 23 (was 22)
 - **Business Rules:** 37 (was 36)
-- **Unit/Integration Tests:** 326 tests (was 301)
+- **Unit/Integration Tests:** 333 tests (was 326, +7 integration tests for dashboard)
 - **E2E Tests:** 3 automated smoke tests + 1 manual Plaid flow test
 - **NEW:** US-021 (Account Deletion), US-022 (Transaction Reload), US-023 (Payment Cycle), BR-035, BR-036, BR-037
 
