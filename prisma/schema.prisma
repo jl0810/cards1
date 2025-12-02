@@ -171,6 +171,7 @@ model AccountExtended {
   dateOpened            DateTime?
   paymentMarkedPaidDate DateTime?
   paymentMarkedPaidAmount Float?
+  paymentCycleStatus     String?
   cardProduct           CardProduct? @relation(fields: [cardProductId], references: [id])
   plaidAccount   PlaidAccount @relation(fields: [plaidAccountId], references: [id], onDelete: Cascade)
 

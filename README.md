@@ -5,8 +5,9 @@ A Next.js application for tracking and maximizing credit card rewards and benefi
 ## 🎯 Overview
 
 PointMax Velocity helps users:
+
 - **Track Credit Cards**: Connect credit cards via Plaid integration
-- **Monitor Transactions**: Automatic transaction sync and categorization  
+- **Monitor Transactions**: Automatic transaction sync and categorization
 - **Match Benefits**: AI-powered matching of transactions to card benefits
 - **Optimize Rewards**: Recommendations for maximizing credit card benefits
 - **Family Support**: Multi-user family member management
@@ -15,6 +16,7 @@ PointMax Velocity helps users:
 ## 🚀 Tech Stack
 
 ### Core Technologies
+
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
@@ -24,6 +26,7 @@ PointMax Velocity helps users:
 - **UI Components**: Radix UI + Framer Motion
 
 ### Integrations
+
 - **Notifications**: Novu
 - **Email**: Resend + React Email
 - **Analytics**: PostHog, Sentry
@@ -33,16 +36,19 @@ PointMax Velocity helps users:
 ## 📋 Features
 
 ### ✅ Current Features
+
 - Plaid account linking and automatic transaction sync
 - Multi-user family member support with primary member concept
 - Credit card product catalog with benefit tracking
 - Custom account nicknames and metadata (Extended Tables Pattern)
 - Real-time transaction syncing with webhook support
 - Admin role system with server-side validation
+- **Payment Cycle Status Management** - Track and manage payment states with user-controlled "Mark as Paid/Unpaid" functionality
 - Comprehensive error handling and rate limiting
 - Performance-optimized database indexes
 
 ### 🚧 In Development
+
 - AI-powered benefit matching using Gemini
 - Transaction-to-benefit mapping
 - Benefit usage tracking and notifications
@@ -53,23 +59,82 @@ PointMax Velocity helps users:
 ### Key Design Patterns
 
 #### Extended Tables Pattern
+
 Separates raw Plaid data from user enrichments to ensure data persistence during re-syncs:
+
 - `PlaidAccount` + `AccountExtended` (nicknames, card mappings)
 - `PlaidTransaction` + `TransactionExtended` (benefit matches, notes)
 
 See [docs/EXTENDED_TABLES_ARCHITECTURE.md](./docs/EXTENDED_TABLES_ARCHITECTURE.md) for details.
 
+#### Payment Cycle Status System
+
+User-controlled payment tracking with persistent status management:
+
+- `AccountExtended.paymentCycleStatus` - Stores payment state
+- `AccountExtended.paymentMarkedPaidDate` - Tracks when user marked as paid
+- `AccountExtended.paymentMarkedPaidAmount` - Stores payment amount
+- Status Flow: `STATEMENT_GENERATED` → `PAYMENT_SCHEDULED` → `PAID_AWAITING_STATEMENT`
+
+See [lib/payment-cycle.ts](./lib/payment-cycle.ts) for status calculation logic.
+
 #### Card Catalog System
+
 AI-powered credit card data management with Google Sheets integration:
+
 - `CardProduct`: Credit card details and issuer info
 - `CardBenefit`: Individual benefits per card
 - `BenefitUsage`: Track user's benefit redemptions
 
 See [docs/CARD_CATALOG_SYSTEM.md](./docs/CARD_CATALOG_SYSTEM.md) for details.
 
+## 📋 User Stories & Business Rules
+
+### Payment Cycle Status Tracking (US-023)
+
+**As a** credit card user  
+**I want to** see the current payment status of each card  
+**So that** I can quickly identify which cards need attention and track my payment progress
+
+### Payment Tracking (US-010)
+
+**As a** credit card user  
+**I want to** mark credit card payments as paid or unpaid  
+**So that** I can keep track of my payment schedule and avoid late fees
+
+### Mobile-First Payment Controls (US-036)
+
+**As a** mobile user  
+**I want to** easily mark payments as paid/unpaid on my phone  
+**So that** I can manage payments on the go
+
+### Payment Cycle Status Calculation (BR-037)
+
+**Rule:** The system must automatically calculate payment cycle status based on:
+
+1. User manual payment marking (highest priority)
+2. Account activity and balance data
+3. Statement issue dates and amounts
+
+### Payment Tracking (BR-017)
+
+**Rule:** Users must be able to manually mark payments and undo them
+
+- Mark as Paid: `STATEMENT_GENERATED` → `PAYMENT_SCHEDULED`
+- Mark as Unpaid: `PAYMENT_SCHEDULED` → `STATEMENT_GENERATED`
+
+### UI Interaction Safety (BR-042)
+
+**Rule:** Payment controls must not interfere with other UI interactions
+
+- Payment buttons must not trigger card flip animations
+- Click events must be properly isolated
+- Visual feedback must be immediate and clear
+
 ### Recent Architecture Improvements
 
 **All major architecture improvements completed (November 2025):**
+
 - ✅ Database performance indexes (10-100x faster queries)
 - ✅ Secure admin roles (private metadata)
 - ✅ Custom React hooks for data management
@@ -83,6 +148,7 @@ See [docs/ARCHITECTURE_IMPROVEMENTS.md](./docs/ARCHITECTURE_IMPROVEMENTS.md) for
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 18+ and npm
 - PostgreSQL database
 - Clerk account
@@ -210,16 +276,19 @@ Cards/
 ## 📊 Performance
 
 ### Database
+
 - 15 performance indexes on all foreign keys and common queries
 - Connection pooling via Prisma
 - Optimized queries with selective `include`
 
 ### API
+
 - Rate limiting to prevent abuse
 - Atomic transactions for data integrity
 - Error handling with graceful fallbacks
 
 ### Frontend
+
 - Server-side rendering where beneficial
 - SWR-ready for client-side data fetching
 - Custom hooks for data management
@@ -242,12 +311,14 @@ npm run test:coverage
 ### Test Coverage
 
 **Current Test Suite:**
+
 - ✅ **Validation Schemas** - 50+ test cases for all Zod schemas
 - ✅ **Logger Utility** - Comprehensive logging tests
 - ✅ **Constants** - Type safety and value validation
 - ✅ **UI Components** - Button component tests
 
 **Test Files:**
+
 - `__tests__/lib/validations.test.ts`
 - `__tests__/lib/logger.test.ts`
 - `__tests__/lib/constants.test.ts`
@@ -263,6 +334,7 @@ npm run lint
 ```
 
 **Enforces:**
+
 - ❌ No `console.*` usage (use `logger` instead)
 - ❌ No `any` types in TypeScript
 - ✅ Next.js best practices
@@ -272,6 +344,7 @@ npm run lint
 ## 📱 Mobile (Coming Soon)
 
 Preparing for iOS App Store distribution via Capacitor:
+
 - Same codebase for web + mobile
 - Native iOS features (Face ID, push notifications)
 - Offline support with smart caching
@@ -279,6 +352,7 @@ Preparing for iOS App Store distribution via Capacitor:
 ## 🤝 Contributing
 
 This is a private project, but contributions are welcome. Please:
+
 1. Follow existing code style and architecture patterns
 2. Add JSDoc comments for all public functions
 3. Update relevant documentation
@@ -291,12 +365,15 @@ Private/Proprietary
 ## ⏰ Automated Jobs (Cron)
 
 ### Clerk Sync (BR-001A)
+
 **Purpose:** Automatically sync Clerk users to database daily to catch missed webhooks.
 
 **Schedule:** Daily at 2:00 AM UTC (configured in `vercel.json`)
 
 **Setup:**
+
 1. Add `CRON_SECRET` to Vercel environment variables:
+
    ```bash
    openssl rand -base64 32  # Generate secret
    vercel env add CRON_SECRET
@@ -305,6 +382,7 @@ Private/Proprietary
 2. Deploy to Vercel (cron only works in production)
 
 **Manual Trigger:**
+
 ```bash
 # CLI
 npx tsx scripts/sync-missing-clerk-users.ts
@@ -342,33 +420,33 @@ npx tsx scripts/make-admin.ts <user_id>  # Make user admin
 
 ### Important Documentation
 
-| File | Purpose | Audience |
-|------|---------|----------|
-| **📖 Traceability Docs** | | |
-| `docs/USER_STORIES.md` | 19 user stories with requirements | Business, Product |
-| `docs/BUSINESS_RULES.md` | 32 business rules | All |
-| `docs/TRACEABILITY_MATRIX.md` | Requirements → Code → Tests | All |
-| `docs/DOCUMENTATION_GUIDE.md` | How to navigate docs | All |
-| **🏗️ Technical Docs** | | |
-| `docs/ARCHITECTURE.md` | Core design patterns | Developers |
-| `docs/IOS_DEPLOYMENT.md` | iOS deployment guide | DevOps |
-| `docs/RATE_LIMITING.md` | API protection | Developers |
-| `CHANGELOG.md` | Recent changes | All |
-| `__tests__/README.md` | Testing guide | QA, Developers |
-| **📁 Key Code Files** | | |
-| `.eslintrc.json` | Code quality rules | Developers |
-| `lib/logger.ts` | Structured logging | Developers |
-| `lib/validations.ts` | Input validation schemas | Developers |
-| `lib/constants.ts` | Application constants | Developers |
-| `lib/rate-limit.ts` | Rate limiting | Developers |
+| File                          | Purpose                           | Audience          |
+| ----------------------------- | --------------------------------- | ----------------- |
+| **📖 Traceability Docs**      |                                   |                   |
+| `docs/USER_STORIES.md`        | 19 user stories with requirements | Business, Product |
+| `docs/BUSINESS_RULES.md`      | 32 business rules                 | All               |
+| `docs/TRACEABILITY_MATRIX.md` | Requirements → Code → Tests       | All               |
+| `docs/DOCUMENTATION_GUIDE.md` | How to navigate docs              | All               |
+| **🏗️ Technical Docs**         |                                   |                   |
+| `docs/ARCHITECTURE.md`        | Core design patterns              | Developers        |
+| `docs/IOS_DEPLOYMENT.md`      | iOS deployment guide              | DevOps            |
+| `docs/RATE_LIMITING.md`       | API protection                    | Developers        |
+| `CHANGELOG.md`                | Recent changes                    | All               |
+| `__tests__/README.md`         | Testing guide                     | QA, Developers    |
+| **📁 Key Code Files**         |                                   |                   |
+| `.eslintrc.json`              | Code quality rules                | Developers        |
+| `lib/logger.ts`               | Structured logging                | Developers        |
+| `lib/validations.ts`          | Input validation schemas          | Developers        |
+| `lib/constants.ts`            | Application constants             | Developers        |
+| `lib/rate-limit.ts`           | Rate limiting                     | Developers        |
 
 ### Rate Limits
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| Plaid sync | 10 | 1 hour |
-| Write ops | 20 | 1 minute |
-| Default | 60 | 1 minute |
+| Endpoint   | Limit | Window   |
+| ---------- | ----- | -------- |
+| Plaid sync | 10    | 1 hour   |
+| Write ops  | 20    | 1 minute |
+| Default    | 60    | 1 minute |
 
 ---
 

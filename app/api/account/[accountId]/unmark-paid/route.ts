@@ -1,8 +1,8 @@
 /**
- * Mark Account Paid API
- * Allows users to mark credit card payments as made
+ * Unmark Account Paid API
+ * Allows users to unmark credit card payments (undo mark as paid)
  *
- * @module app/api/account/[accountId]/mark-paid
+ * @module app/api/account/[accountId]/unmark-paid
  * @implements BR-017 - Payment Tracking
  * @satisfies US-010 - Track Payments
  */
@@ -15,15 +15,10 @@ import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-const markPaidSchema = z.object({
-  amount: z.number().optional(),
-  date: z.string().datetime().optional(), // ISO date string
-});
-
 /**
- * Mark an account payment as paid
+ * Unmark an account payment (undo mark as paid)
  *
- * @route POST /api/account/[accountId]/mark-paid
+ * @route POST /api/account/[accountId]/unmark-paid
  * @tested None (needs test)
  */
 export async function POST(
@@ -43,19 +38,6 @@ export async function POST(
       return Errors.unauthorized();
     }
 
-    const body = await req.json();
-
-    const result = markPaidSchema.safeParse(body);
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "Invalid input", details: result.error },
-        { status: 400 },
-      );
-    }
-
-    const { amount, date } = result.data;
-    const paidDate = date ? new Date(date) : new Date();
-
     // Verify account exists
     const account = await prisma.plaidAccount.findUnique({
       where: { id: accountId },
@@ -66,29 +48,29 @@ export async function POST(
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
 
-    // Upsert the extended record with payment info and status
+    // Clear the payment info and reset status in the extended record
     const updatedExtended = await prisma.accountExtended.upsert({
       where: { plaidAccountId: accountId },
       create: {
         plaidAccountId: accountId,
-        paymentMarkedPaidDate: paidDate,
-        paymentMarkedPaidAmount: amount || account.lastStatementBalance || 0,
-        paymentCycleStatus: "PAYMENT_SCHEDULED",
+        paymentMarkedPaidDate: null,
+        paymentMarkedPaidAmount: null,
+        paymentCycleStatus: "STATEMENT_GENERATED",
       },
       update: {
-        paymentMarkedPaidDate: paidDate,
-        paymentMarkedPaidAmount: amount || account.lastStatementBalance || 0,
-        paymentCycleStatus: "PAYMENT_SCHEDULED",
+        paymentMarkedPaidDate: null,
+        paymentMarkedPaidAmount: null,
+        paymentCycleStatus: "STATEMENT_GENERATED",
       },
     });
 
     return NextResponse.json({
       success: true,
       data: updatedExtended,
-      message: "Payment marked successfully",
+      message: "Payment unmarked successfully",
     });
   } catch (error) {
-    logger.error("Error marking account as paid:", error);
+    logger.error("Error unmarking account payment:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

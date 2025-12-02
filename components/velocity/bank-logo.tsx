@@ -6,17 +6,36 @@ import { useBankBrand } from "@/hooks/use-bank-brand";
 interface BankLogoProps {
   name: string | null;
   bankId?: string | null;
+  bankData?: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    logoSvg: string | null;
+    brandColor: string | null;
+  } | null;
   size?: "sm" | "md" | "lg";
 }
 
-export function BankLogo({ name, bankId, size = "md" }: BankLogoProps) {
-  const { brand, loading } = useBankBrand(bankId || null);
+export function BankLogo({
+  name,
+  bankId,
+  bankData,
+  size = "md",
+}: BankLogoProps) {
+  // Only use API fetch if we don't have bankData
+  const { brand, loading } = useBankBrand(bankData ? null : bankId || null);
   const [error, setError] = useState(false);
+
+  // Use bankData directly if available, otherwise use fetched brand data
+  const brandData = bankData || brand;
+
+  // If we have bankData, we're not loading
+  const isLoading = bankData ? false : loading;
 
   // Size classes
   const sizeClasses = {
     sm: "w-8 h-8",
-    md: "w-10 h-10",
+    md: "w-12 h-12",
     lg: "w-16 h-16",
   };
 
@@ -56,16 +75,14 @@ export function BankLogo({ name, bankId, size = "md" }: BankLogoProps) {
     return colors[hash % colors.length];
   };
 
-  if (loading || !brand?.logoUrl || error) {
+  if (isLoading || (!brandData?.logoUrl && !brandData?.logoSvg) || error) {
     return (
       <div
-        className={`${sizeClasses[size]} rounded-lg flex items-center justify-center relative flex-shrink-0`}
-        style={{ backgroundColor: brand?.brandColor || undefined }}
+        className={`${sizeClasses[size]} rounded flex items-center justify-center relative flex-shrink-0`}
+        style={{ backgroundColor: brandData?.brandColor || undefined }}
       >
-        {!brand?.brandColor && (
-          <div
-            className={`absolute inset-0 rounded-lg ${getColor(name)} opacity-100`}
-          />
+        {!brandData?.brandColor && (
+          <div className={`absolute inset-0 ${getColor(name)} opacity-100`} />
         )}
         <span
           className={`text-white font-bold relative z-10 ${size === "lg" ? "text-xl" : "text-xs"}`}
@@ -76,12 +93,46 @@ export function BankLogo({ name, bankId, size = "md" }: BankLogoProps) {
     );
   }
 
+  // Prioritize PNG URL over SVG for better small-size rendering
+  if (brandData?.logoUrl) {
+    return (
+      <div
+        className={`${sizeClasses[size]} rounded flex items-center justify-center overflow-hidden flex-shrink-0`}
+        style={{ backgroundColor: brandData?.brandColor || "#e5e7eb" }}
+      >
+        <img
+          src={brandData.logoUrl}
+          alt={name || "Bank Logo"}
+          className="w-full h-full object-contain p-1"
+          loading="lazy"
+          onError={() => setError(true)}
+        />
+      </div>
+    );
+  }
+
+  // Fallback to SVG if PNG fails
+  if (brandData?.logoSvg) {
+    return (
+      <div
+        className={`${sizeClasses[size]} rounded flex items-center justify-center overflow-hidden flex-shrink-0`}
+        style={{ backgroundColor: brandData?.brandColor || "#e5e7eb" }}
+      >
+        <div
+          className="w-full h-full flex items-center justify-center p-1"
+          style={{ maxWidth: "100%", maxHeight: "100%" }}
+          dangerouslySetInnerHTML={{ __html: brandData.logoSvg }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`${sizeClasses[size]} rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden flex-shrink-0`}
     >
       <img
-        src={brand.logoUrl}
+        src={brandData?.logoUrl}
         alt={name || "Bank Logo"}
         className="w-full h-full object-contain"
         loading="lazy"

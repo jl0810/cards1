@@ -78,6 +78,15 @@ export async function GET(req: Request) {
         userId: userProfile.id,
       },
       include: {
+        bank: {
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            logoSvg: true,
+            brandColor: true,
+          },
+        },
         accounts: {
           include: {
             extended: {

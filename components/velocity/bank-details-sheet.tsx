@@ -64,17 +64,6 @@ export function BankDetailsSheet({
                 </SheetDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDisconnect(item.id)}
-                className="text-slate-400 hover:text-red-400 hover:bg-red-400/10"
-                title="Disconnect Bank"
-              >
-                <Trash2 className="w-5 h-5" />
-              </Button>
-            </div>
           </div>
 
           <div className="flex items-center justify-between bg-white/5 p-3 rounded-lg">
@@ -191,6 +180,27 @@ export function BankDetailsSheet({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="pt-6 mt-6 border-t border-white/10">
+          <h3 className="text-sm font-medium text-red-400 mb-4">Danger Zone</h3>
+          <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white">Disconnect Bank</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Stop syncing data from this bank. Your existing data will be
+                preserved.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => onDisconnect(item.id)}
+            >
+              Disconnect
+            </Button>
           </div>
         </div>
       </SheetContent>

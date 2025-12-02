@@ -338,21 +338,23 @@ export default function DashboardPage() {
       try {
         const allAccounts = items.flatMap((item: PlaidItem) =>
           (item.accounts || []).map((acc: Account) => {
-            // Calculate Payment Cycle Status
-            const paymentCycleStatus = calculatePaymentCycleStatus({
-              lastStatementBalance: acc.lastStatementBalance || 0,
-              lastStatementIssueDate: acc.lastStatementIssueDate
-                ? new Date(acc.lastStatementIssueDate)
-                : null,
-              currentBalance: acc.currentBalance || 0,
-              paymentMarkedPaidDate: acc.extended?.paymentMarkedPaidDate
-                ? new Date(acc.extended.paymentMarkedPaidDate)
-                : null,
-              lastPaymentAmount: acc.lastPaymentAmount || null,
-              lastPaymentDate: acc.lastPaymentDate
-                ? new Date(acc.lastPaymentDate)
-                : null,
-            });
+            // Use stored payment cycle status, or calculate if not set
+            const paymentCycleStatus =
+              acc.extended?.paymentCycleStatus ||
+              calculatePaymentCycleStatus({
+                lastStatementBalance: acc.lastStatementBalance || 0,
+                lastStatementIssueDate: acc.lastStatementIssueDate
+                  ? new Date(acc.lastStatementIssueDate)
+                  : null,
+                currentBalance: acc.currentBalance || 0,
+                paymentMarkedPaidDate: acc.extended?.paymentMarkedPaidDate
+                  ? new Date(acc.extended.paymentMarkedPaidDate)
+                  : null,
+                lastPaymentAmount: acc.lastPaymentAmount || null,
+                lastPaymentDate: acc.lastPaymentDate
+                  ? new Date(acc.lastPaymentDate)
+                  : null,
+              });
 
             return {
               id: acc.id,
@@ -457,28 +459,42 @@ export default function DashboardPage() {
       <AppHeader>
         <button
           onClick={() => setActiveUser("all")}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeUser === "all" ? "bg-white text-black border-white shadow-lg" : "bg-glass-100 text-slate-400 border-transparent"}`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${
+            activeUser === "all"
+              ? "bg-white text-black border-white shadow-lg"
+              : "bg-glass-100 text-slate-400 border-transparent"
+          }`}
         >
-          <LayoutGrid className="w-4 h-4" /> All
+          <LayoutGrid className="w-4 h-4" />{" "}
+          <span className="truncate">All</span>
         </button>
         {users.map((user) => (
           <button
             key={user.id}
             onClick={() => setActiveUser(user.id)}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeUser === user.id ? "bg-white text-black border-white shadow-lg" : "bg-glass-100 text-slate-400 border-transparent"}`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${
+              activeUser === user.id
+                ? "bg-white text-black border-white shadow-lg"
+                : "bg-glass-100 text-slate-400 border-transparent"
+            }`}
           >
-            <div className={`w-2 h-2 rounded-full ${user.color}`} /> {user.name}
+            <div
+              className={`w-2 h-2 rounded-full ${user.color} flex-shrink-0`}
+            />{" "}
+            <span className="truncate max-w-[80px]">{user.name}</span>
           </button>
         ))}
         <button
           onClick={refreshAll}
           disabled={refreshing}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border bg-glass-100 text-slate-400 border-transparent hover:bg-glass-200 disabled:opacity-50`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border bg-glass-100 text-slate-400 border-transparent hover:bg-glass-200 disabled:opacity-50 flex-shrink-0`}
         >
           <RefreshCw
             className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
           />
-          {refreshing ? "Syncing..." : "Refresh"}
+          <span className="truncate max-w-[60px]">
+            {refreshing ? "Syncing..." : "Refresh"}
+          </span>
         </button>
       </AppHeader>
 

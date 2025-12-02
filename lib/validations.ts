@@ -121,6 +121,16 @@ export const AccountSchema = z.object({
   type: z.string(),
   name: z.string(),
   bank: z.string(),
+  bankId: z.string().optional(),
+  bankData: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      logoUrl: z.string().nullable(),
+      logoSvg: z.string().nullable(),
+      brandColor: z.string().nullable(),
+    })
+    .optional(),
   balance: z.number(),
   userId: z.string(),
   due: z.string(),
@@ -161,6 +171,7 @@ export const AccountSchema = z.object({
     .object({
       paymentMarkedPaidDate: z.string().optional(),
       nickname: z.string().optional(),
+      paymentCycleStatus: z.string().optional(),
     })
     .optional(),
 });

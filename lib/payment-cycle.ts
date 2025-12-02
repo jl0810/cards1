@@ -9,6 +9,21 @@
  * @satisfies US-023 - Payment Cycle Status Tracking
  */
 
+/**
+ * Payment Cycle Status Types
+ *
+ * Represents the different states a credit card account can be in
+ * during its payment cycle. These states are used to determine
+ * what actions are available to the user and how the account
+ * should be displayed in the UI.
+ *
+ * @typedef {('STATEMENT_GENERATED'|'PAYMENT_SCHEDULED'|'PAID_AWAITING_STATEMENT'|'DORMANT')} PaymentCycleStatus
+ *
+ * @property {string} STATEMENT_GENERATED - Payment needed (< 30 days, unpaid)
+ * @property {string} PAYMENT_SCHEDULED - User marked as paid
+ * @property {string} PAID_AWAITING_STATEMENT - Paid off, waiting for next statement
+ * @property {string} DORMANT - No activity
+ */
 export type PaymentCycleStatus =
   | "STATEMENT_GENERATED" // Payment needed (< 30 days, unpaid)
   | "PAYMENT_SCHEDULED" // User marked as paid
@@ -25,16 +40,39 @@ export interface PaymentCycleData {
 }
 
 /**
- * Calculate payment cycle status for a credit card account
+ * Calculate Payment Cycle Status
  *
- * Logic based on Google Apps Script implementation:
- * - Checks for dormant accounts first (no activity)
- * - Then checks statement age (< 30 days = recent)
- * - Then checks if paid (current balance <= 0)
- * - Finally checks user manual payment flag
+ * Determines the current payment cycle status for a credit card account
+ * based on statement data, current balance, and user actions.
  *
- * @param data - Payment cycle data from Plaid and user input
- * @returns Payment cycle status
+ * Algorithm:
+ * 1. Check if user manually marked payment as paid (highest priority)
+ * 2. Check if account is dormant (no activity)
+ * 3. Check if statement is recent and unpaid
+ * 4. Check if account is paid off
+ *
+ * @param {PaymentCycleData} data - Payment cycle data from Plaid and user input
+ * @param {number|null} data.lastStatementBalance - Balance from last statement
+ * @param {Date|null} data.lastStatementIssueDate - When last statement was issued
+ * @param {number|null} data.currentBalance - Current account balance
+ * @param {Date|null} data.paymentMarkedPaidDate - When user marked as paid
+ * @param {number|null} data.lastPaymentAmount - Amount of last payment
+ * @param {Date|null} data.lastPaymentDate - Date of last payment
+ *
+ * @returns {PaymentCycleStatus} The calculated payment cycle status
+ *
+ * @example
+ * ```typescript
+ * const status = calculatePaymentCycleStatus({
+ *   lastStatementBalance: 500,
+ *   lastStatementIssueDate: new Date('2024-11-15'),
+ *   currentBalance: 500,
+ *   paymentMarkedPaidDate: null,
+ *   lastPaymentAmount: null,
+ *   lastPaymentDate: null,
+ * });
+ * // Returns: 'STATEMENT_GENERATED'
+ * ```
  */
 export function calculatePaymentCycleStatus(
   data: PaymentCycleData,
@@ -153,6 +191,12 @@ export function calculatePaymentCycleStatus(
 
 /**
  * Get human-readable label for payment cycle status
+ *
+ * @param {PaymentCycleStatus} status - The payment cycle status
+ * @returns {string} Human-readable label
+ *
+ * @example
+ * getPaymentCycleLabel('STATEMENT_GENERATED') // Returns: 'Payment Needed'
  */
 export function getPaymentCycleLabel(status: PaymentCycleStatus): string {
   switch (status) {

@@ -72,14 +72,6 @@ export default function PlaidLinkWithFamily({
           familyMemberId: selectedFamilyMemberId,
         };
 
-        console.log("Sending token exchange request:", {
-          hasPublicToken: !!public_token,
-          hasMetadata: !!metadata,
-          institutionId: metadata?.institution?.institution_id,
-          accountCount: metadata?.accounts?.length,
-          familyMemberId: selectedFamilyMemberId,
-        });
-
         const response = await fetch("/api/plaid/exchange-public-token", {
           method: "POST",
           headers: {
@@ -92,9 +84,6 @@ export default function PlaidLinkWithFamily({
         try {
           data = await response.json();
         } catch (parseError) {
-          console.error("Failed to parse response as JSON:", parseError);
-          const text = await response.text();
-          console.error("Response text:", text);
           throw new Error(
             `Server returned invalid response (${response.status})`,
           );
@@ -107,11 +96,7 @@ export default function PlaidLinkWithFamily({
             data?.error ||
             data?.message ||
             "Failed to exchange token";
-          console.error("Token exchange error:", {
-            status: response.status,
-            data,
-            errorMessage,
-          });
+
           throw new Error(errorMessage);
         }
 
@@ -129,7 +114,6 @@ export default function PlaidLinkWithFamily({
           onLinkSuccess();
         }
       } catch (error) {
-        console.error("Exchange token error:", error);
         const errorMessage =
           error instanceof Error
             ? error.message

@@ -166,7 +166,11 @@ export function CreditCard({
 
   // Sync optimistic status with server data
   useEffect(() => {
-    if (acc.paymentCycleStatus === optimisticStatus) {
+    if (
+      acc.paymentCycleStatus &&
+      optimisticStatus &&
+      acc.paymentCycleStatus !== optimisticStatus
+    ) {
       setOptimisticStatus(null);
     }
   }, [acc.paymentCycleStatus, optimisticStatus]);
@@ -188,6 +192,16 @@ export function CreditCard({
     "STATEMENT_GENERATED";
   const statusConfig = getPaymentCycleColor(status);
   const statusLabel = getPaymentCycleLabel(status);
+
+  // 1. DEFINE STATUS STATES
+  // Group the statuses to make the logic cleaner
+  const isPaid =
+    status === "PAID_AWAITING_STATEMENT" || status === "PAYMENT_SCHEDULED";
+
+  const isPayable = status === "STATEMENT_GENERATED";
+
+  // The button should show if it is Payable OR if it is already Paid (so we can undo)
+  const showActionButton = isPayable || isPaid;
 
   // List view doesn't support flip
   if (layout === "list") {
@@ -237,41 +251,58 @@ export function CreditCard({
     );
   }
 
-  // Handle Mark as Paid
-  const handleMarkAsPaid = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card flip
+  // 2. UPDATE HANDLER
+  const handleTogglePaidStatus = async (e: React.MouseEvent) => {
+    e.stopPropagation();
 
-    // Optimistic UI update
-    setOptimisticStatus("PAID_AWAITING_STATEMENT");
+    // Determine the new state based on current state
+    const newStatus = isPaid
+      ? "STATEMENT_GENERATED"
+      : "PAID_AWAITING_STATEMENT";
+
+    // Optimistic Update
+    setOptimisticStatus(newStatus);
 
     try {
+      if (isPaid) {
+        // Handle UN-MARKING (Undo)
+        const res = await fetch(`/api/account/${acc.id}/unmark-paid`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (res.ok) {
+          toast.success("Payment cancelled");
+          router.refresh();
+        } else {
+          throw new Error("Failed to cancel payment");
+        }
+        return;
+      }
+
+      // Handle MARKING AS PAID
+      const amount = Number(
+        acc.liabilities.last_statement?.replace(/[^0-9.]+/g, "") || 0,
+      );
+
       const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: new Date().toISOString(),
-          amount: acc.liabilities.last_statement
-            ? parseFloat(
-                acc.liabilities.last_statement.replace(/[^0-9.-]+/g, ""),
-              )
-            : 0,
+          amount,
         }),
       });
 
       if (res.ok) {
         toast.success("Marked as paid");
-        // Soft refresh to sync server state
         router.refresh();
       } else {
-        // Revert on failure
-        setOptimisticStatus(null);
-        toast.error("Failed to mark as paid");
-        console.error("Failed to mark as paid");
+        throw new Error("Request failed");
       }
     } catch (error) {
       setOptimisticStatus(null);
-      toast.error("Failed to mark as paid");
-      console.error("Failed to mark as paid", error);
+      toast.error("Failed to update status");
     }
   };
 
@@ -304,7 +335,9 @@ export function CreditCard({
       >
         {/* --- FRONT OF CARD --- */}
         <div
-          className="absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden shadow-2xl"
+          className={`absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden shadow-2xl ${
+            isFlipped ? "pointer-events-none" : "pointer-events-auto"
+          }`}
           style={{ zIndex: isFlipped ? 0 : 1 }}
         >
           {/* Base Background - Dark Premium Feel */}
@@ -437,31 +470,53 @@ export function CreditCard({
 
         {/* --- BACK OF CARD (Liabilities Data) --- */}
         <div
-          className="absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden bg-slate-900 border border-white/10 shadow-2xl"
+          className="absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden bg-slate-900 border border-white/10 shadow-2xl pointer-events-auto"
           style={{ transform: "rotateY(180deg)", zIndex: isFlipped ? 1 : 0 }}
         >
           {/* Magnetic Stripe with Action Button */}
           <div className="w-full h-12 bg-black mt-4 mb-3 relative flex items-center justify-between px-5">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-20"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-20 pointer-events-none"></div>
 
             {/* Mark Paid Button or Status Badge */}
             <div className="relative z-10">
-              {status === "STATEMENT_GENERATED" ? (
+              {/* USE THE NEW VARIABLE HERE */}
+              {showActionButton ? (
                 <button
-                  onClick={handleMarkAsPaid}
-                  className="group flex items-center gap-1.5 pl-1.5 pr-3 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 hover:border-emerald-500/50 rounded-full transition-all duration-200 shadow-lg"
+                  onClick={handleTogglePaidStatus}
+                  className={`group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${
+                    isPaid
+                      ? "bg-slate-700/50 border border-slate-600 hover:bg-slate-700" // Styles for Undo
+                      : "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Styles for Pay
+                  }`}
                 >
-                  <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
-                    <CheckCircle
-                      className="w-2.5 h-2.5 text-white"
-                      strokeWidth={3}
-                    />
+                  <div
+                    className={`w-4 h-4 rounded-full flex items-center justify-center shadow-lg transition-transform ${
+                      isPaid
+                        ? "bg-slate-500"
+                        : "bg-emerald-500 group-hover:scale-110"
+                    }`}
+                  >
+                    {isPaid ? (
+                      <span className="text-[10px] text-white font-bold">
+                        ✕
+                      </span>
+                    ) : (
+                      <CheckCircle
+                        className="w-2.5 h-2.5 text-white"
+                        strokeWidth={3}
+                      />
+                    )}
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 group-hover:text-emerald-200">
-                    Mark Paid
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider ${
+                      isPaid ? "text-slate-300" : "text-emerald-300"
+                    }`}
+                  >
+                    {isPaid ? "Mark as Unpaid" : "Mark Paid"}
                   </span>
                 </button>
               ) : (
+                /* Fallback Badge for other statuses (e.g. OVERDUE) */
                 <div
                   className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${statusConfig.bg} bg-opacity-20 border-white/10`}
                 >

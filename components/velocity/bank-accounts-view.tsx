@@ -118,7 +118,6 @@ export function BankAccountsView({
       setItems(Array.isArray(unwrappedItems) ? unwrappedItems : []);
       setFamilyMembers(Array.isArray(unwrappedFamily) ? unwrappedFamily : []);
     } catch (error) {
-      console.error(error);
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
@@ -180,7 +179,6 @@ export function BankAccountsView({
 
       toast.success("Assigned to family member");
     } catch (error) {
-      console.error(error);
       toast.error("Failed to update assignment");
       setItems(originalItems);
     }
@@ -208,7 +206,6 @@ export function BankAccountsView({
       await fetchData();
       toast.success(`${item.institutionName} disconnected`);
     } catch (error) {
-      console.error(error);
       toast.error("Failed to disconnect bank");
     }
   };
@@ -267,7 +264,7 @@ export function BankAccountsView({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {filteredItems.map((item) => {
             const totalBalance = item.accounts.reduce(
               (sum, acc) => sum + (acc.currentBalance || 0),
