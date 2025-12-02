@@ -229,15 +229,6 @@ export function BankAccountsView({
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Bank Accounts</h2>
         <div className="flex items-center gap-2">
-          {items.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => syncTransactions()}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" /> Sync All
-            </Button>
-          )}
           <PlaidLinkWithFamily
             familyMembers={familyMembers}
             onSuccess={fetchData}
@@ -290,15 +281,24 @@ export function BankAccountsView({
                       item.status === "active"
                         ? "bg-green-500/10 text-green-400"
                         : item.status === "needs_reauth"
-                          ? "bg-red-500/10 text-red-400"
-                          : "bg-slate-500/10 text-slate-400"
+                          ? "bg-amber-500/10 text-amber-400"
+                          : item.status === "disconnected"
+                            ? "bg-red-500/10 text-red-400"
+                            : "bg-red-500/10 text-red-400"
                     }`}
                   >
                     {item.status === "needs_reauth"
-                      ? "Action Required"
-                      : item.status}
+                      ? "Needs Re-auth"
+                      : item.status === "disconnected"
+                        ? "Disabled"
+                        : item.status}
                   </div>
                 </div>
+                {item.status === "disconnected" && (
+                  <div className="mb-4 text-xs text-red-400/90 font-medium bg-red-500/5 p-2 rounded-lg border border-red-500/10">
+                    Bank will no longer sync. You must re-add the bank.
+                  </div>
+                )}
 
                 <h3 className="font-semibold text-white text-lg mb-1 truncate">
                   {item.institutionName || "Unknown Bank"}
