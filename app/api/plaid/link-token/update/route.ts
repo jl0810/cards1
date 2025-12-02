@@ -12,7 +12,7 @@ import { plaidClient } from "@/lib/plaid";
 import { logger } from "@/lib/logger";
 import { Errors } from "@/lib/api-errors";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { CountryCode } from "plaid";
+import { CountryCode, Products } from "plaid";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +83,7 @@ export async function POST(req: Request) {
       user: { client_user_id: userProfile.id },
       client_name: process.env.NEXT_PUBLIC_APP_NAME || "Card Tracker",
       access_token: accessToken, // This enables update mode!
+      products: [Products.Transactions, Products.Liabilities], // Request Liabilities upgrade
       language: "en",
       country_codes: [CountryCode.Us],
     });
