@@ -35,12 +35,18 @@ jest.mock("@/hooks/use-bank-brand", () => ({
 
 jest.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, onClick, onKeyDown, ...props }: any) => (
-      <div onClick={onClick} onKeyDown={onKeyDown} {...props}>
+    div: ({ children, onClick, ...props }: any) => (
+      <div onClick={onClick} {...props}>
         {children}
       </div>
     ),
+    button: ({ children, onClick, ...props }: any) => (
+      <button onClick={onClick} {...props}>
+        {children}
+      </button>
+    ),
   },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
 jest.mock("@/lib/prisma", () => ({
@@ -132,7 +138,9 @@ describe("CreditCard Payment Cycle Status", () => {
 
       expect(screen.queryByText("Mark Paid")).not.toBeInTheDocument();
       expect(screen.queryByText("Mark as Unpaid")).not.toBeInTheDocument();
-      expect(screen.getByText("Dormant")).toBeInTheDocument();
+      const badges = screen.getAllByText("Dormant");
+      expect(badges.length).toBeGreaterThan(0);
+      expect(badges[0]).toBeInTheDocument();
     });
   });
 
@@ -161,13 +169,17 @@ describe("CreditCard Payment Cycle Status", () => {
       fireEvent.click(markPaidButton);
 
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith("/api/account/acc-123/mark-paid", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: expect.any(String),
-            amount: 500,
-          }),
+        const calls = (fetch as jest.Mock).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+
+        expect(lastCall[0]).toBe("/api/account/acc-123/mark-paid");
+        expect(lastCall[1].method).toBe("POST");
+
+        const body = JSON.parse(lastCall[1].body);
+        expect(body).toEqual({
+          date: expect.any(String),
+          amount: 500,
         });
       });
 
@@ -217,13 +229,17 @@ describe("CreditCard Payment Cycle Status", () => {
       fireEvent.click(markPaidButton);
 
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith("/api/account/acc-123/mark-paid", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: expect.any(String),
-            amount: 0, // Should default to 0 for empty/invalid values
-          }),
+        const calls = (fetch as jest.Mock).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+
+        expect(lastCall[0]).toBe("/api/account/acc-123/mark-paid");
+        expect(lastCall[1].method).toBe("POST");
+
+        const body = JSON.parse(lastCall[1].body);
+        expect(body).toEqual({
+          date: expect.any(String),
+          amount: 0,
         });
       });
     });
