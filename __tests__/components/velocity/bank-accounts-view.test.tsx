@@ -15,8 +15,8 @@ jest.mock("sonner", () => ({
   },
 }));
 
-jest.mock("@/components/shared/plaid-link", () => {
-  return function MockPlaidLink() {
+jest.mock("@/components/shared/plaid-link-with-family", () => {
+  return function MockPlaidLinkWithFamily() {
     return <button>Connect Bank Account</button>;
   };
 });

@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const PlaidLink = dynamic(
+const PlaidLinkWithFamily = dynamic(
   () =>
-    import("@/components/shared/plaid-link").then((mod) => ({
+    import("@/components/shared/plaid-link-with-family").then((mod) => ({
       default: mod.default,
     })),
   {
@@ -315,7 +315,7 @@ export function BankAccountsView({
               <RefreshCw className="w-4 h-4 mr-2" /> Sync All
             </Button>
           )}
-          <PlaidLink />
+          <PlaidLinkWithFamily familyMembers={familyMembers} />
         </div>
       </div>
 

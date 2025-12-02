@@ -192,6 +192,37 @@ This document defines all business rules for the PointMax Velocity application.
 
 ---
 
+### **[BR-009A]** Token Exchange Retry Logic
+
+**Category:** Reliability & Error Handling  
+**Description:** The public token exchange process implements automatic retry logic to handle transient network errors while preventing retries on invalid token errors.
+
+**Retry Behavior:**
+
+1. **Token Exchange Retries:**
+   - Maximum 3 attempts for `itemPublicTokenExchange`
+   - 1-second delay between retry attempts
+   - Retries on network errors or server errors (5xx)
+   - **No retry** on `INVALID_PUBLIC_TOKEN` error (indicates token already used or expired)
+
+2. **Account Fetching Retries:**
+   - Maximum 3 attempts for `liabilitiesGet` / `accountsGet`
+   - 1-second delay between retry attempts
+   - Automatic fallback to `accountsGet` if `liabilitiesGet` fails on final attempt
+
+3. **Logging:**
+   - All retry attempts are logged with `logger.warn`
+   - Error logs include: `link_session_id`, `request_id`, `error_code`, `error_message`, `userId`, `institutionId`
+   - Follows Plaid troubleshooting best practices: https://plaid.com/docs/link/troubleshooting/
+
+**Rationale:** Public tokens are single-use and expire quickly. Retrying on network errors improves reliability without risking token invalidation. The `INVALID_PUBLIC_TOKEN` check prevents wasted retry attempts when the token is already consumed.
+
+**User Stories:** [US-006]  
+**Code:** `app/api/plaid/exchange-public-token/route.ts` (lines 146-176, 188-227)  
+**Tests:** `__tests__/api/plaid/exchange-public-token.integration.test.ts` (lines 594-741)
+
+---
+
 ### **[BR-010]** Family Member Assignment
 
 **Category:** Data Management  

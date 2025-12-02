@@ -591,5 +591,152 @@ describe("Unit: Bank Linking (US-006)", () => {
       const response = await POST(request as unknown as NextRequest);
       expect(response.status).toBe(500);
     });
+
+    it("should retry token exchange on network errors", async () => {
+      // First two attempts fail with network error, third succeeds
+      mockItemPublicTokenExchange
+        .mockRejectedValueOnce(new Error("Network timeout"))
+        .mockRejectedValueOnce(new Error("Network timeout"))
+        .mockResolvedValueOnce({
+          data: {
+            access_token: "access-test-retry",
+            item_id: "item-test-retry",
+          },
+        });
+
+      mockLiabilitiesGet.mockResolvedValue({
+        data: {
+          accounts: [
+            {
+              account_id: "acc-retry-1",
+              balances: { current: 1000, available: 900, limit: 5000 },
+              name: "Retry Checking",
+              official_name: "Retry Checking Account",
+              type: "depository",
+              subtype: "checking",
+            },
+          ],
+          liabilities: { credit: [] },
+        },
+      });
+
+      (prisma.$queryRaw as jest.Mock).mockResolvedValue([
+        { id: "vault-secret-retry" },
+      ]);
+
+      const request = new Request(
+        "http://localhost/api/plaid/exchange-public-token",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            public_token: "public-test-retry",
+            metadata: {
+              institution: {
+                id: "ins_test_retry",
+                name: "Test Bank Retry",
+              },
+              accounts: [],
+              link_session_id: "link-session-retry",
+            },
+          }),
+        },
+      );
+
+      const response = await POST(request as unknown as NextRequest);
+      expect(response.status).toBe(200);
+      expect(mockItemPublicTokenExchange).toHaveBeenCalledTimes(3);
+    });
+
+    it("should not retry on INVALID_PUBLIC_TOKEN error", async () => {
+      // Simulate INVALID_PUBLIC_TOKEN error
+      const plaidError = {
+        response: {
+          data: {
+            error_code: "INVALID_PUBLIC_TOKEN",
+            error_message: "Public token has already been exchanged",
+            request_id: "req-test-invalid",
+          },
+        },
+      };
+
+      mockItemPublicTokenExchange.mockRejectedValue(plaidError);
+
+      const request = new Request(
+        "http://localhost/api/plaid/exchange-public-token",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            public_token: "public-test-used",
+            metadata: {
+              institution: {
+                id: "ins_test_used",
+                name: "Test Bank",
+              },
+              accounts: [],
+              link_session_id: "link-session-used",
+            },
+          }),
+        },
+      );
+
+      const response = await POST(request as unknown as NextRequest);
+      expect(response.status).toBe(500);
+      // Should only be called once, no retries
+      expect(mockItemPublicTokenExchange).toHaveBeenCalledTimes(1);
+    });
+
+    it("should retry account fetching on transient errors", async () => {
+      mockItemPublicTokenExchange.mockResolvedValue({
+        data: {
+          access_token: "access-test-account-retry",
+          item_id: "item-test-account-retry",
+        },
+      });
+
+      // First two attempts fail, third succeeds
+      mockLiabilitiesGet
+        .mockRejectedValueOnce(new Error("Temporary network issue"))
+        .mockRejectedValueOnce(new Error("Temporary network issue"))
+        .mockResolvedValueOnce({
+          data: {
+            accounts: [
+              {
+                account_id: "acc-retry-2",
+                balances: { current: 2000, available: 1800, limit: 10000 },
+                name: "Retry Credit Card",
+                official_name: "Retry Credit Card Account",
+                type: "credit",
+                subtype: "credit card",
+              },
+            ],
+            liabilities: { credit: [] },
+          },
+        });
+
+      (prisma.$queryRaw as jest.Mock).mockResolvedValue([
+        { id: "vault-secret-account-retry" },
+      ]);
+
+      const request = new Request(
+        "http://localhost/api/plaid/exchange-public-token",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            public_token: "public-test-account-retry",
+            metadata: {
+              institution: {
+                id: "ins_test_account_retry",
+                name: "Test Bank Account Retry",
+              },
+              accounts: [],
+            },
+          }),
+        },
+      );
+
+      const response = await POST(request as unknown as NextRequest);
+      expect(response.status).toBe(200);
+      expect(mockLiabilitiesGet).toHaveBeenCalledTimes(3);
+    });
   });
 });

@@ -1,78 +1,53 @@
-/**
- * Diagnostic script to check user data
- * Run with: npx tsx scripts/check-user-data.ts
- */
+import { PrismaClient } from "@prisma/client";
 
-import { prisma } from '../lib/prisma';
+const prisma = new PrismaClient();
 
 async function checkUserData() {
   try {
-    console.log('🔍 Checking data for jefflawson@gmail.com...\n');
+    console.log("🔍 Checking user data...\n");
 
-    // Find user profile by email (via Clerk)
-    const userProfile = await prisma.userProfile.findFirst({
+    // Get all user profiles
+    const users = await prisma.userProfile.findMany({
       include: {
         familyMembers: true,
-      }
+      },
     });
 
-    if (!userProfile) {
-      console.log('❌ No user profile found');
-      return;
+    console.log(`Found ${users.length} user profile(s):\n`);
+
+    for (const user of users) {
+      console.log(`📧 User: ${user.name} (${user.clerkId})`);
+      console.log(`   Family Members: ${user.familyMembers.length}`);
+
+      // Get Plaid items for this user
+      const items = await prisma.plaidItem.findMany({
+        where: { userId: user.id },
+        include: {
+          accounts: true,
+        },
+      });
+
+      console.log(`   Plaid Items: ${items.length}`);
+
+      if (items.length > 0) {
+        for (const item of items) {
+          console.log(
+            `   - ${item.institutionName || "Unknown Bank"}: ${item.accounts.length} accounts`,
+          );
+        }
+      }
+      console.log("");
     }
 
-    console.log('✅ User Profile:', {
-      id: userProfile.id,
-      clerkId: userProfile.clerkId,
-      name: userProfile.name,
-      familyMembers: userProfile.familyMembers.length,
-    });
-
-    // Check Plaid items
-    const plaidItems = await prisma.plaidItem.findMany({
-      where: { userId: userProfile.id },
-      include: {
-        accounts: {
-          include: {
-            extended: true,
-          }
-        }
-      }
-    });
-
-    console.log(`\n📊 Plaid Items: ${plaidItems.length}`);
-    
-    plaidItems.forEach((item, i) => {
-      console.log(`\n  Item ${i + 1}:`, {
-        id: item.id,
-        institutionName: item.institutionName,
-        accounts: item.accounts.length,
-      });
-
-      item.accounts.forEach((acc, j) => {
-        console.log(`    Account ${j + 1}:`, {
-          id: acc.id,
-          name: acc.name,
-          balance: acc.currentBalance,
-          type: acc.type,
-          subtype: acc.subtype,
-        });
-      });
-    });
-
-    // Check transactions
-    const txCount = await prisma.plaidTransaction.count({
-      where: {
-        plaidItem: {
-          userId: userProfile.id
-        }
-      }
-    });
-
-    console.log(`\n💳 Total Transactions: ${txCount}`);
-
+    if (users.length === 0) {
+      console.log("❌ No users found in database!");
+      console.log(
+        "   This means the Clerk webhook hasn't created a user profile yet.",
+      );
+      console.log("   Try logging in to trigger user creation.");
+    }
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error("Error:", error);
   } finally {
     await prisma.$disconnect();
   }
