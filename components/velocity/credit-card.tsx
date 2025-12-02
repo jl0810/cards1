@@ -13,7 +13,9 @@
  * @tested __tests__/components/velocity/credit-card.test.ts
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Wifi, Landmark, Globe, CheckCircle } from "lucide-react";
 import { useBankBrand } from "@/hooks/use-bank-brand";
@@ -157,7 +159,17 @@ export function CreditCard({
   onRename?: (id: string, newName: string) => void;
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [optimisticStatus, setOptimisticStatus] =
+    useState<PaymentCycleStatus | null>(null);
+  const router = useRouter();
   const { brand } = useBankBrand(acc.bankId || null);
+
+  // Sync optimistic status with server data
+  useEffect(() => {
+    if (acc.paymentCycleStatus === optimisticStatus) {
+      setOptimisticStatus(null);
+    }
+  }, [acc.paymentCycleStatus, optimisticStatus]);
 
   // Resolve Color: Database -> Manual Map -> Fallback
   const knownColor = Object.keys(BANK_COLORS).find((key) =>
@@ -171,7 +183,9 @@ export function CreditCard({
 
   // Get Payment Cycle Status visuals
   const status =
-    (acc.paymentCycleStatus as PaymentCycleStatus) || "STATEMENT_GENERATED";
+    optimisticStatus ||
+    (acc.paymentCycleStatus as PaymentCycleStatus) ||
+    "STATEMENT_GENERATED";
   const statusConfig = getPaymentCycleColor(status);
   const statusLabel = getPaymentCycleLabel(status);
 
@@ -227,8 +241,9 @@ export function CreditCard({
   const handleMarkAsPaid = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card flip
 
-    // Optimistic UI update could happen here in a real app context
-    // For now, we'll just call the API and let the refresh happen
+    // Optimistic UI update
+    setOptimisticStatus("PAID_AWAITING_STATEMENT");
+
     try {
       const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
         method: "POST",
@@ -244,11 +259,18 @@ export function CreditCard({
       });
 
       if (res.ok) {
-        // Trigger a refresh of the accounts data
-        // In a real implementation, we'd want to pass a refresh callback from the parent
-        window.location.reload(); // Brute force refresh for now, ideally use SWR/TanStack Query invalidation
+        toast.success("Marked as paid");
+        // Soft refresh to sync server state
+        router.refresh();
+      } else {
+        // Revert on failure
+        setOptimisticStatus(null);
+        toast.error("Failed to mark as paid");
+        console.error("Failed to mark as paid");
       }
     } catch (error) {
+      setOptimisticStatus(null);
+      toast.error("Failed to mark as paid");
       console.error("Failed to mark as paid", error);
     }
   };
