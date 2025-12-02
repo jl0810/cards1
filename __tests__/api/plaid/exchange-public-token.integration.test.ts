@@ -72,6 +72,8 @@ jest.mock("@/lib/prisma", () => ({
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     plaidAccount: {
       create: jest.fn(),

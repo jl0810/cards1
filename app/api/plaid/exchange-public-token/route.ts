@@ -161,6 +161,33 @@ export async function POST(req: NextRequest) {
             duplicateAccountMasks: duplicateAccounts.map((a) => a.mask),
           },
         );
+
+        // AUTO-CLEANUP: If we found an active duplicate, check if there are any "zombie" items
+        // (disconnected items with 0 accounts) for this institution and clean them up.
+        // This prevents user confusion where they see a "Disabled" item but can't link because of an "Active" one.
+        if (institutionId) {
+          const zombies = await prisma.plaidItem.findMany({
+            where: {
+              userId: userProfile.id,
+              institutionId: institutionId,
+              status: { in: ["disconnected", "error"] },
+              accounts: { none: {} },
+            },
+            select: { id: true },
+          });
+
+          if (zombies.length > 0) {
+            logger.info("Cleaning up zombie items", {
+              count: zombies.length,
+              ids: zombies.map((z) => z.id),
+            });
+            await prisma.plaidItem.updateMany({
+              where: { id: { in: zombies.map((z) => z.id) } },
+              data: { status: "inactive" },
+            });
+          }
+        }
+
         return NextResponse.json({
           ok: true,
           itemId: existingItem.id,
