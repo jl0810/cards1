@@ -79,7 +79,11 @@ export default function PlaidLinkWithFamily({
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error("Failed to exchange token");
+          // Show specific error message from server
+          const errorMessage =
+            data?.error?.message || data?.message || "Failed to exchange token";
+          console.error("Token exchange error:", data);
+          throw new Error(errorMessage);
         }
 
         if (data.duplicate) {
@@ -93,8 +97,12 @@ export default function PlaidLinkWithFamily({
 
         router.refresh();
       } catch (error) {
-        console.error(error);
-        toast.error("Failed to link bank account");
+        console.error("Exchange token error:", error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to link bank account";
+        toast.error(errorMessage);
       }
     },
     [router, selectedFamilyMemberId, familyMembers],
