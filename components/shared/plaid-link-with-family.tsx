@@ -16,8 +16,14 @@ import { usePlaidLink } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FamilyMemberSelector } from "@/components/velocity/family-member-selector";
-import { Plus } from "lucide-react";
+import { Plus, ChevronsUpDown, Check } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface PlaidMetadata {
   institution?: {
@@ -135,24 +141,113 @@ export default function PlaidLinkWithFamily({
   // If no family members, show simple button
   if (familyMembers.length === 0) {
     return (
-      <Button onClick={startLink} disabled={loading}>
+      <Button
+        onClick={startLink}
+        disabled={loading}
+        className="bg-brand-primary hover:bg-brand-primary/90"
+      >
         <Plus className="w-4 h-4 mr-2" />
-        {loading ? "Connecting..." : "Connect Bank Account"}
+        {loading ? "Connecting..." : "Connect Bank"}
       </Button>
     );
   }
 
+  const selectedMember =
+    familyMembers.find((m) => m.id === selectedFamilyMemberId) ||
+    familyMembers[0];
+
   return (
-    <div className="flex items-center gap-2">
-      <FamilyMemberSelector
-        currentMemberId={selectedFamilyMemberId}
-        members={familyMembers}
-        onSelect={setSelectedFamilyMemberId}
-      />
-      <Button onClick={startLink} disabled={loading}>
+    <div className="flex items-center gap-0">
+      <Button
+        onClick={startLink}
+        disabled={loading}
+        className="bg-brand-primary hover:bg-brand-primary/90 rounded-r-none border-r border-white/10 pr-3"
+      >
         <Plus className="w-4 h-4 mr-2" />
-        {loading ? "Connecting..." : "Connect Bank"}
+        {loading ? "Connecting..." : "Connect Bank for"}
       </Button>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            disabled={loading}
+            className="bg-brand-primary hover:bg-brand-primary/90 rounded-l-none pl-2 pr-3 border-l-0"
+          >
+            <div className="flex items-center gap-2">
+              <div className="relative flex h-5 w-5 shrink-0 overflow-hidden rounded-full border border-white/20 bg-gradient-to-br from-indigo-500 to-purple-600">
+                {selectedMember?.avatar ? (
+                  <img
+                    src={selectedMember.avatar}
+                    alt={selectedMember.name}
+                    className="aspect-square h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-indigo-500 text-[9px] font-bold text-white uppercase">
+                    {selectedMember?.name?.substring(0, 2) || "FM"}
+                  </div>
+                )}
+              </div>
+              <span className="text-sm font-medium">
+                {selectedMember?.name || "Select..."}
+              </span>
+              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-70" />
+            </div>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0 bg-black/80 backdrop-blur-xl border-white/10 text-slate-200 shadow-2xl rounded-xl overflow-hidden">
+          <div className="p-2">
+            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              Link Account To
+            </div>
+            <div className="space-y-1">
+              {familyMembers.map((member) => (
+                <motion.button
+                  key={member.id}
+                  onClick={() => setSelectedFamilyMemberId(member.id)}
+                  className={cn(
+                    "relative flex w-full cursor-pointer select-none items-center rounded-lg px-2 py-2 text-sm outline-none transition-colors hover:bg-white/10 focus:bg-white/10",
+                    selectedFamilyMemberId === member.id &&
+                      "bg-white/10 text-white",
+                  )}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full border border-white/10 mr-3 bg-gradient-to-br from-slate-700 to-slate-600">
+                    {member.avatar ? (
+                      <img
+                        src={member.avatar}
+                        alt={member.name}
+                        className="aspect-square h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white uppercase">
+                        {member.name.substring(0, 2)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium text-sm">{member.name}</span>
+                    {member.isPrimary && (
+                      <span className="text-[10px] text-indigo-400 font-medium">
+                        Primary Owner
+                      </span>
+                    )}
+                  </div>
+                  {selectedFamilyMemberId === member.id && (
+                    <motion.div
+                      layoutId="check"
+                      className="absolute right-2 text-indigo-400"
+                    >
+                      <Check className="h-4 w-4" />
+                    </motion.div>
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
