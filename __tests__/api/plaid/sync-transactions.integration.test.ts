@@ -40,18 +40,21 @@ jest.mock("@/lib/rate-limit", () => ({
 jest.mock("plaid", () => {
   const mockTransactionsSync = jest.fn();
   const mockAccountsBalanceGet = jest.fn();
+  const mockLiabilitiesGet = jest.fn();
 
   return {
     Configuration: jest.fn(),
     PlaidApi: jest.fn().mockImplementation(() => ({
       transactionsSync: mockTransactionsSync,
       accountsBalanceGet: mockAccountsBalanceGet,
+      liabilitiesGet: mockLiabilitiesGet,
     })),
     PlaidEnvironments: {
       sandbox: "https://sandbox.plaid.com",
     },
     __mockTransactionsSync: mockTransactionsSync,
     __mockAccountsBalanceGet: mockAccountsBalanceGet,
+    __mockLiabilitiesGet: mockLiabilitiesGet,
   };
 });
 
@@ -119,6 +122,8 @@ const mockTransactionsSync = (plaidModule as MockPlaidModule)
   .__mockTransactionsSync;
 const mockAccountsBalanceGet = (plaidModule as MockPlaidModule)
   .__mockAccountsBalanceGet;
+const mockLiabilitiesGet = (plaidModule as MockPlaidModule)
+  .__mockLiabilitiesGet;
 
 describe("Unit: Transaction Sync (US-007)", () => {
   const testUserId = "user_123";
@@ -131,6 +136,10 @@ describe("Unit: Transaction Sync (US-007)", () => {
     jest.clearAllMocks();
     (auth as unknown as jest.Mock).mockResolvedValue({ userId: testClerkId });
     (rateLimit as jest.Mock).mockResolvedValue(false); // Not rate limited
+
+    mockLiabilitiesGet.mockResolvedValue({
+      data: { liabilities: { credit: [] } },
+    });
 
     // Setup default Prisma mocks
     (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue({

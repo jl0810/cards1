@@ -8,7 +8,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { plaidClient } from "@/lib/plaid";
-import { AccountBase } from "plaid";
+import { AccountBase, CreditCardLiability } from "plaid";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -180,12 +180,31 @@ export async function POST(req: NextRequest) {
       // Continue with sync even if balance fetch fails
     }
 
+    // Fetch liabilities (credit card details)
+    const liabilitiesMap = new Map<string, CreditCardLiability>();
+    try {
+      const liabilitiesResponse = await plaidClient.liabilitiesGet({
+        access_token: accessToken,
+      });
+      if (liabilitiesResponse.data.liabilities?.credit) {
+        for (const credit of liabilitiesResponse.data.liabilities.credit) {
+          if (credit.account_id) {
+            liabilitiesMap.set(credit.account_id, credit);
+          }
+        }
+      }
+    } catch (error) {
+      logger.warn("Failed to fetch liabilities", { error, itemId });
+    }
+
     // Wrap ALL database operations in a transaction for atomicity
     await prisma.$transaction(
       async (tx) => {
         // 0. BUG FIX #4: Update balances AND create missing accounts (Self-Healing)
         // We do this BEFORE transactions to ensure foreign key constraints are met
         for (const account of accountsData) {
+          const liability = liabilitiesMap.get(account.account_id);
+
           await tx.plaidAccount
             .upsert({
               where: { accountId: account.account_id },
@@ -199,6 +218,21 @@ export async function POST(req: NextRequest) {
                 type: account.type,
                 subtype: account.subtype || null,
                 isoCurrencyCode: account.balances.iso_currency_code || "USD",
+                // Liability data
+                lastStatementBalance: liability?.last_statement_balance,
+                lastStatementIssueDate: liability?.last_statement_issue_date
+                  ? new Date(liability.last_statement_issue_date)
+                  : null,
+                minPaymentAmount: liability?.minimum_payment_amount,
+                nextPaymentDueDate: liability?.next_payment_due_date
+                  ? new Date(liability.next_payment_due_date)
+                  : null,
+                lastPaymentAmount: liability?.last_payment_amount,
+                lastPaymentDate: liability?.last_payment_date
+                  ? new Date(liability.last_payment_date)
+                  : null,
+                apr: liability?.aprs.find((a) => a.apr_type === "purchase_apr")
+                  ?.apr_percentage,
               },
               create: {
                 accountId: account.account_id,
@@ -213,6 +247,21 @@ export async function POST(req: NextRequest) {
                 availableBalance: account.balances.available || 0,
                 limit: account.balances.limit || null,
                 isoCurrencyCode: account.balances.iso_currency_code || "USD",
+                // Liability data
+                lastStatementBalance: liability?.last_statement_balance,
+                lastStatementIssueDate: liability?.last_statement_issue_date
+                  ? new Date(liability.last_statement_issue_date)
+                  : null,
+                minPaymentAmount: liability?.minimum_payment_amount,
+                nextPaymentDueDate: liability?.next_payment_due_date
+                  ? new Date(liability.next_payment_due_date)
+                  : null,
+                lastPaymentAmount: liability?.last_payment_amount,
+                lastPaymentDate: liability?.last_payment_date
+                  ? new Date(liability.last_payment_date)
+                  : null,
+                apr: liability?.aprs.find((a) => a.apr_type === "purchase_apr")
+                  ?.apr_percentage,
               },
             })
             .catch((e) => {
