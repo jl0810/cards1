@@ -259,28 +259,30 @@ export function BankAccountsView({
     }
   };
 
-  const deleteItem = async (itemId: string) => {
+  const disconnectItem = async (itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return;
+
     if (
       !confirm(
-        "Are you sure you want to disconnect this bank? This will remove all associated accounts and transactions.",
+        `Disconnect ${item.institutionName}? This will stop syncing but preserve your data.`,
       )
     )
       return;
 
-    const originalItems = [...items];
-    setItems(items.filter((i) => i.id !== itemId));
-
     try {
-      const res = await fetch(`/api/plaid/items/${itemId}`, {
-        method: "DELETE",
+      const res = await fetch(`/api/plaid/items/${itemId}/disconnect`, {
+        method: "POST",
       });
 
-      if (!res.ok) throw new Error("Failed to delete item");
-      toast.success("Bank disconnected");
+      if (!res.ok) throw new Error("Failed to disconnect item");
+
+      // Refresh the list to show updated status
+      await fetchData();
+      toast.success(`${item.institutionName} disconnected`);
     } catch (error) {
       console.error(error);
       toast.error("Failed to disconnect bank");
-      setItems(originalItems);
     }
   };
 
@@ -367,7 +369,9 @@ export function BankAccountsView({
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => disconnectItem(item.id)}
                     className="text-slate-400 hover:text-red-400 hover:bg-red-400/10"
+                    title="Disconnect Bank"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
