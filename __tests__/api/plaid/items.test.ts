@@ -15,6 +15,7 @@ import { auth } from "@clerk/nextjs/server";
 // Mock dependencies
 jest.mock("@clerk/nextjs/server", () => ({
   auth: jest.fn(),
+  currentUser: jest.fn(),
 }));
 
 jest.mock("@/lib/prisma", () => ({
@@ -93,8 +94,8 @@ describe("US-008: View Connected Accounts", () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toHaveLength(1);
-      expect(data[0].accounts[0].currentBalance).toBe(1500.0);
+      expect(data.data).toHaveLength(1);
+      expect(data.data[0].accounts[0].currentBalance).toBe(1500.0);
     });
   });
 
@@ -121,7 +122,7 @@ describe("US-008: View Connected Accounts", () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data[0].accounts[0].nextPaymentDueDate).toBeDefined();
+      expect(data.data[0].accounts[0].nextPaymentDueDate).toBeDefined();
     });
   });
 
@@ -134,7 +135,7 @@ describe("US-008: View Connected Accounts", () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data).toEqual([]);
+      expect(data.data).toEqual([]);
     });
   });
 

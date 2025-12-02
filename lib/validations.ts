@@ -1,17 +1,17 @@
 /**
  * Validation schemas for API requests using Zod
- * 
+ *
  * @module lib/validations
- * 
+ *
  * @implements BR-026 - Input Validation Required
  * @implements BR-027 - Data Sanitization
  * @satisfies US-015 - Input Validation
  * @tested __tests__/lib/validations.test.ts
- * 
+ *
  * @example
  * ```typescript
  * import { CreateFamilyMemberSchema } from '@/lib/validations';
- * 
+ *
  * const result = CreateFamilyMemberSchema.safeParse(body);
  * if (!result.success) {
  *   return Errors.badRequest(result.error.message);
@@ -20,11 +20,11 @@
  * ```
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Plaid API validation schemas
- * 
+ *
  * @implements BR-008 - Duplicate Detection
  * @implements BR-009 - Secure Token Storage
  * @satisfies US-006 - Link Bank Account
@@ -34,19 +34,24 @@ import { z } from 'zod';
 export const PlaidAccountSchema = z.object({
   id: z.string(),
   name: z.string(),
-  mask: z.string(),
+  mask: z.string().nullable().optional(), // Mask might be null/missing
   type: z.string(),
-  subtype: z.array(z.string()),
-  verification_status: z.string().optional(),
+  subtype: z
+    .union([z.string(), z.array(z.string())])
+    .nullable()
+    .optional(), // Accept string or array
+  verification_status: z.string().nullable().optional(),
 });
 
 export const PlaidCreditLiabilitySchema = z.object({
   account_id: z.string().nullable(),
-  aprs: z.array(z.object({
-    apr_type: z.string(),
-    apr_percentage: z.number(),
-    balance_subject_to_apr: z.number().nullable().optional(),
-  })),
+  aprs: z.array(
+    z.object({
+      apr_type: z.string(),
+      apr_percentage: z.number(),
+      balance_subject_to_apr: z.number().nullable().optional(),
+    }),
+  ),
   minimum_payment_amount: z.number().nullable().optional(),
   last_statement_balance: z.number().nullable().optional(),
   next_payment_due_date: z.string().nullable().optional(),
@@ -56,7 +61,7 @@ export const PlaidCreditLiabilitySchema = z.object({
 });
 
 export const PlaidExchangeTokenSchema = z.object({
-  public_token: z.string().min(1, 'Public token is required'),
+  public_token: z.string().min(1, "Public token is required"),
   familyMemberId: z.string().optional(),
   metadata: z.object({
     institution: z.object({
@@ -77,7 +82,7 @@ export const PlaidWebhookSchema = z.object({
 
 /**
  * UI Component validation schemas
- * 
+ *
  * @implements BR-026 - Input Validation Required
  * @satisfies US-015 - Input Validation
  * @tested __tests__/lib/validations.test.ts (lines 387-400)
@@ -92,12 +97,14 @@ export const TransactionSchema = z.object({
   pending: z.boolean(),
   accountName: z.string().optional(),
   merchantName: z.string().optional(),
-  plaidItem: z.object({
-    id: z.string(),
-    itemId: z.string(),
-    institutionName: z.string(),
-    familyMemberId: z.string(),
-  }).optional(),
+  plaidItem: z
+    .object({
+      id: z.string(),
+      itemId: z.string(),
+      institutionName: z.string(),
+      familyMemberId: z.string(),
+    })
+    .optional(),
 });
 
 export const PlaidItemSchema = z.object({
@@ -150,10 +157,12 @@ export const AccountSchema = z.object({
   isOverdue: z.boolean().optional(),
   familyMemberId: z.string().optional(),
   officialName: z.string().optional(),
-  extended: z.object({
-    paymentMarkedPaidDate: z.string().optional(),
-    nickname: z.string().optional(),
-  }).optional(),
+  extended: z
+    .object({
+      paymentMarkedPaidDate: z.string().optional(),
+      nickname: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const UserSchema = z.object({
@@ -192,7 +201,7 @@ export const ProductSchema = z.object({
 
 /**
  * Analytics validation schemas
- * 
+ *
  * @implements BR-026 - Input Validation Required
  * @satisfies US-015 - Input Validation
  * @tested __tests__/lib/validations.test.ts (lines 387-400)
@@ -200,7 +209,7 @@ export const ProductSchema = z.object({
 
 /**
  * Script validation schemas
- * 
+ *
  * @implements BR-026 - Input Validation Required
  * @satisfies US-015 - Input Validation
  * @tested __tests__/lib/validations.test.ts (lines 387-400)
@@ -233,7 +242,7 @@ export const ClerkUserSchema = z.object({
 
 /**
  * Test validation schemas
- * 
+ *
  * @implements BR-026 - Input Validation Required
  * @satisfies US-015 - Input Validation
  * @tested __tests__/lib/validations.test.ts (lines 387-400)
@@ -248,7 +257,17 @@ export const ClerkAuthMockSchema = z.any(); // Clerk auth functions have complex
 
 export const EnvObjectSchema = z.record(z.unknown()); // For iterating over environment keys
 
-export const PlaidProductSchema = z.enum(['transactions', 'auth', 'identity', 'income', 'assets', 'investments', 'liabilities', 'payment_initiation', 'transfer']);
+export const PlaidProductSchema = z.enum([
+  "transactions",
+  "auth",
+  "identity",
+  "income",
+  "assets",
+  "investments",
+  "liabilities",
+  "payment_initiation",
+  "transfer",
+]);
 
 export const DateTimeFormatOptionsSchema = z.object({
   year: z.string().optional(),
@@ -310,9 +329,13 @@ export const TestClerkUserSchema = z.object({
   id: z.string(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  emailAddresses: z.array(z.object({
-    emailAddress: z.string(),
-  })).optional(),
+  emailAddresses: z
+    .array(
+      z.object({
+        emailAddress: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 export const TestUserProfileSchema = z.object({
@@ -347,27 +370,20 @@ export type AnalyticsEvent = z.infer<typeof AnalyticsEventSchema>;
 
 /**
  * Family Member validation schemas
- * 
+ *
  * @implements BR-004 - Family Member Name Requirements
  * @satisfies US-003 - Add Family Members
  * @tested __tests__/lib/validations.test.ts (lines 12-72)
  */
 export const CreateFamilyMemberSchema = z.object({
-  name: z.string()
-    .min(1, 'Name is required')
-    .max(100, 'Name must be less than 100 characters')
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(100, "Name must be less than 100 characters")
     .trim(),
-  email: z.string()
-    .email('Invalid email address')
-    .optional()
-    .nullable(),
-  avatar: z.string()
-    .url('Invalid avatar URL')
-    .optional()
-    .nullable(),
-  role: z.string()
-    .optional()
-    .default('Member'),
+  email: z.string().email("Invalid email address").optional().nullable(),
+  avatar: z.string().url("Invalid avatar URL").optional().nullable(),
+  role: z.string().optional().default("Member"),
 });
 
 /**
@@ -376,42 +392,35 @@ export const CreateFamilyMemberSchema = z.object({
  * @tested __tests__/lib/validations.test.ts (lines 74-88)
  */
 export const UpdateFamilyMemberSchema = z.object({
-  name: z.string()
-    .min(1, 'Name is required')
-    .max(100, 'Name must be less than 100 characters')
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(100, "Name must be less than 100 characters")
     .trim()
     .optional(),
-  email: z.string()
-    .email('Invalid email address')
-    .optional()
-    .nullable(),
-  avatar: z.string()
-    .url('Invalid avatar URL')
-    .optional()
-    .nullable(),
+  email: z.string().email("Invalid email address").optional().nullable(),
+  avatar: z.string().url("Invalid avatar URL").optional().nullable(),
 });
 
 /**
  * Plaid sync validation schemas
  */
 export const SyncTransactionsSchema = z.object({
-  itemId: z.string()
-    .min(1, 'Item ID is required'),
-  cursor: z.string()
-    .optional()
-    .nullable(),
+  itemId: z.string().min(1, "Item ID is required"),
+  cursor: z.string().optional().nullable(),
 });
 
 /**
  * Account nickname validation schema
- * 
+ *
  * @implements BR-016 - Account Nickname Persistence
  * @satisfies US-009 - Nickname Accounts
  * @tested __tests__/lib/validations.test.ts (lines 100-118)
  */
 export const UpdateAccountNicknameSchema = z.object({
-  nickname: z.string()
-    .max(50, 'Nickname must be less than 50 characters')
+  nickname: z
+    .string()
+    .max(50, "Nickname must be less than 50 characters")
     .trim()
     .nullable(),
 });
@@ -420,37 +429,34 @@ export const UpdateAccountNicknameSchema = z.object({
  * Card product validation schemas
  */
 export const CreateCardProductSchema = z.object({
-  issuer: z.string()
-    .min(1, 'Issuer is required')
-    .max(100, 'Issuer must be less than 100 characters'),
-  productName: z.string()
-    .min(1, 'Product name is required')
-    .max(200, 'Product name must be less than 200 characters'),
-  cardType: z.string()
+  issuer: z
+    .string()
+    .min(1, "Issuer is required")
+    .max(100, "Issuer must be less than 100 characters"),
+  productName: z
+    .string()
+    .min(1, "Product name is required")
+    .max(200, "Product name must be less than 200 characters"),
+  cardType: z.string().optional().nullable(),
+  annualFee: z
+    .number()
+    .nonnegative("Annual fee must be non-negative")
     .optional()
     .nullable(),
-  annualFee: z.number()
-    .nonnegative('Annual fee must be non-negative')
+  signupBonus: z
+    .string()
+    .max(500, "Signup bonus description too long")
     .optional()
     .nullable(),
-  signupBonus: z.string()
-    .max(500, 'Signup bonus description too long')
-    .optional()
-    .nullable(),
-  imageUrl: z.string()
-    .url('Invalid image URL')
-    .optional()
-    .nullable(),
-  bankId: z.string()
-    .optional()
-    .nullable(),
+  imageUrl: z.string().url("Invalid image URL").optional().nullable(),
+  bankId: z.string().optional().nullable(),
 });
 
 /**
  * User preferences validation schemas
  */
 export const UpdateUserPreferencesSchema = z.object({
-  theme: z.enum(['light', 'dark', 'system']).optional(),
+  theme: z.enum(["light", "dark", "system"]).optional(),
   language: z.string().max(10).optional(),
   timezone: z.string().max(50).optional(),
   emailNotifications: z.boolean().optional(),
@@ -471,40 +477,36 @@ export const UpdateUserPreferencesSchema = z.object({
  * Benefit matching validation schemas
  */
 export const CreateCardBenefitSchema = z.object({
-  cardProductId: z.string()
-    .min(1, 'Card product ID is required'),
-  benefitName: z.string()
-    .min(1, 'Benefit name is required')
-    .max(200, 'Benefit name must be less than 200 characters'),
-  type: z.enum(['STATEMENT_CREDIT', 'EXTERNAL_CREDIT', 'INSURANCE', 'PERK']),
-  description: z.string()
-    .max(1000, 'Description too long')
+  cardProductId: z.string().min(1, "Card product ID is required"),
+  benefitName: z
+    .string()
+    .min(1, "Benefit name is required")
+    .max(200, "Benefit name must be less than 200 characters"),
+  type: z.enum(["STATEMENT_CREDIT", "EXTERNAL_CREDIT", "INSURANCE", "PERK"]),
+  description: z
+    .string()
+    .max(1000, "Description too long")
     .optional()
     .nullable(),
-  timing: z.string()
-    .min(1, 'Timing is required'),
-  maxAmount: z.number()
-    .nonnegative('Max amount must be non-negative')
+  timing: z.string().min(1, "Timing is required"),
+  maxAmount: z
+    .number()
+    .nonnegative("Max amount must be non-negative")
     .optional()
     .nullable(),
-  keywords: z.array(z.string())
-    .min(1, 'At least one keyword is required'),
-  ruleConfig: z.record(z.unknown())
-    .optional()
-    .nullable(),
-  active: z.boolean()
-    .optional()
-    .default(true),
+  keywords: z.array(z.string()).min(1, "At least one keyword is required"),
+  ruleConfig: z.record(z.unknown()).optional().nullable(),
+  active: z.boolean().optional().default(true),
 });
 
 /**
  * Helper function to validate and parse request body
- * 
+ *
  * @param schema - Zod schema to validate against
  * @param data - Data to validate
  * @returns Validated and parsed data
  * @throws Error if validation fails
- * 
+ *
  * @example
  * ```typescript
  * const validatedData = validateSchema(CreateFamilyMemberSchema, body);
@@ -517,11 +519,11 @@ export function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown): T {
 /**
  * Helper function to safely validate and parse request body
  * Returns validation result without throwing
- * 
+ *
  * @param schema - Zod schema to validate against
  * @param data - Data to validate
  * @returns SafeParseResult containing either success data or error
- * 
+ *
  * @example
  * ```typescript
  * const result = safeValidateSchema(CreateFamilyMemberSchema, body);
@@ -537,7 +539,7 @@ export function safeValidateSchema<T>(schema: z.ZodSchema<T>, data: unknown) {
 
 /**
  * Clerk Webhook Event Schemas
- * 
+ *
  * @implements BR-001 - User Profile Creation (via webhook validation)
  * @satisfies US-001 - User Registration
  * @tested __tests__/lib/validations.test.ts (webhook validation)
@@ -546,10 +548,14 @@ export const ClerkWebhookEventSchema = z.object({
   type: z.string(),
   data: z.object({
     id: z.string(),
-    email_addresses: z.array(z.object({
-      email_address: z.string().email(),
-      id: z.string(),
-    })).optional(),
+    email_addresses: z
+      .array(
+        z.object({
+          email_address: z.string().email(),
+          id: z.string(),
+        }),
+      )
+      .optional(),
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     image_url: z.string().url().optional(),
@@ -558,9 +564,9 @@ export const ClerkWebhookEventSchema = z.object({
 });
 
 export const ClerkWebhookHeadersSchema = z.object({
-  'svix-id': z.string().min(1),
-  'svix-timestamp': z.string().min(1),
-  'svix-signature': z.string().min(1),
+  "svix-id": z.string().min(1),
+  "svix-timestamp": z.string().min(1),
+  "svix-signature": z.string().min(1),
 });
 
 /**
@@ -583,14 +589,14 @@ export const ErrorResponseSchema = z.object({
  * Transaction Query Schemas
  */
 export const TransactionQuerySchema = z.object({
-  benefitId: z.string().min(1, 'Benefit ID is required'),
+  benefitId: z.string().min(1, "Benefit ID is required"),
 });
 
 /**
  * Plaid Item Assignment Schema
  */
 export const AssignPlaidItemSchema = z.object({
-  familyMemberId: z.string().min(1, 'Family member ID is required'),
+  familyMemberId: z.string().min(1, "Family member ID is required"),
 });
 
 /**
@@ -622,7 +628,7 @@ export const PaginationSchema = z.object({
 /**
  * ID validation schemas
  */
-export const IdSchema = z.string().uuid('Invalid ID format');
+export const IdSchema = z.string().uuid("Invalid ID format");
 
 /**
  * Date range schemas
@@ -643,7 +649,7 @@ export const FamilyMemberParamsSchema = z.object({
  * Account API schemas
  */
 export const AccountParamsSchema = z.object({
-  accountId: z.string().min(1, 'Account ID is required'),
+  accountId: z.string().min(1, "Account ID is required"),
 });
 
 /**
@@ -666,7 +672,10 @@ export const SyncTransactionsEnhancedSchema = SyncTransactionsSchema.extend({
 export const CardProductQuerySchema = z.object({
   issuer: z.string().optional(),
   cardType: z.string().optional(),
-  activeOnly: z.string().transform(val => val === 'true').optional(),
+  activeOnly: z
+    .string()
+    .transform((val) => val === "true")
+    .optional(),
 });
 
 /**
@@ -695,7 +704,7 @@ export const TransactionSearchSchema = z.object({
  * Bulk Operations schemas
  */
 export const BulkOperationSchema = z.object({
-  operation: z.enum(['delete', 'update', 'create']),
+  operation: z.enum(["delete", "update", "create"]),
   items: z.array(z.record(z.unknown())).min(1).max(100),
 });
 

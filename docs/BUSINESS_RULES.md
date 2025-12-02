@@ -714,16 +714,97 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 ---
 
+### **[BR-041]** Accessibility Standards
+
+**Category:** User Experience / Compliance  
+**Description:** All UI components must meet WCAG 2.1 Level AA accessibility standards, including proper ARIA labels, keyboard navigation, focus management, and screen reader support.
+
+**User Stories:** [US-024]  
+**Code:** `lib/accessibility-utils.ts`  
+**Tests:** None
+
+---
+
+### **[BR-042]** XSS Prevention
+
+**Category:** Security  
+**Description:** All user-generated content and dynamic SVG rendering must be sanitized to prevent Cross-Site Scripting (XSS) attacks. This includes sanitizing SVG paths, text content, and any user input before rendering.
+
+**User Stories:** [US-015]  
+**Code:**
+
+- `lib/sanitize.ts`
+- `components/velocity/credit-card.tsx` (SVG sanitization)
+
+**Tests:** None
+
+---
+
+### **[BR-045]** Security Testing
+
+**Category:** Security / Operations  
+**Description:** Security testing utilities and helpers must be provided to facilitate testing of authentication, authorization, and security-related features.
+
+**User Stories:** [US-025]  
+**Code:** `lib/security-test.ts`  
+**Tests:** None
+
+---
+
+### **[BR-046]** Animation Standards
+
+**Category:** User Experience  
+**Description:** UI animations must follow consistent timing, easing, and motion design principles. Animations should enhance user experience without causing distraction or accessibility issues (respect prefers-reduced-motion).
+
+**User Stories:** [US-026]  
+**Code:**
+
+- `components/marketing/animated-hero.tsx`
+- `components/marketing/animated-features.tsx`
+
+**Tests:** None
+
+---
+
+### **[BR-047]** Marketing Content Display
+
+**Category:** User Experience  
+**Description:** Marketing pages must present content in an engaging, visually appealing manner with proper typography, spacing, and responsive design.
+
+**User Stories:** [US-027]  
+**Code:**
+
+- `components/marketing/animated-hero.tsx`
+- `components/marketing/animated-features.tsx`
+
+**Tests:** None
+
+---
+
+### **[BR-048]** Documentation Standards
+
+**Category:** Operations / Quality  
+**Description:** All code must maintain comprehensive documentation including JSDoc comments, traceability tags (@implements BR-XXX), and up-to-date documentation files. Documentation audits verify completeness and accuracy.
+
+**User Stories:** [US-028]  
+**Code:** `scripts/documentation-audit.ts`  
+**Tests:** None
+
+---
+
 ## Summary Statistics
 
-**Total Business Rules:** 37 (was 36)  
-**Rules with Tests:** 15 (41%)  
-**Rules without Tests:** 22 (59%)  
+**Total Business Rules:** 43  
+**Rules with Tests:** 15 (35%)  
+**Rules without Tests:** 28 (65%)  
 **NEW Rules:**
 
-- BR-035 (Account Deletion & Data Privacy - dual GDPR/Plaid compliance)
-- BR-036 (Full Transaction Reload with Data Loss Warnings)
-- BR-037 (Payment Cycle Status Calculation)
+- BR-041 (Accessibility Standards)
+- BR-042 (XSS Prevention)
+- BR-045 (Security Testing)
+- BR-046 (Animation Standards)
+- BR-047 (Marketing Content Display)
+- BR-048 (Documentation Standards)
 
 ### Rules by Category
 
@@ -735,13 +816,14 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 | Data Integrity  | 4     | 0          |
 | Data Management | 3     | 2          |
 | Business Logic  | 8     | 5          |
-| Security        | 3     | 2          |
+| Security        | 5     | 2          |
 | Performance     | 3     | 1          |
 | User Interface  | 1     | 0          |
-| User Experience | 2     | 1          |
-| Operations      | 1     | 1          |
+| User Experience | 5     | 1          |
+| Operations      | 3     | 1          |
+| Compliance      | 2     | 1          |
 
 ---
 
-**Last Updated:** November 26, 2025  
-**Version:** 1.0
+**Last Updated:** December 1, 2025  
+**Version:** 1.1

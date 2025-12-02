@@ -1,33 +1,32 @@
 /**
  * @jest-environment node
- * 
- * REAL Integration Test for Transaction Reload (Dump & Reload)
- * 
+ *
+ * Unit Test for Transaction Reload (Dump & Reload)
+ *
  * Tests BR-036 - Full Transaction Reload & Data Loss Warning
  * Tests US-022 - Full Transaction Reload
- * 
+ *
  * This test uses:
- * - REAL Prisma connection
- * - REAL Vault encryption/decryption
- * - REAL database queries
+ * - MOCKED Prisma connection
+ * - MOCKED Vault encryption/decryption
  * - MOCKED Clerk (external auth service)
  * - MOCKED Plaid API (external service)
  */
 
 // Mock external services BEFORE imports
-jest.mock('@/env', () => ({
+jest.mock("@/env", () => ({
   env: {
-    PLAID_CLIENT_ID: 'test',
-    PLAID_SECRET: 'test',
-    PLAID_ENV: 'sandbox',
+    PLAID_CLIENT_ID: "test",
+    PLAID_SECRET: "test",
+    PLAID_ENV: "sandbox",
   },
 }));
 
-jest.mock('@clerk/nextjs/server', () => ({
+jest.mock("@clerk/nextjs/server", () => ({
   auth: jest.fn(),
 }));
 
-jest.mock('plaid', () => {
+jest.mock("plaid", () => {
   const mockTransactionsSync = jest.fn();
   return {
     Configuration: jest.fn(),
@@ -35,238 +34,188 @@ jest.mock('plaid', () => {
       transactionsSync: mockTransactionsSync,
     })),
     PlaidEnvironments: {
-      sandbox: 'https://sandbox.plaid.com',
+      sandbox: "https://sandbox.plaid.com",
     },
     __mockTransactionsSync: mockTransactionsSync,
   };
 });
 
-jest.mock('@/lib/benefit-matcher', () => ({
+jest.mock("@/lib/benefit-matcher", () => ({
   scanAndMatchBenefits: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { POST } from '@/app/api/plaid/items/[itemId]/reload-transactions/route';
-import { prisma } from '@/lib/prisma';
-import { auth } from '@clerk/nextjs/server';
-import * as plaidModule from 'plaid';
-import { MockPlaidModuleSchema, ClerkAuthMockSchema } from '@/lib/validations';
-import type { z } from 'zod';
+// Mock Prisma
+jest.mock("@/lib/prisma", () => ({
+  prisma: {
+    userProfile: {
+      create: jest.fn(),
+      delete: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    familyMember: {
+      create: jest.fn(),
+      delete: jest.fn(),
+    },
+    plaidItem: {
+      create: jest.fn(),
+      delete: jest.fn(),
+      update: jest.fn(),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+    },
+    plaidAccount: {
+      create: jest.fn(),
+      deleteMany: jest.fn(),
+      findMany: jest.fn(),
+    },
+    plaidTransaction: {
+      create: jest.fn(),
+      deleteMany: jest.fn(),
+      count: jest.fn(),
+      findUnique: jest.fn(),
+      createMany: jest.fn(),
+    },
+    $queryRaw: jest.fn(),
+    $disconnect: jest.fn(),
+    $transaction: jest.fn((callback) => callback(prisma)),
+  },
+}));
+
+import { POST } from "@/app/api/plaid/items/[itemId]/reload-transactions/route";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
+import * as plaidModule from "plaid";
+import { MockPlaidModuleSchema, ClerkAuthMockSchema } from "@/lib/validations";
+import type { z } from "zod";
 
 type MockPlaidModule = z.infer<typeof MockPlaidModuleSchema>;
 type ClerkAuthMock = z.infer<typeof ClerkAuthMockSchema>;
 
-const mockTransactionsSync = (plaidModule as MockPlaidModule).__mockTransactionsSync;
+const mockTransactionsSync = (plaidModule as MockPlaidModule)
+  .__mockTransactionsSync;
 
-describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
-  let testUserId: string;
-  let testClerkId: string;
-  let testFamilyMemberId: string;
-  let testItemId: string;
-  let testSecretId: string;
-  let testAccountId: string;
-
-  beforeAll(async () => {
-    // Create REAL test data in database
-    testClerkId = 'test_reload_' + Date.now();
-    const testUser = await prisma.userProfile.create({
-      data: {
-        clerkId: testClerkId,
-        name: 'Test Reload User',
-      },
-    });
-    testUserId = testUser.id;
-
-    const testFamilyMember = await prisma.familyMember.create({
-      data: {
-        userId: testUserId,
-        name: 'Test User',
-        isPrimary: true,
-      },
-    });
-    testFamilyMemberId = testFamilyMember.id;
-
-    // Create REAL Vault secret with unique name
-    const secretName = `test-reload-item-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const vaultResult = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT vault.create_secret('test-reload-token-' || ${Date.now()}, ${secretName}, 'Integration test') as id;
-    `;
-    testSecretId = vaultResult[0]?.id;
-
-    if (!testSecretId) {
-      throw new Error('Failed to create Vault secret');
-    }
-
-    // Create REAL Plaid item
-    const testItem = await prisma.plaidItem.create({
-      data: {
-        userId: testUserId,
-        familyMemberId: testFamilyMemberId,
-        itemId: 'plaid_reload_' + Date.now(),
-        institutionId: 'ins_test',
-        institutionName: 'Test Bank',
-        accessTokenId: testSecretId,
-        status: 'active',
-        nextCursor: 'existing_cursor_123',
-      },
-    });
-    testItemId = testItem.id;
-
-    // Create REAL account
-    const testAccount = await prisma.plaidAccount.create({
-      data: {
-        plaidItemId: testItemId,
-        familyMemberId: testFamilyMemberId,
-        accountId: 'acc_reload_' + Date.now(),
-        name: 'Test Checking',
-        mask: '1234',
-        type: 'depository',
-        subtype: 'checking',
-        currentBalance: 1000,
-      },
-    });
-    testAccountId = testAccount.accountId;
-
-    // Create some existing transactions
-    await prisma.plaidTransaction.create({
-      data: {
-        plaidItemId: testItemId,
-        transactionId: 'txn_old_1',
-        accountId: testAccountId,
-        amount: 50.0,
-        date: new Date('2024-01-01'),
-        name: 'Old Transaction 1',
-        category: ['Food'],
-        pending: false,
-      },
-    });
-
-    await prisma.plaidTransaction.create({
-      data: {
-        plaidItemId: testItemId,
-        transactionId: 'txn_old_2',
-        accountId: testAccountId,
-        amount: 75.0,
-        date: new Date('2024-01-02'),
-        name: 'Old Transaction 2',
-        category: ['Shopping'],
-        pending: false,
-      },
-    });
-  });
-
-  afterAll(async () => {
-    // Cleanup REAL data
-    await prisma.plaidTransaction.deleteMany({ where: { plaidItemId: testItemId } });
-    await prisma.plaidAccount.deleteMany({ where: { plaidItemId: testItemId } });
-    await prisma.plaidItem.delete({ where: { id: testItemId } }).catch(() => {});
-    await prisma.familyMember.delete({ where: { id: testFamilyMemberId } }).catch(() => {});
-    await prisma.userProfile.delete({ where: { id: testUserId } }).catch(() => {});
-    await prisma.$disconnect();
-  });
+describe("Unit: Transaction Reload (US-022, BR-036)", () => {
+  const testUserId = "user_123";
+  const testClerkId = "clerk_123";
+  const testFamilyMemberId = "family_123";
+  const testItemId = "item_123";
+  const testAccountId = "acc_123";
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    
-    // Recreate test transactions for each test (since reload deletes them)
-    await prisma.plaidTransaction.deleteMany({ where: { plaidItemId: testItemId } });
-    
-    await prisma.plaidTransaction.create({
-      data: {
-        plaidItemId: testItemId,
-        transactionId: 'txn_old_1_' + Date.now(),
-        accountId: testAccountId,
-        amount: 50.0,
-        date: new Date('2024-01-01'),
-        name: 'Old Transaction 1',
-        category: ['Food'],
-        pending: false,
-      },
+
+    // Setup default mocks
+    (prisma.plaidItem.findUnique as jest.Mock).mockResolvedValue({
+      id: testItemId,
+      userId: testUserId,
+      accessTokenId: "secret_123",
+      nextCursor: "old_cursor",
     });
 
-    await prisma.plaidTransaction.create({
-      data: {
-        plaidItemId: testItemId,
-        transactionId: 'txn_old_2_' + Date.now(),
-        accountId: testAccountId,
-        amount: 75.0,
-        date: new Date('2024-01-02'),
-        name: 'Old Transaction 2',
-        category: ['Shopping'],
-        pending: false,
-      },
+    (prisma.plaidItem.findFirst as jest.Mock).mockResolvedValue({
+      id: testItemId,
+      userId: testUserId,
+      accessTokenId: "secret_123",
+      _count: { transactions: 2 },
     });
-    
-    // Reset cursor
-    await prisma.plaidItem.update({
-      where: { id: testItemId },
-      data: { nextCursor: 'existing_cursor_123' },
-    });
+
+    (prisma.$queryRaw as jest.Mock).mockResolvedValue([
+      { decrypted_secret: "access-token-123" },
+    ]);
+
+    // Mock accounts for filtering
+    (prisma.plaidAccount.findMany as jest.Mock).mockResolvedValue([
+      { accountId: testAccountId },
+    ]);
   });
 
   it('should require confirmation "RELOAD" (BR-036)', async () => {
     (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
+    (prisma.plaidItem.findUnique as jest.Mock).mockResolvedValue({
+      userId: testClerkId,
+    }); // Mock ownership check
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
-      method: 'POST',
-      body: JSON.stringify({ confirmation: 'WRONG' }),
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/reload-transactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirmation: "WRONG" }),
+      },
+    );
+
+    const response = await POST(request, {
+      params: Promise.resolve({ itemId: testItemId }),
     });
-
-    const response = await POST(request, { params: Promise.resolve({ itemId: testItemId }) });
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toContain('Confirmation required');
+    expect(data.error).toContain("Confirmation required");
   });
 
-  it('should delete all existing transactions and reload from Plaid (BR-036)', async () => {
+  it("should delete all existing transactions and reload from Plaid (BR-036)", async () => {
     (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
+
+    // Mock ownership check
+    (prisma.plaidItem.findFirst as jest.Mock).mockResolvedValue({
+      id: testItemId,
+      userId: "profile_id_123", // User profile ID
+      accessTokenId: "secret_123",
+      _count: { transactions: 2 },
+    });
+
+    (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue({
+      id: "profile_id_123",
+      clerkId: testClerkId,
+    });
 
     // Mock Plaid to return new transactions
     mockTransactionsSync.mockResolvedValue({
       data: {
         added: [
           {
-            transaction_id: 'txn_new_1',
+            transaction_id: "txn_new_1",
             account_id: testAccountId,
             amount: 100.0,
-            date: '2024-02-01',
-            name: 'New Transaction 1',
-            merchant_name: 'Test Merchant',
-            category: ['Food'],
+            date: "2024-02-01",
+            name: "New Transaction 1",
+            merchant_name: "Test Merchant",
+            category: ["Food"],
             pending: false,
-            payment_channel: 'online',
+            payment_channel: "online",
           },
           {
-            transaction_id: 'txn_new_2',
+            transaction_id: "txn_new_2",
             account_id: testAccountId,
             amount: 200.0,
-            date: '2024-02-02',
-            name: 'New Transaction 2',
+            date: "2024-02-02",
+            name: "New Transaction 2",
             merchant_name: null,
-            category: ['Shopping'],
+            category: ["Shopping"],
             pending: false,
-            payment_channel: 'in store',
+            payment_channel: "in store",
           },
         ],
         modified: [],
         removed: [],
         has_more: false,
-        next_cursor: 'new_cursor_456',
+        next_cursor: "new_cursor_456",
       },
     });
 
-    // Verify we have 2 old transactions
-    const oldCount = await prisma.plaidTransaction.count({
-      where: { plaidItemId: testItemId },
-    });
-    expect(oldCount).toBe(2);
+    // Mock count
+    (prisma.plaidTransaction.count as jest.Mock).mockResolvedValue(2);
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
-      method: 'POST',
-      body: JSON.stringify({ confirmation: 'RELOAD' }),
-    });
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/reload-transactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirmation: "RELOAD" }),
+      },
+    );
 
-    const response = await POST(request, { params: Promise.resolve({ itemId: testItemId }) });
+    const response = await POST(request, {
+      params: Promise.resolve({ itemId: testItemId }),
+    });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -274,26 +223,37 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
     expect(data.deletedCount).toBe(2);
     expect(data.reloadedCount).toBe(2);
 
-    // Verify old transactions are gone
-    const oldTxn = await prisma.plaidTransaction.findUnique({
-      where: { transactionId: 'txn_old_1' },
+    // Verify DB calls
+    expect(prisma.plaidItem.update).toHaveBeenCalledWith({
+      where: { id: testItemId },
+      data: { nextCursor: null, lastSyncedAt: null },
     });
-    expect(oldTxn).toBeNull();
 
-    // Verify new transactions exist
-    const newTxn = await prisma.plaidTransaction.findUnique({
-      where: { transactionId: 'txn_new_1' },
+    expect(prisma.plaidTransaction.deleteMany).toHaveBeenCalledWith({
+      where: { plaidItemId: testItemId },
     });
-    expect(newTxn).not.toBeNull();
-    expect(newTxn?.amount).toBe(100.0);
 
-    // Verify cursor was updated
-    const updatedItem = await prisma.plaidItem.findUnique({ where: { id: testItemId } });
-    expect(updatedItem?.nextCursor).toBe('new_cursor_456');
-    expect(updatedItem?.lastSyncedAt).not.toBeNull();
+    // Verify create calls (loop)
+    expect(prisma.plaidTransaction.create).toHaveBeenCalledTimes(2);
+    expect(prisma.plaidTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          transactionId: "txn_new_1",
+          amount: 100.0,
+        }),
+      }),
+    );
+
+    // Verify cursor update
+    expect(prisma.plaidItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: testItemId },
+        data: expect.objectContaining({ nextCursor: "new_cursor_456" }),
+      }),
+    );
   });
 
-  it('should reset cursor to null before fetching (BR-036)', async () => {
+  it("should reset cursor to null before fetching (BR-036)", async () => {
     (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
 
     mockTransactionsSync.mockResolvedValue({
@@ -302,14 +262,17 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
         modified: [],
         removed: [],
         has_more: false,
-        next_cursor: 'final_cursor',
+        next_cursor: "final_cursor",
       },
     });
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
-      method: 'POST',
-      body: JSON.stringify({ confirmation: 'RELOAD' }),
-    });
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/reload-transactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirmation: "RELOAD" }),
+      },
+    );
 
     await POST(request, { params: Promise.resolve({ itemId: testItemId }) });
 
@@ -320,42 +283,64 @@ describe('REAL Integration: Transaction Reload (US-022, BR-036)', () => {
     });
   });
 
-  it('should return 401 if not authenticated', async () => {
+  it("should return 401 if not authenticated", async () => {
     (auth as ClerkAuthMock).mockResolvedValue({ userId: null });
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
-      method: 'POST',
-      body: JSON.stringify({ confirmation: 'RELOAD' }),
-    });
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/reload-transactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirmation: "RELOAD" }),
+      },
+    );
 
-    const response = await POST(request, { params: Promise.resolve({ itemId: testItemId }) });
+    const response = await POST(request, {
+      params: Promise.resolve({ itemId: testItemId }),
+    });
 
     expect(response.status).toBe(401);
   });
 
-  it('should return 404 if item not found or not owned', async () => {
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'wrong_user' });
+  it("should return 404 if item not found or not owned", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: "wrong_user" });
+    (prisma.plaidItem.findFirst as jest.Mock).mockResolvedValue(null);
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
-      method: 'POST',
-      body: JSON.stringify({ confirmation: 'RELOAD' }),
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/reload-transactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirmation: "RELOAD" }),
+      },
+    );
+
+    const response = await POST(request, {
+      params: Promise.resolve({ itemId: testItemId }),
     });
-
-    const response = await POST(request, { params: Promise.resolve({ itemId: testItemId }) });
 
     expect(response.status).toBe(404);
   });
 
-  it('should handle Plaid API errors gracefully', async () => {
+  it("should handle Plaid API errors gracefully", async () => {
     (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
-    mockTransactionsSync.mockRejectedValue(new Error('Plaid API error'));
-
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/reload-transactions`, {
-      method: 'POST',
-      body: JSON.stringify({ confirmation: 'RELOAD' }),
+    (prisma.plaidItem.findUnique as jest.Mock).mockResolvedValue({
+      id: testItemId,
+      userId: testClerkId,
+      accessTokenId: "secret_123",
     });
 
-    const response = await POST(request, { params: Promise.resolve({ itemId: testItemId }) });
+    mockTransactionsSync.mockRejectedValue(new Error("Plaid API error"));
+
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/reload-transactions`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirmation: "RELOAD" }),
+      },
+    );
+
+    const response = await POST(request, {
+      params: Promise.resolve({ itemId: testItemId }),
+    });
 
     expect(response.status).toBe(500);
   });

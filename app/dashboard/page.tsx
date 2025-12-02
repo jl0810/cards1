@@ -87,6 +87,7 @@ export default function DashboardPage() {
             color: USER_AVATAR_COLORS[index % USER_AVATAR_COLORS.length],
           }),
         );
+        console.log("🔍 DEBUG: Users:", formattedUsers);
         setUsers(formattedUsers);
       }
     } catch (error) {
@@ -101,7 +102,8 @@ export default function DashboardPage() {
       // Fetch all items first
       const itemsRes = await fetch("/api/plaid/items");
       if (!itemsRes.ok) throw new Error("Failed to fetch items");
-      const items = await itemsRes.json();
+      const itemsResponse = await itemsRes.json();
+      const items = itemsResponse.data || itemsResponse;
 
       // Sync each item
       let successCount = 0;
@@ -113,7 +115,7 @@ export default function DashboardPage() {
           const syncRes = await fetch("/api/plaid/sync-transactions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ itemId: item.itemId }),
+            body: JSON.stringify({ itemId: item.id }),
           });
 
           if (syncRes.ok) {
@@ -333,6 +335,12 @@ export default function DashboardPage() {
         return;
       }
 
+      console.log("🔍 DEBUG: Raw items from API:", {
+        itemsCount: items.length,
+        firstItem: items[0],
+        firstItemAccounts: items[0]?.accounts,
+      });
+
       // Transform Plaid items/accounts into WalletView format
       try {
         const allAccounts = items.flatMap((item: PlaidItem) =>
@@ -421,6 +429,12 @@ export default function DashboardPage() {
             };
           }),
         );
+
+        console.log("🔍 DEBUG: Transformed accounts:", {
+          totalAccounts: allAccounts.length,
+          sampleAccount: allAccounts[0],
+          allUserIds: allAccounts.map((a) => a.userId),
+        });
 
         setAccounts(allAccounts);
       } catch (transformError) {

@@ -13,17 +13,35 @@ import { POST } from "@/app/api/webhooks/clerk/route";
 import { prisma } from "@/lib/prisma";
 import { Webhook } from "svix";
 import { NextRequest } from "next/server";
+import { headers } from "next/headers"; // Added import for headers
+
+// Mock Next.js headers
+jest.mock("next/headers", () => ({
+  headers: jest.fn(),
+}));
 
 // Mock dependencies
 jest.mock("svix", () => ({
   Webhook: jest.fn().mockImplementation(() => ({
-    verify: jest.fn(),
+    verify: jest.fn().mockReturnValue({
+      type: "user.created",
+      data: {
+        id: "user_123",
+        email_addresses: [
+          { email_address: "test@example.com", id: "email_123" },
+        ],
+        first_name: "Test",
+        last_name: "User",
+      },
+    }),
   })),
 }));
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     userProfile: {
+      create: jest.fn(),
+      update: jest.fn(),
       upsert: jest.fn(),
       delete: jest.fn(),
     },
@@ -38,11 +56,28 @@ jest.mock("@/lib/logger", () => ({
   },
 }));
 
+jest.mock("@clerk/nextjs/server", () => ({
+  clerkClient: jest.fn().mockResolvedValue({
+    users: {
+      updateUserMetadata: jest.fn().mockResolvedValue({}),
+    },
+  }),
+}));
+
 describe("US-001 & US-002: User Registration and Profile Management", () => {
   const mockWebhookSecret = "whsec_test_secret";
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Mock headers to return a Map-like object (async)
+    (headers as jest.Mock).mockResolvedValue(
+      new Map([
+        ["svix-id", "test_svix_id"],
+        ["svix-timestamp", "test_svix_timestamp"],
+        ["svix-signature", "test_svix_signature"],
+      ]),
+    );
     process.env.CLERK_WEBHOOK_SECRET = mockWebhookSecret;
   });
 
@@ -52,17 +87,19 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
 
   describe("Webhook Signature Verification", () => {
     it("should reject requests without signature headers", async () => {
-      const mockRequest = new Request("http://localhost/api/webhooks/clerk", {
+      // Mock empty headers for this test
+      (headers as jest.Mock).mockResolvedValue(new Map());
+
+      const req = new Request("http://localhost:3000/api/webhooks/clerk", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ type: "user.created" }),
       });
 
-      const response = await POST(mockRequest as NextRequest);
-
+      const response = await POST(req as unknown as NextRequest);
       expect(response.status).toBe(400);
+      expect(await response.text()).toContain(
+        "Error occurred -- invalid svix headers",
+      );
     });
 
     it("should reject invalid webhook signatures", async () => {
@@ -87,9 +124,10 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
         body: JSON.stringify({ type: "user.created" }),
       });
 
-      const response = await POST(mockRequest as NextRequest);
+      const response = await POST(mockRequest as unknown as NextRequest);
 
       expect(response.status).toBe(400);
+      expect(await response.text()).toContain("Error occurred");
     });
   });
 
@@ -99,7 +137,9 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
         type: "user.created",
         data: {
           id: "user_test123",
-          email_addresses: [{ email_address: "test@example.com" }],
+          email_addresses: [
+            { email_address: "test@example.com", id: "email_123" },
+          ],
           first_name: "Test",
           last_name: "User",
           image_url: "https://example.com/avatar.png",
@@ -114,7 +154,7 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
           }) as unknown as Webhook,
       );
 
-      (prisma.userProfile.upsert as jest.Mock).mockResolvedValue({
+      (prisma.userProfile.create as jest.Mock).mockResolvedValue({
         id: "profile_test",
         clerkId: "user_test123",
       });
@@ -130,10 +170,10 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
         body: JSON.stringify(mockPayload),
       });
 
-      const response = await POST(mockRequest as NextRequest);
+      const response = await POST(mockRequest as unknown as NextRequest);
 
       expect(response.status).toBe(200);
-      expect(prisma.userProfile.upsert).toHaveBeenCalled();
+      expect(prisma.userProfile.create).toHaveBeenCalled();
     });
   });
 
@@ -143,7 +183,9 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
         type: "user.updated",
         data: {
           id: "user_test123",
-          email_addresses: [{ email_address: "updated@example.com" }],
+          email_addresses: [
+            { email_address: "updated@example.com", id: "email_456" },
+          ],
           first_name: "Updated",
           last_name: "User",
           image_url: "https://example.com/new-avatar.png",
@@ -158,7 +200,7 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
           }) as unknown as Webhook,
       );
 
-      (prisma.userProfile.upsert as jest.Mock).mockResolvedValue({
+      (prisma.userProfile.update as jest.Mock).mockResolvedValue({
         id: "profile_test",
         clerkId: "user_test123",
       });
@@ -231,7 +273,7 @@ describe("US-001 & US-002: User Registration and Profile Management", () => {
           }) as unknown as Webhook,
       );
 
-      (prisma.userProfile.upsert as jest.Mock).mockRejectedValue(
+      (prisma.userProfile.create as jest.Mock).mockRejectedValue(
         new Error("Database error"),
       );
 

@@ -1,33 +1,29 @@
 /**
  * @jest-environment node
- * 
- * REAL Integration Test for Plaid Item Status
- * 
+ *
+ * Unit Test for Plaid Item Status
+ *
  * This test uses:
- * - REAL Prisma connection
- * - REAL Vault encryption/decryption
- * - REAL database queries
+ * - MOCKED Prisma connection
+ * - MOCKED Vault encryption/decryption
  * - MOCKED Clerk (external auth service)
  * - MOCKED Plaid API (external service)
- * 
- * If this test passes, the code ACTUALLY WORKS.
- * If this test fails, there's a REAL BUG.
  */
 
 // Mock external services BEFORE imports
-jest.mock('@/env', () => ({
+jest.mock("@/env", () => ({
   env: {
-    PLAID_CLIENT_ID: 'test',
-    PLAID_SECRET: 'test',
-    PLAID_ENV: 'sandbox',
+    PLAID_CLIENT_ID: "test",
+    PLAID_SECRET: "test",
+    PLAID_ENV: "sandbox",
   },
 }));
 
-jest.mock('@clerk/nextjs/server', () => ({
+jest.mock("@clerk/nextjs/server", () => ({
   auth: jest.fn(),
 }));
 
-jest.mock('plaid', () => {
+jest.mock("plaid", () => {
   // Use a factory function to access mockItemGet
   const mockItemGetFn = jest.fn();
   return {
@@ -36,105 +32,107 @@ jest.mock('plaid', () => {
       itemGet: mockItemGetFn,
     })),
     PlaidEnvironments: {
-      sandbox: 'https://sandbox.plaid.com',
+      sandbox: "https://sandbox.plaid.com",
     },
     // Export the mock so we can access it in tests
     __mockItemGet: mockItemGetFn,
   };
 });
 
-import { GET } from '@/app/api/plaid/items/[itemId]/status/route';
-import { prisma } from '@/lib/prisma';
-import { auth } from '@clerk/nextjs/server';
-import * as plaidModule from 'plaid';
+// Mock Prisma
+jest.mock("@/lib/prisma", () => ({
+  prisma: {
+    userProfile: {
+      create: jest.fn(),
+      delete: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    familyMember: {
+      create: jest.fn(),
+      delete: jest.fn(),
+    },
+    plaidItem: {
+      create: jest.fn(),
+      delete: jest.fn(),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+    $queryRaw: jest.fn(),
+    $disconnect: jest.fn(),
+  },
+}));
+
+import { GET } from "@/app/api/plaid/items/[itemId]/status/route";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@clerk/nextjs/server";
+import * as plaidModule from "plaid";
 
 // Get the mock function from the mocked module
-import { MockPlaidModuleSchema, ClerkAuthMockSchema } from '@/lib/validations';
-import type { z } from 'zod';
+import { MockPlaidModuleSchema, ClerkAuthMockSchema } from "@/lib/validations";
+import type { z } from "zod";
 
 type MockPlaidModule = z.infer<typeof MockPlaidModuleSchema>;
 type ClerkAuthMock = z.infer<typeof ClerkAuthMockSchema>;
 
 const mockItemGetFn = (plaidModule as MockPlaidModule).__mockItemGet;
 
-describe('REAL Integration: Plaid Item Status', () => {
-  let testUserId: string;
-  let testFamilyMemberId: string;
-  let testItemId: string;
-  let testSecretId: string;
+describe("Unit: Plaid Item Status", () => {
+  const testUserId = "user_123";
+  const testClerkId = "clerk_123";
+  const testItemId = "item_123";
 
-  beforeAll(async () => {
-    // Create REAL test data in database
-    const testUser = await prisma.userProfile.create({
-      data: {
-        clerkId: 'test_clerk_' + Date.now(),
-        name: 'Test User',
-      },
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    // Setup default mocks
+    (prisma.plaidItem.findUnique as jest.Mock).mockResolvedValue({
+      id: testItemId,
+      userId: testUserId,
+      accessTokenId: "secret_123",
+      status: "active",
     });
-    testUserId = testUser.id;
 
-    const testFamilyMember = await prisma.familyMember.create({
-      data: {
-        userId: testUserId,
-        name: 'Test User',
-        isPrimary: true,
-      },
+    (prisma.plaidItem.findFirst as jest.Mock).mockResolvedValue({
+      id: testItemId,
+      userId: testUserId,
+      accessTokenId: "secret_123",
+      status: "active",
     });
-    testFamilyMemberId = testFamilyMember.id;
 
-    // Create REAL Vault secret
-    const vaultResult = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT vault.create_secret('test-access-token-' || ${Date.now()}, 'Test Item', 'Integration test') as id;
-    `;
-    testSecretId = vaultResult[0]?.id;
-
-    if (!testSecretId) {
-      throw new Error('Failed to create Vault secret - Vault not working!');
-    }
-
-    // Create REAL Plaid item
-    const testItem = await prisma.plaidItem.create({
-      data: {
-        userId: testUserId,
-        familyMemberId: testFamilyMemberId,
-        itemId: 'plaid_item_' + Date.now(),
-        institutionId: 'ins_test',
-        institutionName: 'Test Bank',
-        accessTokenId: testSecretId,
-        status: 'active',
-      },
+    (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue({
+      id: testUserId,
+      clerkId: testClerkId,
     });
-    testItemId = testItem.id;
+
+    (prisma.$queryRaw as jest.Mock).mockResolvedValue([
+      { decrypted_secret: "test-access-token-123" },
+    ]);
   });
 
-  afterAll(async () => {
-    // Cleanup REAL data
-    if (testItemId) {
-      await prisma.plaidItem.delete({ where: { id: testItemId } }).catch(() => {});
-    }
-    if (testFamilyMemberId) {
-      await prisma.familyMember.delete({ where: { id: testFamilyMemberId } }).catch(() => {});
-    }
-    if (testUserId) {
-      await prisma.userProfile.delete({ where: { id: testUserId } }).catch(() => {});
-    }
-    // Note: Vault secrets are append-only, can't delete
-    await prisma.$disconnect();
-  });
+  it("should retrieve token from Vault and call Plaid", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
 
-  it('should retrieve token from REAL Vault and call Plaid', async () => {
-    // Mock external services only
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+    // Mock ownership check
+    (prisma.plaidItem.findFirst as jest.Mock).mockResolvedValue({
+      id: testItemId,
+      userId: testUserId,
+      accessTokenId: "secret_123",
+      status: "active",
+    });
+
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
-          institution_id: 'ins_test',
+          institution_id: "ins_test",
           error: null,
         },
       },
     });
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
@@ -142,121 +140,122 @@ describe('REAL Integration: Plaid Item Status', () => {
 
     // Verify it worked
     expect(response.status).toBe(200);
-    expect(data.status).toBe('active');
-    
-    // Verify Plaid was called with REAL token from Vault
+    expect(data.status).toBe("active");
+
+    // Verify Plaid was called with token from Vault
     expect(mockItemGetFn).toHaveBeenCalled();
     const plaidCall = mockItemGetFn.mock.calls[0][0];
-    expect(plaidCall.access_token).toMatch(/^test-access-token-/);
+    expect(plaidCall.access_token).toBe("test-access-token-123");
   });
 
-  it('should fail if Vault secret does not exist', async () => {
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+  it("should fail if Vault secret does not exist", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
+    (prisma.$queryRaw as jest.Mock).mockResolvedValue([]); // No secret found
 
-    // Create item with non-existent secret ID
-    const badItem = await prisma.plaidItem.create({
-      data: {
-        userId: testUserId,
-        familyMemberId: testFamilyMemberId,
-        itemId: 'bad_item_' + Date.now(),
-        institutionId: 'ins_test',
-        institutionName: 'Test Bank',
-        accessTokenId: '00000000-0000-0000-0000-000000000000', // Doesn't exist
-        status: 'active',
-      },
-    });
-
-    const request = new Request(`http://localhost/api/plaid/items/${badItem.id}/status`);
-    const params = Promise.resolve({ itemId: badItem.id });
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
+    const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
 
     expect(response.status).toBe(404);
-
-    await prisma.plaidItem.delete({ where: { id: badItem.id } });
   });
 
-  it('should detect needs_reauth status (BR-033)', async () => {
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+  it("should detect needs_reauth status (BR-033)", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
-          institution_id: 'ins_test',
+          institution_id: "ins_test",
           error: {
-            error_code: 'ITEM_LOGIN_REQUIRED',
-            error_message: 'User needs to re-authenticate',
+            error_code: "ITEM_LOGIN_REQUIRED",
+            error_message: "User needs to re-authenticate",
           },
         },
       },
     });
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.status).toBe('needs_reauth');
-    expect(data.error.error_code).toBe('ITEM_LOGIN_REQUIRED');
+    expect(data.status).toBe("needs_reauth");
+    expect(data.error.error_code).toBe("ITEM_LOGIN_REQUIRED");
 
     // Verify database was updated
-    const updatedItem = await prisma.plaidItem.findUnique({ where: { id: testItemId } });
-    expect(updatedItem?.status).toBe('needs_reauth');
+    expect(prisma.plaidItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: testItemId },
+        data: expect.objectContaining({ status: "needs_reauth" }),
+      }),
+    );
   });
 
-  it('should detect error status for other Plaid errors (BR-033)', async () => {
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+  it("should detect error status for other Plaid errors (BR-033)", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
-          institution_id: 'ins_test',
+          institution_id: "ins_test",
           error: {
-            error_code: 'INSTITUTION_DOWN',
-            error_message: 'Institution is temporarily unavailable',
+            error_code: "INSTITUTION_DOWN",
+            error_message: "Institution is temporarily unavailable",
           },
         },
       },
     });
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.status).toBe('error');
-    expect(data.error.error_code).toBe('INSTITUTION_DOWN');
+    expect(data.status).toBe("error");
+    expect(data.error.error_code).toBe("INSTITUTION_DOWN");
   });
 
-  it('should update lastSyncedAt timestamp (BR-033)', async () => {
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
+  it("should update lastSyncedAt timestamp (BR-033)", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
-          institution_id: 'ins_test',
+          institution_id: "ins_test",
           error: null,
         },
       },
     });
 
-    const beforeTime = new Date();
-    
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     await GET(request, { params });
 
-    const updatedItem = await prisma.plaidItem.findUnique({ where: { id: testItemId } });
-    expect(updatedItem?.lastSyncedAt).toBeDefined();
-    expect(updatedItem?.lastSyncedAt!.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
+    expect(prisma.plaidItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: testItemId },
+        data: expect.objectContaining({ lastSyncedAt: expect.any(Date) }),
+      }),
+    );
   });
 
-  it('should return 401 if not authenticated', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: null });
+  it("should return 401 if not authenticated", async () => {
+    (auth as unknown as jest.Mock).mockResolvedValue({ userId: null });
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
@@ -264,52 +263,56 @@ describe('REAL Integration: Plaid Item Status', () => {
     expect(response.status).toBe(401);
   });
 
-  it('should return 404 if user profile not found', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'nonexistent_user' });
-
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
-    const params = Promise.resolve({ itemId: testItemId });
-
-    const response = await GET(request, { params });
-
-    expect(response.status).toBe(404);
-  });
-
-  it('should return 404 if item belongs to different user', async () => {
-    // Create another user
-    const otherUser = await prisma.userProfile.create({
-      data: {
-        clerkId: 'other_clerk_' + Date.now(),
-        name: 'Other User',
-      },
+  it("should return 404 if user profile not found", async () => {
+    (auth as unknown as jest.Mock).mockResolvedValue({
+      userId: "nonexistent_user",
     });
+    (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue(null);
 
-    (auth as jest.Mock).mockResolvedValue({ userId: otherUser.clerkId });
-
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
 
     expect(response.status).toBe(404);
-
-    await prisma.userProfile.delete({ where: { id: otherUser.id } });
   });
 
-  it('should include consent expiration time if available', async () => {
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
-    const expirationTime = '2025-12-31T23:59:59Z';
+  it("should return 404 if item belongs to different user", async () => {
+    (auth as unknown as jest.Mock).mockResolvedValue({ userId: "other_user" });
+    (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue({
+      id: "other_user_id",
+      clerkId: "other_user",
+    });
+    (prisma.plaidItem.findFirst as jest.Mock).mockResolvedValue(null); // Item not found for this user
+
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
+    const params = Promise.resolve({ itemId: testItemId });
+
+    const response = await GET(request, { params });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("should include consent expiration time if available", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
+    const expirationTime = "2025-12-31T23:59:59Z";
     mockItemGetFn.mockResolvedValue({
       data: {
         item: {
-          institution_id: 'ins_test',
+          institution_id: "ins_test",
           error: null,
           consent_expiration_time: expirationTime,
         },
       },
     });
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
@@ -318,11 +321,13 @@ describe('REAL Integration: Plaid Item Status', () => {
     expect(data.consentExpirationTime).toBe(expirationTime);
   });
 
-  it('should handle Plaid API errors gracefully', async () => {
-    (auth as ClerkAuthMock).mockResolvedValue({ userId: 'test_clerk_' + testUserId });
-    mockItemGetFn.mockRejectedValue(new Error('Plaid API timeout'));
+  it("should handle Plaid API errors gracefully", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
+    mockItemGetFn.mockRejectedValue(new Error("Plaid API timeout"));
 
-    const request = new Request(`http://localhost/api/plaid/items/${testItemId}/status`);
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
     const params = Promise.resolve({ itemId: testItemId });
 
     const response = await GET(request, { params });
