@@ -105,6 +105,27 @@
 - **Business Rules:** BR-033
 - **User Story:** US-020
 
+#### 4a. "Fix Connection" Button (Update Mode)
+
+- **Location:** Banks Tab > Bank card with `needs_reauth` status > Inside red alert banner
+- **Visual:** Red destructive button, RefreshCw icon, "Fix Connection" text
+- **Visibility:** Only shown when item status is `needs_reauth`
+- **Click Action:**
+  1. Fetches update mode link token from `/api/plaid/link-token/update`
+  2. Passes existing `access_token` (not new public_token)
+  3. Launches Plaid Link in update mode
+  4. User re-authenticates or re-authorizes
+  5. On success: Item status updates to 'active', alert disappears
+- **Alert Context:**
+  - Title: "Action Required"
+  - Message: "Your connection to [Bank] needs to be updated. This usually happens when you change your password or need to re-authorize access."
+  - Icon: AlertCircle (red)
+- **Success:** Toast "[Bank] connection updated!" + page refreshes
+- **Error:** Toast "Connection update failed" + retry option
+- **Business Rules:** BR-035 (Item Error Detection & Recovery)
+- **User Story:** US-020
+- **Reference:** https://plaid.com/docs/link/update-mode/
+
 #### 5. "Disconnect" Button
 
 - **Location:** Banks Tab > Each bank card > Actions (trash icon)

@@ -569,7 +569,61 @@ This document defines all business rules for the PointMax Velocity application.
 
 ---
 
-### **[BR-035]** Account Deletion & Data Privacy
+### **[BR-035]** Item Error Detection & Recovery
+
+**Category:** Reliability / UX  
+**Description:** System must detect when Plaid Items stop working and provide users with a clear path to fix them via Link update mode. When an Item has `ITEM_LOGIN_REQUIRED` or other errors (detected via `/item/get`), the system shows an alert with a "Fix Connection" button that launches Plaid Link in update mode for re-authentication.
+
+**Reference:** https://plaid.com/docs/link/update-mode/
+
+**Error Detection:**
+
+- Call `/item/get` endpoint to check Item status
+- Detect `item.error.error_code === 'ITEM_LOGIN_REQUIRED'`
+- Update PlaidItem.status = 'needs_reauth'
+- Can also be triggered by `PENDING_EXPIRATION` or `PENDING_DISCONNECT` webhooks (future)
+
+**User Experience:**
+
+1. **Detection:** Item status check reveals error
+2. **Notification:** Red alert banner appears on bank card
+3. **Message:** "Action Required: Your connection to [Bank] needs to be updated"
+4. **Action:** "Fix Connection" button launches Link update mode
+5. **Resolution:** User re-authenticates, Item status returns to 'active'
+
+**Link Update Mode:**
+
+- Create link token with existing `access_token` (not new public_token)
+- Plaid shows streamlined re-auth flow
+- User enters new credentials or re-authorizes
+- Item automatically resumes working
+
+**User Feedback:**
+
+- Alert: Red banner with AlertCircle icon
+- Title: "Action Required"
+- Description: Clear explanation of why connection needs updating
+- Button: "Fix Connection" (red, destructive variant)
+- Success: Toast "[Bank] connection updated!" + alert disappears
+
+**User Stories:** [US-020]  
+**Code:**
+
+- `app/api/plaid/link-token/update/route.ts` - Creates update mode link token
+- `components/shared/plaid-link-update.tsx` - Update mode component
+- `components/velocity/bank-accounts-view.tsx` - Shows alert UI
+- `app/api/plaid/items/[itemId]/status/route.ts` - Detects errors
+
+**Tests:** Manual testing with Plaid sandbox
+
+- ✅ Detects `ITEM_LOGIN_REQUIRED` errors
+- ✅ Creates update mode link token
+- ✅ Launches Link in update mode
+- ✅ Updates Item status after successful re-auth
+
+---
+
+### **[BR-036]** Account Deletion & Data Privacy
 
 **Category:** Privacy / Compliance  
 **Description:** When a user requests account deletion (not just payment cancellation), ALL personal data must be deleted from the database to comply with GDPR/privacy regulations, EXCEPT Plaid access tokens which must be retained in Vault per Plaid's Terms of Service. This creates a dual-compliance scenario.
