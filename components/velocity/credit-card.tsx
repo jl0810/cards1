@@ -161,18 +161,13 @@ export function CreditCard({
   const [isFlipped, setIsFlipped] = useState(false);
   const [optimisticStatus, setOptimisticStatus] =
     useState<PaymentCycleStatus | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
   const router = useRouter();
   const { brand } = useBankBrand(acc.bankId || null);
 
   // Sync optimistic status with server data
   useEffect(() => {
-    if (
-      acc.paymentCycleStatus &&
-      optimisticStatus &&
-      acc.paymentCycleStatus !== optimisticStatus
-    ) {
-      setOptimisticStatus(null);
-    }
+    // Don't reset optimistic status - let it persist
   }, [acc.paymentCycleStatus, optimisticStatus]);
 
   // Resolve Color: Database -> Manual Map -> Fallback
@@ -255,10 +250,15 @@ export function CreditCard({
   const handleTogglePaidStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
+    if (isToggling) return; // Prevent multiple clicks
+
     // Determine the new state based on current state
     const newStatus = isPaid
       ? "STATEMENT_GENERATED"
       : "PAID_AWAITING_STATEMENT";
+
+    // Set loading state
+    setIsToggling(true);
 
     // Optimistic Update
     setOptimisticStatus(newStatus);
@@ -272,37 +272,38 @@ export function CreditCard({
         });
 
         if (res.ok) {
-          toast.success("Payment cancelled");
-          router.refresh();
+          // Success - keep optimistic status
         } else {
           throw new Error("Failed to cancel payment");
         }
-        return;
-      }
-
-      // Handle MARKING AS PAID
-      const amount = Number(
-        acc.liabilities.last_statement?.replace(/[^0-9.]+/g, "") || 0,
-      );
-
-      const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: new Date().toISOString(),
-          amount,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success("Marked as paid");
-        router.refresh();
       } else {
-        throw new Error("Request failed");
+        // Handle MARKING AS PAID
+        const amount = Number(
+          acc.liabilities.last_statement?.replace(/[^0-9.]+/g, "") || 0,
+        );
+
+        const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: new Date().toISOString(),
+            amount,
+          }),
+        });
+
+        if (res.ok) {
+          // Success - keep optimistic status
+        } else {
+          throw new Error("Request failed");
+        }
       }
     } catch (error) {
+      console.error("Toggle payment status error:", error);
+      // Reset optimistic status on error
       setOptimisticStatus(null);
-      toast.error("Failed to update status");
+    } finally {
+      // Reset loading state
+      setIsToggling(false);
     }
   };
 
@@ -483,33 +484,31 @@ export function CreditCard({
               {showActionButton ? (
                 <button
                   onClick={handleTogglePaidStatus}
+                  disabled={isToggling}
                   className={`group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${
-                    isPaid
-                      ? "bg-slate-700/50 border border-slate-600 hover:bg-slate-700" // Styles for Undo
-                      : "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Styles for Pay
+                    isToggling
+                      ? "opacity-50 cursor-not-allowed"
+                      : isPaid
+                        ? "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Green when marked as paid (done)
+                        : "bg-red-500/20 hover:bg-red-500/30 border border-red-500/40" // Red when unpaid (action needed)
                   }`}
                 >
                   <div
                     className={`w-4 h-4 rounded-full flex items-center justify-center shadow-lg transition-transform ${
                       isPaid
-                        ? "bg-slate-500"
-                        : "bg-emerald-500 group-hover:scale-110"
+                        ? "bg-emerald-500" // Green when marked as paid (done)
+                        : "bg-red-500 group-hover:scale-110" // Red when unpaid (action needed)
                     }`}
                   >
-                    {isPaid ? (
-                      <span className="text-[10px] text-white font-bold">
-                        ✕
-                      </span>
+                    {isToggling ? (
+                      <div className="w-2 h-2 border border-white/30 border-t-white rounded-full animate-spin"></div>
                     ) : (
-                      <CheckCircle
-                        className="w-2.5 h-2.5 text-white"
-                        strokeWidth={3}
-                      />
+                      <CheckCircle className="w-2.5 h-2.5 text-white" />
                     )}
                   </div>
                   <span
                     className={`text-[10px] font-bold uppercase tracking-wider ${
-                      isPaid ? "text-slate-300" : "text-emerald-300"
+                      isPaid ? "text-emerald-300" : "text-red-300"
                     }`}
                   >
                     {isPaid ? "Mark as Unpaid" : "Mark Paid"}

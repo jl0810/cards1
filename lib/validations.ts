@@ -639,7 +639,7 @@ export const PaginationSchema = z.object({
 /**
  * ID validation schemas
  */
-export const IdSchema = z.string().uuid("Invalid ID format");
+export const IdSchema = z.string().cuid("Invalid ID format");
 
 /**
  * Date range schemas
