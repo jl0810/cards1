@@ -157,43 +157,44 @@ export default function PlaidLinkWithFamily({
     familyMembers[0];
 
   return (
-    <div className="flex items-center gap-0">
+    <div className="relative inline-flex">
       <Button
         onClick={startLink}
         disabled={loading}
-        className="bg-brand-primary hover:bg-brand-primary/90 rounded-r-none border-r border-white/10 pr-3"
+        className="bg-brand-primary hover:bg-brand-primary/90 rounded-lg pr-2"
       >
         <Plus className="w-4 h-4 mr-2" />
         {loading ? "Connecting..." : "Connect Bank for"}
+        {/* Inline family member display */}
+        <div className="ml-2 flex items-center gap-1.5 pl-2 border-l border-white/20">
+          <div className="relative flex h-5 w-5 shrink-0 overflow-hidden rounded-full border border-white/30 bg-gradient-to-br from-indigo-500 to-purple-600">
+            {selectedMember?.avatar ? (
+              <img
+                src={selectedMember.avatar}
+                alt={selectedMember.name}
+                className="aspect-square h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-indigo-500 text-[9px] font-bold text-white uppercase">
+                {selectedMember?.name?.substring(0, 2) || "FM"}
+              </div>
+            )}
+          </div>
+          <span className="text-sm font-medium">
+            {selectedMember?.name || "Select..."}
+          </span>
+        </div>
       </Button>
-
+      {/* Dropdown trigger overlay - invisible but clickable */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
+          <button
             disabled={loading}
-            className="bg-brand-primary hover:bg-brand-primary/90 rounded-l-none pl-2 pr-3 border-l-0"
+            className="absolute right-0 top-0 h-full w-32 opacity-0 cursor-pointer"
+            aria-label="Select family member"
           >
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-5 w-5 shrink-0 overflow-hidden rounded-full border border-white/20 bg-gradient-to-br from-indigo-500 to-purple-600">
-                {selectedMember?.avatar ? (
-                  <img
-                    src={selectedMember.avatar}
-                    alt={selectedMember.name}
-                    className="aspect-square h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-indigo-500 text-[9px] font-bold text-white uppercase">
-                    {selectedMember?.name?.substring(0, 2) || "FM"}
-                  </div>
-                )}
-              </div>
-              <span className="text-sm font-medium">
-                {selectedMember?.name || "Select..."}
-              </span>
-              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-70" />
-            </div>
-          </Button>
+            <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-70" />
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-[200px] p-0 bg-black/80 backdrop-blur-xl border-white/10 text-slate-200 shadow-2xl rounded-xl overflow-hidden">
           <div className="p-2">
@@ -248,6 +249,10 @@ export default function PlaidLinkWithFamily({
           </div>
         </PopoverContent>
       </Popover>
+      {/* Visual dropdown indicator */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+        <ChevronsUpDown className="h-3 w-3 text-white/70" />
+      </div>
     </div>
   );
 }
