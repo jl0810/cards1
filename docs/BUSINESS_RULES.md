@@ -529,31 +529,43 @@ This document defines all business rules for the PointMax Velocity application.
 
 ---
 
-### **[BR-034]** Access Token Preservation
+### **[BR-034]** Proper Item Disconnection
 
-**Category:** Compliance / Security  
-**Description:** Per Plaid API requirements, access tokens must NEVER be deleted from Supabase Vault, even when user disconnects a bank connection. The disconnect operation only updates the PlaidItem status field to 'disconnected' while preserving the encrypted token in Vault. This ensures compliance with Plaid's data retention policies and allows for potential reconnection without re-authentication.
+**Category:** Compliance / Billing  
+**Description:** When a user disconnects a bank connection, the system MUST call Plaid's `/item/remove` API to invalidate the access token and stop subscription billing. Per Plaid's documentation, calling `/item/remove` is **required** for subscription products (Transactions, Liabilities, Investments) to end billing. The system retrieves the access token from Vault, calls Plaid's API, then marks the item as disconnected in the database.
+
+**Reference:** https://plaid.com/docs/api/items/#itemremove
 
 **Triggered By:**
 
 - User clicks "Disconnect" button
 - Location: Banks Tab > [Bank Card] > Actions
-- Component: `connected-banks-section.tsx`
+- Component: `bank-accounts-view.tsx`
+
+**Process:**
+
+1. Retrieve access token from Supabase Vault
+2. Call `plaidClient.itemRemove({ access_token })`
+3. Update PlaidItem.status = 'disconnected' in database
+4. Access token is now invalid (cannot be reused)
+5. Subscription billing stops immediately
 
 **User Feedback:**
 
-- Confirmation: Modal "Disconnect [Bank Name]? This will stop syncing but preserve your data."
+- Confirmation: Modal "Disconnect [Bank Name]? This will permanently remove the connection."
 - Actions: "Disconnect" button (red) / "Cancel" button
-- Success: Toast "[Bank Name] disconnected" + status badge changes to gray
-- Result: PlaidItem.status = 'disconnected', access token remains in Vault
+- Success: Toast "[Bank Name] disconnected" + card removed from view
+- Result: Item removed from Plaid, status = 'disconnected', billing stopped
 
 **User Stories:** [US-006, US-020]  
-**Code:** `app/api/plaid/items/[itemId]/disconnect/route.ts` (lines 32-39)  
-**Tests:** `__tests__/api/plaid/items/disconnect.test.ts` ✅ **93% PASSING (13/14 tests)**
+**Code:** `app/api/plaid/items/[itemId]/disconnect/route.ts` (lines 81-94)  
+**Tests:** `__tests__/api/plaid/items/disconnect.test.ts` ✅ **100% PASSING (12/12 tests)**
 
-- ✅ Verifies token NOT deleted from Vault (Plaid compliance)
-- ✅ Verifies only status field updated
-- ✅ Verifies reconnection capability preserved
+- ✅ Verifies Plaid `/item/remove` API called
+- ✅ Verifies access token retrieved from Vault
+- ✅ Verifies billing stops (Plaid compliance)
+- ✅ Verifies graceful handling if Plaid call fails
+- ✅ E2E test validates token invalidation in sandbox
 
 ---
 

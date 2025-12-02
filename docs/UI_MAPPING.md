@@ -111,17 +111,18 @@
 - **Visual:** Red text/icon on hover, destructive styling
 - **Click Action:** Shows confirmation dialog
 - **Confirmation Dialog:**
-  - Message: "Disconnect [Bank Name]? This will stop syncing but preserve your data."
-  - Actions: "OK" / "Cancel"
+  - Message: "Disconnect [Bank Name]? This will permanently remove the connection."
+  - Actions: "Disconnect" (red) / "Cancel"
 - **On Confirm:**
-  1. Calls `/api/plaid/items/[itemId]/disconnect`
-  2. Updates PlaidItem.status = 'disconnected' (BR-034)
-  3. Does NOT delete access token from Vault (BR-034)
-  4. Updates UI to show disconnected status
+  1. Retrieves access token from Vault
+  2. Calls Plaid's `/item/remove` API to invalidate token
+  3. Stops subscription billing (BR-034)
+  4. Updates PlaidItem.status = 'disconnected'
+  5. Removes card from UI
 - **Success:** Toast "[Bank Name] disconnected"
-- **Business Rules:** BR-034 (token preservation, never delete)
+- **Business Rules:** BR-034 (proper disconnection, stops billing)
 - **User Story:** US-006, US-020
-- **Note:** This is a soft disconnect - data is preserved and can be reconnected later
+- **Note:** This is a permanent disconnect - access token is invalidated and cannot be reused
 
 ---
 
@@ -203,7 +204,7 @@
 
 **Steps:**
 
-1. Navigate to: Settings > Connected Banks
+1. Navigate to: Banks Tab
 2. Locate: Any bank connection card
 3. Find: "Check Status" button (white background, RefreshCw icon)
 4. Click: Button
