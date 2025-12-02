@@ -46,6 +46,7 @@ interface Account {
     limit: string;
     min_due: string;
     last_statement: string;
+    last_statement_balance?: string;
     next_due_date: string;
     last_statement_date: string;
     last_payment_amount: string;
@@ -229,17 +230,19 @@ export function CreditCard({
         const res = await fetch(`/api/account/${acc.id}/unmark-paid`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
         });
 
         if (res.ok) {
-          // Success - keep optimistic status
+          toast.success("Payment cancelled");
+          router.refresh();
         } else {
           throw new Error("Failed to cancel payment");
         }
       } else {
         // Handle MARKING AS PAID
         const amount = Number(
-          acc.liabilities.last_statement?.replace(/[^0-9.]+/g, "") || 0,
+          acc.liabilities.last_statement_balance?.replace(/[^0-9.]+/g, "") || 0,
         );
 
         const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
@@ -252,13 +255,15 @@ export function CreditCard({
         });
 
         if (res.ok) {
-          // Success - keep optimistic status
+          toast.success("Marked as paid");
+          router.refresh();
         } else {
           throw new Error("Request failed");
         }
       }
     } catch (error) {
       console.error("Toggle payment status error:", error);
+      toast.error("Failed to update status");
       // Reset optimistic status on error
       setOptimisticStatus(null);
     } finally {

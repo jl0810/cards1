@@ -33,6 +33,16 @@ jest.mock("@/hooks/use-bank-brand", () => ({
   useBankBrand: () => ({ brand: null }),
 }));
 
+jest.mock("framer-motion", () => ({
+  motion: {
+    div: ({ children, onClick, onKeyDown, ...props }: any) => (
+      <div onClick={onClick} onKeyDown={onKeyDown} {...props}>
+        {children}
+      </div>
+    ),
+  },
+}));
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     accountExtended: {

@@ -197,6 +197,7 @@ export function BankDetailsSheet({
             <Button
               variant="destructive"
               size="sm"
+              title="Disconnect Bank"
               onClick={() => onDisconnect(item.id)}
             >
               Disconnect
