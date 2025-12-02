@@ -211,7 +211,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-token",
             metadata: {
               institution: {
-                id: "ins_test_vault",
+                institution_id: "ins_test_vault",
                 name: "Test Bank",
               },
               accounts: [
@@ -277,7 +277,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-duplicate",
             metadata: {
               institution: {
-                id: institutionId,
+                institution_id: institutionId,
                 name: "Test Bank Duplicate",
               },
               accounts: [
@@ -359,7 +359,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-different",
             metadata: {
               institution: {
-                id: institutionId,
+                institution_id: institutionId,
                 name: "Test Bank Different",
               },
               accounts: [
@@ -416,7 +416,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-primary",
             metadata: {
               institution: {
-                id: "ins_test_primary",
+                institution_id: "ins_test_primary",
                 name: "Test Bank Primary",
               },
               accounts: [],
@@ -496,7 +496,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-secondary",
             metadata: {
               institution: {
-                id: "ins_test_secondary",
+                institution_id: "ins_test_secondary",
                 name: "Test Bank Secondary",
               },
               accounts: [],
@@ -553,7 +553,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-notfound",
             metadata: {
               institution: {
-                id: "ins_test_notfound",
+                institution_id: "ins_test_notfound",
                 name: "Test Bank",
               },
               accounts: [],
@@ -579,7 +579,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-invalid",
             metadata: {
               institution: {
-                id: "ins_test_error",
+                institution_id: "ins_test_error",
                 name: "Test Bank Error",
               },
               accounts: [],
@@ -632,7 +632,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-retry",
             metadata: {
               institution: {
-                id: "ins_test_retry",
+                institution_id: "ins_test_retry",
                 name: "Test Bank Retry",
               },
               accounts: [],
@@ -669,7 +669,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-used",
             metadata: {
               institution: {
-                id: "ins_test_used",
+                institution_id: "ins_test_used",
                 name: "Test Bank",
               },
               accounts: [],
@@ -725,7 +725,7 @@ describe("Unit: Bank Linking (US-006)", () => {
             public_token: "public-test-account-retry",
             metadata: {
               institution: {
-                id: "ins_test_account_retry",
+                institution_id: "ins_test_account_retry",
                 name: "Test Bank Account Retry",
               },
               accounts: [],

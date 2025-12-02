@@ -278,7 +278,7 @@ describe("COMPREHENSIVE TEST SUITE - All Business Rules", () => {
             body: JSON.stringify({
               public_token: "public-token",
               metadata: {
-                institution: { id: "ins_test", name: "Test Bank" },
+                institution: { institution_id: "ins_test", name: "Test Bank" },
                 accounts: [
                   {
                     id: "acc_1",
@@ -358,7 +358,10 @@ describe("COMPREHENSIVE TEST SUITE - All Business Rules", () => {
             body: JSON.stringify({
               public_token: "public-orphan",
               metadata: {
-                institution: { id: "ins_orphan", name: "Orphan Bank" },
+                institution: {
+                  institution_id: "ins_orphan",
+                  name: "Orphan Bank",
+                },
                 accounts: [
                   {
                     id: "acc_orphan",
@@ -456,7 +459,10 @@ describe("COMPREHENSIVE TEST SUITE - All Business Rules", () => {
             body: JSON.stringify({
               public_token: "public-duplicate",
               metadata: {
-                institution: { id: institutionId, name: "Duplicate Bank" },
+                institution: {
+                  institution_id: institutionId,
+                  name: "Duplicate Bank",
+                },
                 accounts: [
                   {
                     id: "acc_dup",

@@ -65,7 +65,7 @@ export const PlaidExchangeTokenSchema = z.object({
   familyMemberId: z.string().optional(),
   metadata: z.object({
     institution: z.object({
-      id: z.string(),
+      institution_id: z.string(),
       name: z.string(),
     }),
     accounts: z.array(PlaidAccountSchema),

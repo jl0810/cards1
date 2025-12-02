@@ -64,25 +64,52 @@ export default function PlaidLinkWithFamily({
   const onSuccess = useCallback(
     async (public_token: string, metadata: PlaidMetadata) => {
       try {
+        const requestBody = {
+          public_token,
+          metadata,
+          familyMemberId: selectedFamilyMemberId,
+        };
+
+        console.log("Sending token exchange request:", {
+          hasPublicToken: !!public_token,
+          hasMetadata: !!metadata,
+          institutionId: metadata?.institution?.institution_id,
+          accountCount: metadata?.accounts?.length,
+          familyMemberId: selectedFamilyMemberId,
+        });
+
         const response = await fetch("/api/plaid/exchange-public-token", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            public_token,
-            metadata,
-            familyMemberId: selectedFamilyMemberId,
-          }),
+          body: JSON.stringify(requestBody),
         });
 
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          console.error("Failed to parse response as JSON:", parseError);
+          const text = await response.text();
+          console.error("Response text:", text);
+          throw new Error(
+            `Server returned invalid response (${response.status})`,
+          );
+        }
 
         if (!response.ok) {
           // Show specific error message from server
           const errorMessage =
-            data?.error?.message || data?.message || "Failed to exchange token";
-          console.error("Token exchange error:", data);
+            data?.error?.message ||
+            data?.error ||
+            data?.message ||
+            "Failed to exchange token";
+          console.error("Token exchange error:", {
+            status: response.status,
+            data,
+            errorMessage,
+          });
           throw new Error(errorMessage);
         }
 

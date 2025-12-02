@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    institutionId = metadata?.institution?.id;
+    institutionId = metadata?.institution?.institution_id;
     const institutionName =
       metadata?.institution?.name || "Unknown Institution";
     const newAccounts = metadata?.accounts || [];
