@@ -406,10 +406,12 @@ export async function POST(req: NextRequest) {
       // 1. Plaid compliance requires keeping all access tokens for audit purposes
       // 2. Supabase Vault is append-only by design (cannot delete secrets)
       // Orphaned secrets are acceptable and required by Plaid's terms of service
-      logger.error("Failed to create PlaidItem", error, {
+      logger.error("Failed to create/update PlaidItem", error, {
         userId: userProfile.id,
         itemId,
         secretId,
+        duplicateAccountsCount: duplicateAccounts.length,
+        errorDetails: error instanceof Error ? error.message : String(error),
       });
 
       // BUG FIX #2: Handle race condition - unique constraint violation on accounts
@@ -464,9 +466,11 @@ export async function POST(req: NextRequest) {
     fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/plaid/sync-transactions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemId: itemId, cursor: null }),
+      body: JSON.stringify({ itemId: plaidItem.id }),
     }).catch((err) =>
-      logger.error("Failed to trigger initial sync", err, { itemId }),
+      logger.error("Failed to trigger initial sync", err, {
+        itemId: plaidItem.id,
+      }),
     );
 
     return NextResponse.json({ ok: true, itemId: plaidItemDbId });
