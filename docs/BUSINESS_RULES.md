@@ -18,12 +18,14 @@ This document defines all business rules for the PointMax Velocity application.
 ## Authentication & User Management Rules
 
 ### **[BR-001]** User Profile Creation
+
 **Category:** Authentication  
 **Description:** When a new user registers via Clerk, a UserProfile must be automatically created in the database with their Clerk ID, name, and avatar. A primary family member must also be created. **CRITICAL:** All users MUST be created through Clerk webhooks in production - direct database creation bypasses authentication and is prohibited.
 
 **User Stories:** [US-001], [US-002]  
 **Code:** `lib/webhooks/handlers/user.ts::handleUserCreated` (lines 66-96)  
-**Tests:** 
+**Tests:**
+
 - Integration tests (Jest): `__tests__/lib/test-user-helper.ts::createTestUserViaClerk` simulates webhook behavior by creating database records directly
 - E2E tests (Playwright): Use `@clerk/testing` to create real Clerk users
 - Example: `__tests__/api/plaid/exchange-public-token.integration.test.ts` (lines 105-111)
@@ -31,21 +33,25 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-001A]** Clerk Sync (Self-Healing)
+
 **Category:** Authentication  
 **Description:** Clerk is the source of truth for user authentication. If a Clerk webhook fails to fire (network issues, downtime, etc.), the system must have a mechanism to sync Clerk users to the database. This ensures data consistency and prevents orphaned Clerk accounts. The sync process creates UserProfile and primary FamilyMember for any Clerk user missing from the database.
 
 **Trigger Options:**
+
 1. **Manual:** Admin can trigger via API endpoint `/api/admin/sync-clerk`
 2. **Automated:** Cron job runs daily to catch any missed webhooks
 3. **On-Demand:** User login triggers sync check for their account
 
 **User Stories:** [US-001]  
-**Code:** 
+**Code:**
+
 - Sync function: `lib/clerk-sync.ts::syncClerkUser` (lines 32-122)
 - API endpoint: `app/api/admin/sync-clerk/route.ts::POST` (lines 27-48)
 - CLI script: `scripts/sync-missing-clerk-users.ts`
 
-**Tests:** 
+**Tests:**
+
 - Unit tests: `__tests__/lib/clerk-sync.test.ts` (to be created)
 - Integration test: Verify sync creates missing UserProfile and FamilyMember
 
@@ -54,6 +60,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-002]** Welcome Email
+
 **Category:** Notifications  
 **Description:** All new users must receive a welcome email after successful registration.
 
@@ -66,18 +73,21 @@ This document defines all business rules for the PointMax Velocity application.
 ## Family Member Management Rules
 
 ### **[BR-003]** Family Member Ownership
+
 **Category:** Authorization  
 **Description:** Users can only view, create, update, or delete family members that belong to their own account. Cross-account access is prohibited.
 
 **User Stories:** [US-003], [US-004], [US-005]  
-**Code:** 
+**Code:**
+
 - `app/api/user/family/route.ts` (lines 12-30)
 - `app/api/user/family/[memberId]/route.ts` (lines 25-32, 65-78)  
-**Tests:** `__tests__/api/user/family.test.ts`
+  **Tests:** `__tests__/api/user/family.test.ts`
 
 ---
 
 ### **[BR-004]** Family Member Name Requirements
+
 **Category:** Data Validation  
 **Description:** Family member names must be 1-100 characters, non-empty, and whitespace is trimmed. Email must be valid format if provided. Avatar must be valid URL if provided.
 
@@ -88,22 +98,26 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-005]** Partial Updates Allowed
+
 **Category:** Data Management  
 **Description:** When updating family members, partial updates are supported. Only provided fields are updated; others remain unchanged.
 
 **User Stories:** [US-004]  
-**Code:** 
+**Code:**
+
 - `lib/validations.ts::UpdateFamilyMemberSchema` (lines 43-55)
 - `app/api/user/family/[memberId]/route.ts` (lines 45-52)  
-**Tests:** `__tests__/lib/validations.test.ts` (lines 74-88)
+  **Tests:** `__tests__/lib/validations.test.ts` (lines 74-88)
 
 ---
 
 ### **[BR-006]** Primary Member Protection
+
 **Category:** Data Integrity  
 **Description:** The primary family member (marked with `isPrimary: true`) represents the account owner and cannot be deleted by the user. This member is automatically created during user registration and is tied to the UserProfile. Only account deletion (via Clerk) can remove the primary member.
 
 **Rationale:**
+
 - Primary member = account owner
 - Deleting would orphan the account
 - User must delete entire account via Clerk if they want to remove themselves
@@ -117,12 +131,15 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-007]** Bank Connection Dependency
+
 **Category:** Data Integrity  
 **Description:** Family members with active bank connections (PlaidItems) cannot be deleted. User must first either:
+
 1. Reassign the bank connections to another family member, OR
 2. Disconnect/remove the bank connections entirely
 
 **Rationale:**
+
 - Prevents orphaned bank accounts
 - Forces explicit decision about bank data
 - Maintains data integrity
@@ -130,9 +147,10 @@ This document defines all business rules for the PointMax Velocity application.
 **Error Message:** "Cannot delete [Name] because they have X active bank connection(s). Please reassign or remove the bank connections first."
 
 **User Flow:**
+
 1. User attempts to delete family member with banks
 2. System shows error with count of connections
-3. User must go to Settings > Connected Banks
+3. User must go to Banks Tab
 4. User either disconnects banks or reassigns to different family member
 5. User can then delete the family member
 
@@ -145,6 +163,7 @@ This document defines all business rules for the PointMax Velocity application.
 ## Bank Account Integration Rules
 
 ### **[BR-008]** Duplicate Detection
+
 **Category:** Data Integrity  
 **Description:** When linking bank accounts, the system checks for duplicates by matching institution ID and account masks. If a duplicate is detected, the existing item is returned instead of creating a new one.
 
@@ -155,12 +174,14 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-009]** Secure Token Storage
+
 **Category:** Security & Compliance  
 **Description:** Plaid access tokens must be encrypted and stored in Supabase Vault, never in plain text in the database. Only the vault secret ID is stored in the database.
 
 **CRITICAL COMPLIANCE REQUIREMENT:** Per Plaid's Terms of Service, access tokens MUST be retained permanently for audit and compliance purposes. Tokens cannot be deleted, even if the associated PlaidItem is deleted or fails to create. Orphaned vault secrets are acceptable and required by Plaid policy.
 
 **Technical Implementation:**
+
 - Supabase Vault is append-only by design (cannot delete secrets)
 - If PlaidItem creation fails after Vault secret is created, the secret remains in Vault
 - This is intentional and compliant behavior
@@ -172,6 +193,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-010]** Family Member Assignment
+
 **Category:** Data Management  
 **Description:** When linking accounts, if no family member is specified, accounts are automatically assigned to the primary (owner) family member.
 
@@ -182,18 +204,21 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-011]** Transaction Sync Limits
+
 **Category:** Performance  
 **Description:** Transaction sync is limited to maximum 50 iterations to prevent infinite loops. Database transactions timeout after 20 seconds.
 
 **User Stories:** [US-007]  
-**Code:** 
+**Code:**
+
 - `lib/constants.ts::PLAID_SYNC_CONFIG` (lines 21-26)
 - `app/api/plaid/sync-transactions/route.ts` (uses constants)  
-**Tests:** `__tests__/lib/constants.test.ts` (lines 23-44)
+  **Tests:** `__tests__/lib/constants.test.ts` (lines 23-44)
 
 ---
 
 ### **[BR-012]** Transaction Sync Rate Limiting
+
 **Category:** Performance  
 **Description:** Plaid transaction sync is rate-limited to 10 requests per hour per user to prevent API quota exhaustion and system overload.
 
@@ -204,6 +229,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-013]** Atomic Transaction Processing
+
 **Category:** Data Integrity  
 **Description:** All transaction sync operations (add, modify, remove) must occur within a single database transaction to maintain data consistency.
 
@@ -214,18 +240,21 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-014]** Account Balance Display
+
 **Category:** User Interface  
 **Description:** Account balances must be formatted in the appropriate currency (defaults to USD). Null/undefined balances display as "N/A".
 
 **User Stories:** [US-008]  
-**Code:** 
+**Code:**
+
 - `hooks/use-accounts.ts::formatCurrency` (lines 22-32)
 - `lib/constants.ts::DEFAULT_CURRENCY` (line 31)  
-**Tests:** `__tests__/hooks/use-accounts.test.ts` (lines 231-262)
+  **Tests:** `__tests__/hooks/use-accounts.test.ts` (lines 231-262)
 
 ---
 
 ### **[BR-015]** Due Date Calculation
+
 **Category:** Business Logic  
 **Description:** Payment due dates are calculated from current date: "Today", "Tomorrow", "X days", or "Overdue" for past dates. Missing dates show "N/A".
 
@@ -236,20 +265,23 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-016]** Account Nickname Persistence
+
 **Category:** Data Management  
 **Description:** Account nicknames are stored in AccountExtended table (not Plaid data) to persist across re-syncs. Max 50 characters, whitespace trimmed.
 
 **User Stories:** [US-009]  
-**Code:** 
+**Code:**
+
 - `lib/validations.ts::UpdateAccountNicknameSchema` (lines 68-75)
 - `app/api/account/[accountId]/nickname/route.ts`  
-**Tests:** `__tests__/lib/validations.test.ts` (lines 100-118)
+  **Tests:** `__tests__/lib/validations.test.ts` (lines 100-118)
 
 ---
 
 ## Benefit Matching Rules
 
 ### **[BR-017]** Merchant Pattern Matching
+
 **Category:** Business Logic  
 **Description:** Transactions are matched to benefits using regex patterns on merchant names. Matching is case-insensitive and uses flexible pattern matching.
 
@@ -260,6 +292,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-018]** Category-Based Matching
+
 **Category:** Business Logic  
 **Description:** Some benefits (e.g., airline credits) also match on transaction category in addition to merchant patterns.
 
@@ -270,6 +303,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-019]** Amount Guard Rails
+
 **Category:** Business Logic  
 **Description:** Certain benefits (e.g., Walmart+) have min/max amount requirements to avoid false matches. Transactions outside the range are not matched.
 
@@ -280,6 +314,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-020]** Monthly and Annual Limits
+
 **Category:** Business Logic  
 **Description:** Each benefit has monthly and/or annual credit limits. Once limits are reached, no additional matches occur for that period.
 
@@ -290,6 +325,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-021]** Benefit Period Calculation
+
 **Category:** Business Logic  
 **Description:** Benefit usage periods are calculated based on timing (Monthly, Quarterly, Semi-Annually, Annually). Current period determines which usage records are active.
 
@@ -300,8 +336,9 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-022]** Usage Percentage Calculation
+
 **Category:** Business Logic  
-**Description:** Benefit usage is calculated as (usedAmount / maxAmount) * 100. Remaining amount is max - used, clamped to 0.
+**Description:** Benefit usage is calculated as (usedAmount / maxAmount) \* 100. Remaining amount is max - used, clamped to 0.
 
 **User Stories:** [US-011]  
 **Code:** `app/api/benefits/usage/route.ts` (lines 116-122)  
@@ -310,6 +347,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-023]** Urgency-Based Sorting
+
 **Category:** User Interface  
 **Description:** Benefits are sorted by urgency: completed benefits last, then by days remaining (ascending), then by remaining amount (descending).
 
@@ -320,6 +358,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-024]** Cursor-Based Tracking
+
 **Category:** Performance  
 **Description:** Benefit matching uses cursor-based tracking to avoid re-processing already-matched transactions. Only new transactions are scanned.
 
@@ -332,6 +371,7 @@ This document defines all business rules for the PointMax Velocity application.
 ## UI & Display Rules
 
 ### **[BR-025]** Dashboard Auto-Refresh
+
 **Category:** User Experience  
 **Description:** Dashboard data auto-loads on mount and can be manually refreshed. Loading states and errors are displayed to users.
 
@@ -344,18 +384,21 @@ This document defines all business rules for the PointMax Velocity application.
 ## Validation & Security Rules
 
 ### **[BR-026]** Input Validation Required
+
 **Category:** Security  
 **Description:** All API endpoints that accept user input must validate using Zod schemas before processing. Invalid input returns 400 Bad Request with descriptive error.
 
 **User Stories:** [US-015]  
-**Code:** 
+**Code:**
+
 - `lib/validations.ts` (all schemas)
 - Applied in: `app/api/user/family/route.ts`, `app/api/account/[accountId]/nickname/route.ts`  
-**Tests:** `__tests__/lib/validations.test.ts` (50+ tests)
+  **Tests:** `__tests__/lib/validations.test.ts` (50+ tests)
 
 ---
 
 ### **[BR-027]** Data Sanitization
+
 **Category:** Security  
 **Description:** User input is sanitized: strings are trimmed, email validation enforced, URLs validated, lengths checked.
 
@@ -366,6 +409,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-028]** Standardized Error Responses
+
 **Category:** User Experience  
 **Description:** All API errors return consistent JSON format with appropriate HTTP status codes. Sensitive information is never exposed in error messages.
 
@@ -376,6 +420,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-029]** Structured Logging
+
 **Category:** Operations  
 **Description:** All application events are logged using structured logger with appropriate levels (debug, info, warn, error) and contextual metadata. Console.log is prohibited in production code.
 
@@ -386,6 +431,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-030]** API Rate Limits
+
 **Category:** Performance & Security  
 **Description:** API endpoints are rate-limited: Write operations (20/min), Plaid sync (10/hour), Default (60/min). Exceeded limits return 429 Too Many Requests.
 
@@ -398,6 +444,7 @@ This document defines all business rules for the PointMax Velocity application.
 ## Admin Rules
 
 ### **[BR-031]** Admin Role Required
+
 **Category:** Authorization  
 **Description:** Admin functions (card catalog management) require admin role stored in Clerk private metadata. Public metadata is not trusted for authorization.
 
@@ -408,6 +455,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-032]** Benefit Activation Control
+
 **Category:** Business Logic  
 **Description:** Only active benefits (active=true) are used for transaction matching. Inactive benefits are retained for historical tracking but not matched.
 
@@ -418,43 +466,51 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-033]** Connection Health Monitoring
+
 **Category:** User Experience / Operations  
 **Description:** System must continuously monitor Plaid connection health and provide real-time visual feedback to users. Status checks detect ITEM_LOGIN_REQUIRED errors (needs re-authentication), token expiration warnings, connection errors, and active/healthy connections.
 
 **Visual Indicators Required:**
+
 - 🟢 Green "Active": emerald-400, CheckCircle icon - Connection healthy and syncing
 - 🟡 Yellow "Needs Re-auth": amber-400, AlertCircle icon - ITEM_LOGIN_REQUIRED detected
 - 🔴 Red "Error": red-400, AlertCircle icon - Other Plaid errors encountered
 - ⚪ Gray "Disconnected": slate-400, Unplug icon - User manually disconnected
 
 **Triggered By:**
+
 - User clicks "Check Status" button
-- Location: Settings > Connected Banks > [Bank Card]
+- Location: Banks Tab > [Bank Card]
 - Component: `connected-banks-section.tsx`
 
 **User Feedback:**
+
 - Loading: Toast "Checking status..."
 - Success: Badge color updates + Toast "Status updated" + timestamp refreshes
 - Error: Toast "Failed to refresh status"
 
 **User Stories:** [US-020]  
-**Code:** 
+**Code:**
+
 - Backend: `app/api/plaid/items/[itemId]/status/route.ts` (lines 70-94)
 - Frontend: `components/velocity/connected-banks-section.tsx` (lines 68-76, 220-226)  
-**Tests:** `__tests__/api/plaid/items/status.test.ts` (13 tests: 3 passing, needs refinement)
+  **Tests:** `__tests__/api/plaid/items/status.test.ts` (13 tests: 3 passing, needs refinement)
 
 ---
 
 ### **[BR-034]** Access Token Preservation
+
 **Category:** Compliance / Security  
 **Description:** Per Plaid API requirements, access tokens must NEVER be deleted from Supabase Vault, even when user disconnects a bank connection. The disconnect operation only updates the PlaidItem status field to 'disconnected' while preserving the encrypted token in Vault. This ensures compliance with Plaid's data retention policies and allows for potential reconnection without re-authentication.
 
 **Triggered By:**
+
 - User clicks "Disconnect" button
-- Location: Settings > Connected Banks > [Bank Card] > Actions
+- Location: Banks Tab > [Bank Card] > Actions
 - Component: `connected-banks-section.tsx`
 
 **User Feedback:**
+
 - Confirmation: Modal "Disconnect [Bank Name]? This will stop syncing but preserve your data."
 - Actions: "Disconnect" button (red) / "Cancel" button
 - Success: Toast "[Bank Name] disconnected" + status badge changes to gray
@@ -463,6 +519,7 @@ This document defines all business rules for the PointMax Velocity application.
 **User Stories:** [US-006, US-020]  
 **Code:** `app/api/plaid/items/[itemId]/disconnect/route.ts` (lines 32-39)  
 **Tests:** `__tests__/api/plaid/items/disconnect.test.ts` ✅ **93% PASSING (13/14 tests)**
+
 - ✅ Verifies token NOT deleted from Vault (Plaid compliance)
 - ✅ Verifies only status field updated
 - ✅ Verifies reconnection capability preserved
@@ -470,10 +527,12 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-035]** Account Deletion & Data Privacy
+
 **Category:** Privacy / Compliance  
 **Description:** When a user requests account deletion (not just payment cancellation), ALL personal data must be deleted from the database to comply with GDPR/privacy regulations, EXCEPT Plaid access tokens which must be retained in Vault per Plaid's Terms of Service. This creates a dual-compliance scenario.
 
 **Data Deletion Scope:**
+
 - ✅ DELETE: UserProfile record
 - ✅ DELETE: All FamilyMember records (cascade)
 - ✅ DELETE: All PlaidItem records (cascade)
@@ -498,11 +557,13 @@ This document defines all business rules for the PointMax Velocity application.
    - Cannot be recovered
 
 **Triggered By:**
+
 - Clerk `user.deleted` webhook event
 - User deletes account from Clerk dashboard
 - Component: Webhook handler
 
 **Technical Implementation:**
+
 - Prisma cascade deletes configured in schema
 - All relations use `onDelete: Cascade` from UserProfile
 - Vault tokens remain (append-only, Plaid requirement)
@@ -515,10 +576,12 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-036]** Full Transaction Reload & Data Loss Warning
+
 **Category:** Data Management / User Safety  
 **Description:** Users can request a full transaction reload (dump and reload) to recover from cursor corruption or start fresh. This operation deletes ALL existing transactions and benefit tracking for the bank account, resets the Plaid cursor to null, and fetches the complete transaction history. Due to the destructive nature, users must see explicit warnings and confirm the action.
 
 **Data Deletion Scope (Per Bank Account):**
+
 - ✅ DELETE: All PlaidTransaction records for the item
 - ✅ DELETE: All TransactionExtended records (cascades)
 - ✅ DELETE: All BenefitUsage records linked to those transactions
@@ -526,18 +589,21 @@ This document defines all business rules for the PointMax Velocity application.
 - ✅ RESET: PlaidItem.lastSyncedAt = null
 
 **Required User Warnings:**
+
 1. **Primary Warning:** "This will delete ALL existing transactions and benefit tracking history"
 2. **Irreversible:** "This action cannot be undone"
 3. **Confirmation Required:** User must type "RELOAD" to proceed
 4. **Rate Limit Warning:** "May hit Plaid API limits for large histories"
 
 **User Safety Measures:**
+
 - Modal confirmation dialog (not just a button click)
 - Explicit text input required ("RELOAD")
 - Clear explanation of consequences
 - Success message with transaction count
 
 **Technical Flow:**
+
 1. Validate user owns the PlaidItem
 2. Show warning modal (frontend)
 3. User confirms by typing "RELOAD"
@@ -548,6 +614,7 @@ This document defines all business rules for the PointMax Velocity application.
 8. Return success with count
 
 **Error Handling:**
+
 - If Plaid sync fails mid-reload, cursor remains null (can retry)
 - If database delete fails, transaction rolls back (no data loss)
 - Rate limit errors should be surfaced to user
@@ -559,6 +626,7 @@ This document defines all business rules for the PointMax Velocity application.
 ---
 
 ### **[BR-037]** Payment Cycle Status Calculation
+
 **Category:** Data Management / User Experience  
 **Description:** Credit card accounts are automatically categorized into 4 payment cycle statuses based on Plaid liability data and user actions. Status updates automatically when new data syncs from Plaid. **Enhanced with automatic payment detection** using `last_payment_amount` and `last_payment_date` from Plaid to intelligently detect paid statements even when new charges exist.
 
@@ -586,47 +654,61 @@ This document defines all business rules for the PointMax Velocity application.
     - Card is effectively inactive.
 
 **Calculation Logic** (Enhanced with Payment Detection):
+
 ```javascript
 // 1. Check Dormant
-if ((statementBalance === 0 && balance === 0) || (daysSinceIssue > 90 && balance === 0) || (daysSinceIssue > 30 && balance === 0)) {
-  return 'DORMANT';
+if (
+  (statementBalance === 0 && balance === 0) ||
+  (daysSinceIssue > 90 && balance === 0) ||
+  (daysSinceIssue > 30 && balance === 0)
+) {
+  return "DORMANT";
 }
 
 // 2. Check Paid/Scheduled (ENHANCED)
-const paymentCoversStatement = paymentAmount > 0 && Math.abs(paymentAmount - statementBalance) < 1.0;
+const paymentCoversStatement =
+  paymentAmount > 0 && Math.abs(paymentAmount - statementBalance) < 1.0;
 const isRecentPayment = daysSincePayment < 30;
 
-if (paymentMarkedPaidDate || balance <= 0 || (isRecentPayment && paymentCoversStatement)) {
-  if (balance <= 0) return 'PAID_AWAITING_STATEMENT'; // Cleared
-  if (isRecentPayment && paymentCoversStatement) return 'PAID_AWAITING_STATEMENT'; // Auto-detected payment
-  return 'PAYMENT_SCHEDULED'; // User marked, but balance still shows
+if (
+  paymentMarkedPaidDate ||
+  balance <= 0 ||
+  (isRecentPayment && paymentCoversStatement)
+) {
+  if (balance <= 0) return "PAID_AWAITING_STATEMENT"; // Cleared
+  if (isRecentPayment && paymentCoversStatement)
+    return "PAID_AWAITING_STATEMENT"; // Auto-detected payment
+  return "PAYMENT_SCHEDULED"; // User marked, but balance still shows
 }
 
 // 3. Check Statement Liability
 if (statementBalance > 0) {
   // You owe money on the statement.
   // Regardless of age, if it's unpaid (balance > 0), it's a liability.
-  return 'STATEMENT_GENERATED';
+  return "STATEMENT_GENERATED";
 }
 
 // 4. Fallback (Statement was $0)
-return 'PAID_AWAITING_STATEMENT'; // New spend, no bill due
+return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 ```
 
 **Data Requirements:**
+
 - Plaid Fields: `last_statement_balance`, `last_statement_issue_date`, `current_balance`, **`last_payment_amount`**, **`last_payment_date`**
 - User Fields: `paymentMarkedPaidDate`, `paymentMarkedPaidAmount` (in `AccountExtended`)
 - Calculated: Days since statement issue, **days since last payment**
 
 **User Stories:** [US-023]  
-**Code:** 
+**Code:**
+
 - `lib/payment-cycle.ts::calculatePaymentCycleStatus` (lines 39-141)
 - `lib/payment-cycle.ts::sortAccountsByPaymentPriority` (lines 234-270)
 - `app/api/plaid/exchange-public-token/route.ts` (lines 183-184)
 - `app/dashboard/page.tsx` (lines 275-282)
 - `hooks/use-accounts.ts` (lines 74-81)
 
-**Tests:** 
+**Tests:**
+
 - Unit tests: `__tests__/lib/payment-cycle.test.ts` (25+ tests)
 - Integration tests: `__tests__/app/dashboard/page.integration.test.tsx` (7 tests)
 
@@ -637,26 +719,27 @@ return 'PAID_AWAITING_STATEMENT'; // New spend, no bill due
 **Total Business Rules:** 37 (was 36)  
 **Rules with Tests:** 15 (41%)  
 **Rules without Tests:** 22 (59%)  
-**NEW Rules:** 
+**NEW Rules:**
+
 - BR-035 (Account Deletion & Data Privacy - dual GDPR/Plaid compliance)
 - BR-036 (Full Transaction Reload with Data Loss Warnings)
 - BR-037 (Payment Cycle Status Calculation)
 
 ### Rules by Category
 
-| Category | Count | With Tests |
-|----------|-------|------------|
-| Authentication | 2 | 0 |
-| Authorization | 2 | 1 |
-| Data Validation | 5 | 5 |
-| Data Integrity | 4 | 0 |
-| Data Management | 3 | 2 |
-| Business Logic | 8 | 5 |
-| Security | 3 | 2 |
-| Performance | 3 | 1 |
-| User Interface | 1 | 0 |
-| User Experience | 2 | 1 |
-| Operations | 1 | 1 |
+| Category        | Count | With Tests |
+| --------------- | ----- | ---------- |
+| Authentication  | 2     | 0          |
+| Authorization   | 2     | 1          |
+| Data Validation | 5     | 5          |
+| Data Integrity  | 4     | 0          |
+| Data Management | 3     | 2          |
+| Business Logic  | 8     | 5          |
+| Security        | 3     | 2          |
+| Performance     | 3     | 1          |
+| User Interface  | 1     | 0          |
+| User Experience | 2     | 1          |
+| Operations      | 1     | 1          |
 
 ---
 

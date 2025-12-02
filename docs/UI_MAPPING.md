@@ -8,21 +8,19 @@
 
 ## Quick Reference Table
 
-| UI Element | Page/Location | Action | Business Rule | User Story | Backend Code | Frontend Code |
-|------------|---------------|--------|---------------|------------|--------------|---------------|
-| **"+ Add Member" button** | Dashboard > Family Members | Click → Opens form | BR-003, BR-004 | US-003 | `api/user/family/route.ts::POST` | `dashboard/page.tsx::addMember` |
-| **"Update" button** | Dashboard > Family Member Card | Click → Edit form | BR-003, BR-005 | US-004 | `api/user/family/[memberId]/route.ts::PATCH` | `dashboard/page.tsx::updateMember` |
-| **"Delete" button** | Dashboard > Family Member Card | Click → Confirm modal | BR-003, BR-006, BR-007 | US-005 | `api/user/family/[memberId]/route.ts::DELETE` | `dashboard/page.tsx::deleteMember` |
-| **"Link Bank Account" button** | Settings > Connected Banks | Click → Plaid popup | BR-008, BR-009, BR-010 | US-006 | `api/plaid/exchange-public-token/route.ts` | `components/plaid-link.tsx` |
-| **"Check Status" button** | Settings > Bank Card | Click → Health check | BR-033 | US-020 | `api/plaid/items/[itemId]/status/route.ts` | `components/velocity/connected-banks-section.tsx` |
-| **"Disconnect" button** | Settings > Bank Card | Click → Confirm modal | BR-034 | US-006, US-020 | `api/plaid/items/[itemId]/disconnect/route.ts` | `components/velocity/connected-banks-section.tsx` |
-| **"Reassign" button** | Settings > Bank Card | Click → Family dropdown | BR-003 | US-006 | `api/plaid/items/[itemId]/route.ts` | `components/velocity/connected-banks-section.tsx` |
-| **Status Badge (Green)** | Settings > Bank Card | Visual indicator | BR-033 | US-020 | `api/plaid/items/[itemId]/status/route.ts` | `connected-banks-section.tsx:69` |
-| **Status Badge (Yellow)** | Settings > Bank Card | Visual indicator | BR-033 | US-020 | `api/plaid/items/[itemId]/status/route.ts` | `connected-banks-section.tsx:72` |
-| **Status Badge (Red)** | Settings > Bank Card | Visual indicator | BR-033 | US-020 | `api/plaid/items/[itemId]/status/route.ts` | `connected-banks-section.tsx:71` |
-| **Status Badge (Gray)** | Settings > Bank Card | Visual indicator | BR-033, BR-034 | US-020 | `api/plaid/items/[itemId]/disconnect/route.ts` | `connected-banks-section.tsx:70` |
-| **"Link Card" button** | Settings > Bank Card > Account | Click → Card matcher | BR-032 | US-019 | `api/plaid/accounts/[accountId]/link-product/route.ts` | `connected-banks-section.tsx:177` |
-| **"Refresh All" button** | Dashboard > Top bar | Click → Sync all | BR-011, BR-012, BR-013 | US-007 | `api/plaid/sync-transactions/route.ts` | `dashboard/page.tsx::refreshAll` |
+| UI Element                        | Page/Location                                           | Action                    | Business Rule          | User Story     | Backend Code                                           | Frontend Code                                                        |
+| --------------------------------- | ------------------------------------------------------- | ------------------------- | ---------------------- | -------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
+| **"+ Add Member" button**         | Settings > Family Members                               | Click → Opens form        | BR-003, BR-004         | US-003         | `api/user/family/route.ts::POST`                       | `components/velocity/settings-view.tsx::handleAddMember`             |
+| **"Update" button**               | Settings > Family Member Card                           | Click → Edit form         | BR-003, BR-005         | US-004         | `api/user/family/[memberId]/route.ts::PATCH`           | `components/velocity/settings-view.tsx::updateMember`                |
+| **"Delete" button**               | Settings > Family Member Card                           | Click → Confirm modal     | BR-003, BR-006, BR-007 | US-005         | `api/user/family/[memberId]/route.ts::DELETE`          | `components/velocity/settings-view.tsx::deleteMember`                |
+| **"Connect Bank Account" button** | Banks Tab                                               | Click → Plaid popup       | BR-008, BR-009, BR-010 | US-006         | `api/plaid/exchange-public-token/route.ts`             | `components/shared/plaid-link.tsx`                                   |
+| **"Sync All" button**             | Banks Tab                                               | Click → Sync transactions | BR-011, BR-012, BR-013 | US-007         | `api/plaid/sync-transactions/route.ts`                 | `components/velocity/bank-accounts-view.tsx::syncTransactions`       |
+| **"Disconnect" button**           | Banks Tab > Bank Card                                   | Click → Confirm modal     | BR-034                 | US-006, US-020 | `api/plaid/items/[itemId]/disconnect/route.ts`         | `components/velocity/bank-accounts-view.tsx::disconnectItem`         |
+| **"Reassign" button**             | Banks Tab > Bank Card                                   | Click → Family dropdown   | BR-003                 | US-006         | `api/plaid/items/[itemId]/route.ts`                    | `components/velocity/bank-accounts-view.tsx::updateItemFamilyMember` |
+| **Status Badge**                  | Banks Tab > Bank Card                                   | Visual indicator          | BR-033                 | US-020         | `PlaidItem.status` field                               | `bank-accounts-view.tsx`                                             |
+| **"Link Card" button**            | Banks Tab > Bank Card > Account                         | Click → Card matcher      | BR-032                 | US-019         | `api/plaid/accounts/[accountId]/link-product/route.ts` | `components/velocity/card-product-matcher.tsx`                       |
+| **"Mark Paid" button**            | Dashboard > Wallet > Credit Card Back (Magnetic Stripe) | Click → Records payment   | BR-035                 | US-021         | `api/account/[accountId]/mark-paid/route.ts`           | `components/velocity/credit-card.tsx::handleMarkAsPaid`              |
+| **"Refresh All" button**          | Dashboard > Top bar                                     | Click → Sync all          | BR-011, BR-012, BR-013 | US-007         | `api/plaid/sync-transactions/route.ts`                 | `dashboard/page.tsx::refreshAll`                                     |
 
 ---
 
@@ -31,6 +29,7 @@
 ### **Family Member Management**
 
 #### 1. "+ Add Member" Button
+
 - **Location:** Dashboard > Family Members section (top right)
 - **Visual:** Purple/pink gradient button with + icon
 - **Click Action:** Opens modal with form fields
@@ -45,9 +44,10 @@
 - **User Story:** US-003
 
 #### 2. "Delete" Button
+
 - **Location:** Dashboard > Family Member Card > Actions menu
 - **Visual:** Red text/icon, destructive action
-- **Click Action:** 
+- **Click Action:**
   1. Checks if primary member (BR-006) → shows error
   2. Checks if has bank connections (BR-007) → shows error
   3. Shows confirmation modal
@@ -64,34 +64,28 @@
 
 ### **Bank Connection Management**
 
-#### 3. "Link Bank Account" Button
-- **Location:** Settings > Connected Banks section (top right)
-- **Visual:** Large purple gradient button, prominent placement
+#### 3. "Connect Bank Account" Button
+
+- **Location:** Banks Tab (top right, next to "Sync All")
+- **Visual:** Purple/gradient button with prominent placement
 - **Click Action:**
-  1. Opens family member selector (optional)
-  2. Creates Plaid Link token (BR-008)
-  3. Opens Plaid popup modal
+  1. Creates Plaid Link token (BR-008)
+  2. Opens Plaid popup modal
 - **Plaid Flow:**
-  1. User selects bank
-  2. Authenticates with credentials
-  3. Selects accounts to link
-  4. System exchanges token (BR-009)
-  5. Encrypts and stores in Vault (BR-009)
-  6. Detects duplicates (BR-008)
+  1.User selects bank 2. Authenticates with credentials 3. Selects accounts to link 4. System exchanges token (BR-009) 5. Encrypts and stores in Vault (BR-009) 6. Detects duplicates (BR-008)
 - **Loading States:**
-  - "Opening bank connection..." (Plaid initializing)
+  - "Connecting..." (Plaid initializing)
   - "Importing accounts..." (after auth)
-  - "Encrypting access token..." (vault storage)
-- **Success:** Toast "Bank connected successfully" + new bank card appears with green "Active" badge
+- **Success:** Toast "Bank account linked successfully!" + new bank card appears
 - **Error States:**
-  - "Bank already connected" (duplicate)
-  - "Connection failed" (Plaid error)
-  - "Failed to store credentials" (vault error)
+  - "This bank account is already linked" (duplicate)
+  - "Failed to link bank account" (Plaid error)
 - **Business Rules:** BR-008, BR-009, BR-010
 - **User Story:** US-006
 
 #### 4. "Check Status" Button
-- **Location:** Settings > Connected Banks > Each bank card
+
+- **Location:** Banks Tab > Each bank card
 - **Visual:** White/5 background, RefreshCw icon, neutral styling
 - **Click Action:**
   1. Calls `/api/plaid/items/[itemId]/status`
@@ -112,30 +106,31 @@
 - **User Story:** US-020
 
 #### 5. "Disconnect" Button
-- **Location:** Settings > Connected Banks > Each bank card > Actions
-- **Visual:** Red background/text, destructive styling, Unplug icon
-- **Visibility:** Hidden if already disconnected
-- **Click Action:** Shows confirmation modal
-- **Confirmation Modal:**
-  - Title: "Disconnect [Bank Name]?"
-  - Message: "This will stop syncing but preserve your data."
-  - Actions: "Disconnect" (red) / "Cancel"
+
+- **Location:** Banks Tab > Each bank card > Actions (trash icon)
+- **Visual:** Red text/icon on hover, destructive styling
+- **Click Action:** Shows confirmation dialog
+- **Confirmation Dialog:**
+  - Message: "Disconnect [Bank Name]? This will stop syncing but preserve your data."
+  - Actions: "OK" / "Cancel"
 - **On Confirm:**
   1. Calls `/api/plaid/items/[itemId]/disconnect`
   2. Updates PlaidItem.status = 'disconnected' (BR-034)
   3. Does NOT delete access token from Vault (BR-034)
-  4. Updates UI badge to gray "Disconnected"
+  4. Updates UI to show disconnected status
 - **Success:** Toast "[Bank Name] disconnected"
-- **Business Rules:** BR-034 (token preservation)
+- **Business Rules:** BR-034 (token preservation, never delete)
 - **User Story:** US-006, US-020
+- **Note:** This is a soft disconnect - data is preserved and can be reconnected later
 
 ---
 
 ### **Status Badges (Visual Indicators)**
 
 #### 6. Green "Active" Status Badge
+
 - **Location:** Settings > Bank Card (top right)
-- **Visual:** 
+- **Visual:**
   - Color: emerald-400 text
   - Background: emerald-500/10
   - Icon: CheckCircle
@@ -146,6 +141,7 @@
 - **User Story:** US-020
 
 #### 7. Yellow "Needs Re-auth" Status Badge
+
 - **Location:** Settings > Bank Card (top right)
 - **Visual:**
   - Color: amber-400 text
@@ -160,6 +156,7 @@
 - **User Story:** US-020
 
 #### 8. Red "Error" Status Badge
+
 - **Location:** Settings > Bank Card (top right)
 - **Visual:**
   - Color: red-400 text
@@ -173,6 +170,7 @@
 - **User Story:** US-020
 
 #### 9. Gray "Disconnected" Status Badge
+
 - **Location:** Settings > Bank Card (top right)
 - **Visual:**
   - Color: slate-400 text
@@ -204,6 +202,7 @@
 **Test:** Verify bank connection health monitoring works
 
 **Steps:**
+
 1. Navigate to: Settings > Connected Banks
 2. Locate: Any bank connection card
 3. Find: "Check Status" button (white background, RefreshCw icon)
@@ -223,28 +222,28 @@
 
 ### Toast Notifications
 
-| Message | Type | Trigger | Business Rule |
-|---------|------|---------|---------------|
-| "Member added" | Success | Add family member | BR-003 |
-| "Member deleted" | Success | Delete member | BR-003 |
-| "Cannot delete primary member" | Error | Delete primary | BR-006 |
-| "Cannot delete member with bank connections" | Error | Delete with banks | BR-007 |
-| "Bank connected successfully" | Success | Link bank account | BR-008, BR-009 |
-| "Bank already connected" | Error | Duplicate bank | BR-008 |
-| "Checking status..." | Loading | Check connection | BR-033 |
-| "Status updated" | Success | Status check complete | BR-033 |
-| "Failed to refresh status" | Error | Status check failed | BR-033 |
-| "[Bank Name] disconnected" | Success | Disconnect bank | BR-034 |
+| Message                                      | Type    | Trigger               | Business Rule  |
+| -------------------------------------------- | ------- | --------------------- | -------------- |
+| "Member added"                               | Success | Add family member     | BR-003         |
+| "Member deleted"                             | Success | Delete member         | BR-003         |
+| "Cannot delete primary member"               | Error   | Delete primary        | BR-006         |
+| "Cannot delete member with bank connections" | Error   | Delete with banks     | BR-007         |
+| "Bank connected successfully"                | Success | Link bank account     | BR-008, BR-009 |
+| "Bank already connected"                     | Error   | Duplicate bank        | BR-008         |
+| "Checking status..."                         | Loading | Check connection      | BR-033         |
+| "Status updated"                             | Success | Status check complete | BR-033         |
+| "Failed to refresh status"                   | Error   | Status check failed   | BR-033         |
+| "[Bank Name] disconnected"                   | Success | Disconnect bank       | BR-034         |
 
 ### Loading Indicators
 
-| Indicator | Location | Meaning | Duration |
-|-----------|----------|---------|----------|
-| Spinner in modal | Add Member form | Saving member | 1-2 sec |
-| "Opening bank connection..." | Plaid Link | Initializing Plaid | 2-3 sec |
-| "Importing accounts..." | Plaid Link | Exchanging token | 3-5 sec |
-| "Encrypting access token..." | Plaid Link | Vault storage | 1-2 sec |
-| "Checking status..." | Status button | Plaid API call | 1-2 sec |
+| Indicator                    | Location        | Meaning            | Duration |
+| ---------------------------- | --------------- | ------------------ | -------- |
+| Spinner in modal             | Add Member form | Saving member      | 1-2 sec  |
+| "Opening bank connection..." | Plaid Link      | Initializing Plaid | 2-3 sec  |
+| "Importing accounts..."      | Plaid Link      | Exchanging token   | 3-5 sec  |
+| "Encrypting access token..." | Plaid Link      | Vault storage      | 1-2 sec  |
+| "Checking status..."         | Status button   | Plaid API call     | 1-2 sec  |
 
 ---
 
@@ -252,25 +251,25 @@
 
 ### Frontend Components
 
-| Component File | UI Elements | Business Rules | User Stories |
-|----------------|-------------|----------------|--------------|
-| `app/dashboard/page.tsx` | Family member CRUD buttons | BR-003, BR-004, BR-005, BR-006, BR-007 | US-003, US-004, US-005 |
-| `components/plaid-link.tsx` | "Link Bank Account" button | BR-008, BR-009, BR-010 | US-006 |
-| `components/velocity/connected-banks-section.tsx` | Bank card UI, status badges, action buttons | BR-033, BR-034 | US-006, US-020 |
-| `components/velocity/family-member-dropdown.tsx` | Family member selector | BR-003 | US-003, US-006 |
-| `components/velocity/card-product-matcher.tsx` | "Link Card" button | BR-032 | US-019 |
+| Component File                                    | UI Elements                                 | Business Rules                         | User Stories           |
+| ------------------------------------------------- | ------------------------------------------- | -------------------------------------- | ---------------------- |
+| `app/dashboard/page.tsx`                          | Family member CRUD buttons                  | BR-003, BR-004, BR-005, BR-006, BR-007 | US-003, US-004, US-005 |
+| `components/plaid-link.tsx`                       | "Link Bank Account" button                  | BR-008, BR-009, BR-010                 | US-006                 |
+| `components/velocity/connected-banks-section.tsx` | Bank card UI, status badges, action buttons | BR-033, BR-034                         | US-006, US-020         |
+| `components/velocity/family-member-dropdown.tsx`  | Family member selector                      | BR-003                                 | US-003, US-006         |
+| `components/velocity/card-product-matcher.tsx`    | "Link Card" button                          | BR-032                                 | US-019                 |
 
 ### Backend API Routes
 
-| API Route | Triggered By UI Element | Business Rules | User Stories |
-|-----------|------------------------|----------------|--------------|
-| `api/user/family/route.ts::POST` | "+ Add Member" button | BR-003, BR-004 | US-003 |
-| `api/user/family/[memberId]/route.ts::PATCH` | "Update" button | BR-003, BR-005 | US-004 |
-| `api/user/family/[memberId]/route.ts::DELETE` | "Delete" button | BR-003, BR-006, BR-007 | US-005 |
-| `api/plaid/create-link-token/route.ts` | "Link Bank Account" button (step 1) | BR-008 | US-006 |
-| `api/plaid/exchange-public-token/route.ts` | "Link Bank Account" button (step 2) | BR-008, BR-009, BR-010 | US-006 |
-| `api/plaid/items/[itemId]/status/route.ts` | "Check Status" button | BR-033 | US-020 |
-| `api/plaid/items/[itemId]/disconnect/route.ts` | "Disconnect" button | BR-034 | US-020 |
+| API Route                                      | Triggered By UI Element             | Business Rules         | User Stories |
+| ---------------------------------------------- | ----------------------------------- | ---------------------- | ------------ |
+| `api/user/family/route.ts::POST`               | "+ Add Member" button               | BR-003, BR-004         | US-003       |
+| `api/user/family/[memberId]/route.ts::PATCH`   | "Update" button                     | BR-003, BR-005         | US-004       |
+| `api/user/family/[memberId]/route.ts::DELETE`  | "Delete" button                     | BR-003, BR-006, BR-007 | US-005       |
+| `api/plaid/create-link-token/route.ts`         | "Link Bank Account" button (step 1) | BR-008                 | US-006       |
+| `api/plaid/exchange-public-token/route.ts`     | "Link Bank Account" button (step 2) | BR-008, BR-009, BR-010 | US-006       |
+| `api/plaid/items/[itemId]/status/route.ts`     | "Check Status" button               | BR-033                 | US-020       |
+| `api/plaid/items/[itemId]/disconnect/route.ts` | "Disconnect" button                 | BR-034                 | US-020       |
 
 ---
 
@@ -279,26 +278,44 @@
 ### Dashboard Page
 
 **Elements:**
+
+- Family member cards → Display data
+- "Refresh All" button (top bar) → US-007, BR-011, BR-012, BR-013
+- Credit cards in Wallet view → Display with payment status
+- "Mark Paid" button (card back, magnetic stripe) → US-021, BR-035
+
+### Banks Tab
+
+**Elements:**
+
+- "Connect Bank Account" button → US-006, BR-008, BR-009, BR-010
+- "Sync All" button → US-007, BR-011, BR-012, BR-013
+- Bank connection cards → Display connections
+- Status indicators (Active/Disconnected) → US-020, BR-033
+- "Reassign" button per bank → US-006, BR-003
+- "Disconnect" button per bank (trash icon) → US-020, BR-034
+- "Link Card" button per account → US-019, BR-032
+- Account balances and details → Display data
+
+### Settings Tab
+
+**Elements:**
+
+- "Family Members" section → US-003, BR-003, BR-004
 - "+ Add Member" button → US-003, BR-003, BR-004
 - Family member cards → Display data
 - "Update" button per member → US-004, BR-003, BR-005
 - "Delete" button per member → US-005, BR-003, BR-006, BR-007
-- "Refresh All" button (top bar) → US-007, BR-011, BR-012, BR-013
-
-### Settings > Connected Banks Page
-
-**Elements:**
-- "Link Bank Account" button → US-006, BR-008, BR-009, BR-010
-- Bank connection cards → Display connections
-- Status badges (Green/Yellow/Red/Gray) → US-020, BR-033, BR-034
-- "Check Status" button per bank → US-020, BR-033
-- "Reassign" button per bank → US-006, BR-003
-- "Disconnect" button per bank → US-020, BR-034
-- "Link Card" button per account → US-019, BR-032
-- "Last synced" timestamp → US-020, BR-033
+- Profile information → User account settings
+- Sign Out button → Authentication
 
 ---
 
-**Last Updated:** November 26, 2025  
-**Version:** 1.0  
-**Total UI Elements Documented:** 12 primary buttons + 4 status badges
+**Last Updated:** December 1, 2025  
+**Version:** 1.1  
+**Total UI Elements Documented:** 13 primary buttons + status indicators  
+**Major Changes:** Consolidated all bank management to Banks tab (removed from Settings)
+
+```
+
+```

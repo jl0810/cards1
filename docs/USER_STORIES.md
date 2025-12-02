@@ -5,6 +5,7 @@ This document contains all user stories for the PointMax Velocity application, o
 ## Story Format
 
 Each user story follows this format:
+
 ```
 **[STORY-ID]** Story Title
 **As a** [user type]
@@ -25,11 +26,13 @@ Each user story follows this format:
 ## Authentication & User Management
 
 ### **[US-001]** User Registration
+
 **As a** new user  
 **I want** to create an account using my email or social login  
 **So that** I can access the credit card benefits tracking system
 
 **Acceptance Criteria:**
+
 - User can sign up with email/password
 - User can sign up with Google/OAuth
 - User profile is created automatically
@@ -43,11 +46,13 @@ Each user story follows this format:
 ---
 
 ### **[US-002]** User Profile Management
+
 **As a** registered user  
 **I want** to update my profile information  
 **So that** my account details stay current
 
 **Acceptance Criteria:**
+
 - User can update name
 - User can update avatar
 - Changes sync with Clerk
@@ -60,11 +65,13 @@ Each user story follows this format:
 ---
 
 ### **[US-021]** Account Deletion
+
 **As a** registered user  
 **I want** to permanently delete my account and all personal data  
 **So that** I can exercise my right to be forgotten (GDPR/privacy compliance)
 
 **Acceptance Criteria:**
+
 - User can request account deletion from settings
 - All personal data is deleted from database (user profile, family members, transactions, accounts, items)
 - Plaid access tokens are retained in Vault (Plaid compliance requirement)
@@ -73,6 +80,7 @@ Each user story follows this format:
 - Deletion is irreversible
 
 **Important Distinction:**
+
 - **Lame Duck Account** (payment ended): User data retained, account inactive but recoverable
 - **Deleted Account** (user-requested): All personal data deleted permanently, only Plaid tokens retained for compliance
 
@@ -85,11 +93,13 @@ Each user story follows this format:
 ## Family Member Management
 
 ### **[US-003]** Add Family Members
+
 **As a** account owner  
 **I want** to add family members to my account  
 **So that** I can track credit cards for my entire household
 
 **User Flow:**
+
 1. Navigate to Dashboard
 2. Click "+ Add Member" button in Family Members section
 3. Enter name (required), email (optional), role
@@ -97,6 +107,7 @@ Each user story follows this format:
 5. New member appears in family list with avatar color
 
 **UI Elements:**
+
 - **Location:** Dashboard > Family Members section (left sidebar)
 - **Primary Button:** "+ Add Member" (gradient purple/pink, top of section)
 - **Form Fields:** Name (text), Email (text), Role (dropdown)
@@ -104,6 +115,7 @@ Each user story follows this format:
 - **Result:** New member card appears with avatar and name
 
 **Acceptance Criteria:**
+
 - ✅ "+ Add Member" button visible to account owner
 - ✅ Owner can add unlimited family members (no limit enforced)
 - ✅ Each member requires a name (validated client & server-side)
@@ -113,22 +125,25 @@ Each user story follows this format:
 - ✅ Error toast shown for validation failures
 
 **Business Rules:** [BR-003, BR-004]  
-**Code:** 
+**Code:**
+
 - Backend: `app/api/user/family/route.ts::POST`
 - Frontend: `app/dashboard/page.tsx::addMember`
 - Component: Family member form modal
-**Tests:** 
+  **Tests:**
 - `__tests__/api/user/family.test.ts` - "should create family member with valid data"
 - `__tests__/lib/validations.test.ts` - CreateFamilyMemberSchema tests
 
 ---
 
 ### **[US-004]** Update Family Member
+
 **As a** account owner  
 **I want** to update family member details  
 **So that** I can keep information accurate
 
 **Acceptance Criteria:**
+
 - Can update name, email, avatar
 - Partial updates supported
 - Only owner can update their members
@@ -137,17 +152,20 @@ Each user story follows this format:
 **Business Rules:** [BR-003, BR-005]  
 **Code:** `app/api/user/family/[memberId]/route.ts::PATCH`  
 **Tests:**
+
 - `__tests__/api/user/family.test.ts` - "should sanitize input data"
 - `__tests__/lib/validations.test.ts` - UpdateFamilyMemberSchema tests
 
 ---
 
 ### **[US-005]** Delete Family Member
+
 **As a** account owner  
 **I want** to remove family members  
 **So that** I can manage who has access
 
 **Acceptance Criteria:**
+
 - Cannot delete primary member
 - Cannot delete member with bank connections
 - Deletion is permanent
@@ -162,26 +180,28 @@ Each user story follows this format:
 ## Bank Account Integration
 
 ### **[US-006]** Link Bank Account
+
 **As a** user  
 **I want** to connect my bank accounts via Plaid  
 **So that** the system can automatically track my credit cards
 
 **User Flow:**
-1. Navigate to Settings > Connected Banks section
-2. Click "Link Bank Account" button
-3. (Optional) Select family member from dropdown
-4. Plaid Link popup opens
-5. Select your bank from list
-6. Authenticate with bank credentials
-7. Select accounts to link
-8. Confirm and close Plaid popup
-9. See new bank connection card with accounts
+
+1. Navigate to Banks Tab
+2. Click "Connect Bank Account" button (top right)
+3. Plaid Link popup opens
+4. Select your bank from list
+5. Authenticate with bank credentials
+6. Select accounts to link
+7. Confirm and close Plaid popup
+8. See new bank connection card with accounts
 
 **UI Elements:**
-- **Location:** Settings > Connected Banks section
+
+- **Location:** Banks Tab (main tab navigation)
 - **Primary Button:** "Link Bank Account" (purple gradient, prominent)
 - **Component:** Plaid Link modal integration
-- **Loading States:** 
+- **Loading States:**
   - "Opening bank connection..." (Plaid loading)
   - "Importing accounts..." (after auth)
   - "Encrypting access token..." (vault storage)
@@ -192,6 +212,7 @@ Each user story follows this format:
   - "Failed to store credentials" (vault error)
 
 **Acceptance Criteria:**
+
 - ✅ "Link Bank Account" button visible in Settings
 - ✅ User authenticates with their bank (via Plaid secure popup)
 - ✅ All accounts are imported (displayed in Connected Banks list)
@@ -202,21 +223,24 @@ Each user story follows this format:
 - ✅ New bank card shows with "Active" green status badge
 
 **Business Rules:** [BR-008, BR-009, BR-010]  
-**Code:** 
+**Code:**
+
 - Backend: `app/api/plaid/create-link-token/route.ts`
 - Backend: `app/api/plaid/exchange-public-token/route.ts`
 - Frontend: `components/plaid-link.tsx`
 - UI: `components/velocity/connected-banks-section.tsx`
-**Tests:** None (HIGH PRIORITY - needs integration tests)
+  **Tests:** None (HIGH PRIORITY - needs integration tests)
 
 ---
 
 ### **[US-007]** Sync Transactions
+
 **As a** user  
 **I want** transactions to sync automatically  
 **So that** my spending data is always current
 
 **Acceptance Criteria:**
+
 - Transactions sync on-demand
 - Added/modified/removed transactions handled
 - Sync is rate-limited (10 per hour)
@@ -231,11 +255,13 @@ Each user story follows this format:
 ---
 
 ### **[US-023]** Payment Cycle Status Tracking
+
 **As a** user  
 **I want** my credit cards automatically categorized by payment cycle status  
 **So that** I know which cards need payment, which are paid, and which are awaiting new statements
 
 **Acceptance Criteria:**
+
 - ✅ Cards automatically categorized into 4 statuses based on Plaid data
 - ✅ **Status 1: Statement Generated** - Recent statement (< 30 days), payment needed (Balance > 0)
 - ✅ **Status 2: Payment Scheduled** - User manually marked payment as made
@@ -248,17 +274,20 @@ Each user story follows this format:
 - ✅ **NEW:** Card back displays last payment amount and date instead of APR data
 
 **Data Sources:**
+
 - Plaid: `last_statement_balance`, `last_statement_issue_date`, `current_balance`, `next_payment_due_date`, **`last_payment_amount`**, **`last_payment_date`**
 - User Input: Manual "mark as paid" action (stored in `AccountExtended`)
 - Calculated: Days since statement issue, days since last payment, payment coverage status
 
 **UI Elements:**
+
 - Card Back: "Last Payment" field showing amount (e.g., "$1,250.50")
 - Card Back: "Payment Date" field showing date (e.g., "11/15/2024")
 - Replaced: APR and Limit fields removed to prioritize payment tracking data
 
 **Business Rules:** [BR-037]  
-**Code:** 
+**Code:**
+
 - `lib/payment-cycle.ts::calculatePaymentCycleStatus` (lines 39-141) - Enhanced with payment detection
 - `lib/payment-cycle.ts::sortAccountsByPaymentPriority` (lines 234-270) - Multi-tier sorting
 - `app/api/plaid/exchange-public-token/route.ts` (lines 183-184) - Fetch payment data from Plaid
@@ -266,18 +295,21 @@ Each user story follows this format:
 - `hooks/use-accounts.ts` (lines 74-81) - Account hook with payment data
 - `components/velocity/credit-card.tsx` (lines 330-331) - Card back display
 
-**Tests:** 
+**Tests:**
+
 - Unit tests: `__tests__/lib/payment-cycle.test.ts` (25+ tests) ✅ 100% passing
 - Integration tests: `__tests__/app/dashboard/page.integration.test.tsx` (7 tests) ✅ 100% passing
 
 ---
 
 ### **[US-022]** Full Transaction Reload (Dump & Reload)
+
 **As a** user  
 **I want** to completely reload all my transaction history from scratch  
 **So that** I can recover if the sync cursor gets corrupted or I want to start fresh
 
 **Acceptance Criteria:**
+
 - ⚠️ **User sees clear warning before proceeding:**
   - "This will delete ALL existing transactions and benefit tracking history"
   - "This action cannot be undone"
@@ -291,13 +323,15 @@ Each user story follows this format:
 - Success message shows count of transactions reloaded
 
 **Important Warnings:**
+
 - 🔴 **Data Loss:** All transaction history deleted
 - 🔴 **Benefit Tracking Lost:** All benefit usage records deleted
 - 🔴 **Cannot Undo:** Permanent action
 - ⚠️ **Rate Limits:** May hit Plaid API limits for large histories
 
 **User Flow:**
-1. User navigates to Settings > Connected Banks
+
+1. User navigates to Banks Tab
 2. User clicks "..." menu on bank card
 3. User selects "Reload All Transactions"
 4. System shows warning modal with consequences
@@ -313,11 +347,13 @@ Each user story follows this format:
 ---
 
 ### **[US-008]** View Connected Accounts
+
 **As a** user  
 **I want** to see all my connected bank accounts  
 **So that** I know what's being tracked
 
 **Acceptance Criteria:**
+
 - Displays institution name
 - Shows account names/nicknames
 - Shows current balances
@@ -325,19 +361,22 @@ Each user story follows this format:
 - Displays credit card details (APR, limit, etc)
 
 **Business Rules:** [BR-014, BR-015]  
-**Code:** 
+**Code:**
+
 - `app/api/plaid/items/route.ts`
 - `hooks/use-accounts.ts`  
-**Tests:** `__tests__/hooks/use-accounts.test.ts` - comprehensive hook tests
+  **Tests:** `__tests__/hooks/use-accounts.test.ts` - comprehensive hook tests
 
 ---
 
 ### **[US-009]** Nickname Accounts
+
 **As a** user  
 **I want** to give custom nicknames to my accounts  
 **So that** I can easily identify them
 
 **Acceptance Criteria:**
+
 - Nickname max 50 characters
 - Nickname persists across syncs
 - Can clear nickname (set to null)
@@ -350,19 +389,22 @@ Each user story follows this format:
 ---
 
 ### **[US-020]** Monitor Bank Connection Health
+
 **As a** user  
 **I want** to see the health status of my bank connections with visual indicators  
 **So that** I know when connections need attention or re-authentication
 
 **User Flow:**
-1. Navigate to Settings > Connected Banks section
+
+1. Navigate to Banks Tab
 2. View status badge on each bank connection card
 3. Click "Check Status" button to manually verify connection
 4. Wait for status check (~1-2 seconds)
 5. Review updated status badge and timestamp
 
 **UI Elements:**
-- **Location:** Settings > Connected Banks > Each bank card
+
+- **Location:** Banks Tab > Each bank card
 - **Status Badges:**
   - 🟢 Green "Active" (CheckCircle icon, emerald-400)
   - 🟡 Yellow "Needs Re-auth" (AlertCircle icon, amber-400)
@@ -375,6 +417,7 @@ Each user story follows this format:
 - **Last Sync Display:** "Last synced: [date]" with Clock icon
 
 **Acceptance Criteria:**
+
 - ✅ Status badge visible on every bank connection card
 - ✅ "Check Status" button visible (not "Refresh")
 - ✅ Button triggers Plaid /item/get health check
@@ -388,11 +431,12 @@ Each user story follows this format:
 - ✅ Color-coded for quick scanning (green/yellow/red/gray)
 
 **Business Rules:** [BR-033, BR-034]  
-**Code:** 
+**Code:**
+
 - Backend: `app/api/plaid/items/[itemId]/status/route.ts`
 - Backend: `app/api/plaid/items/[itemId]/disconnect/route.ts`
 - Frontend: `components/velocity/connected-banks-section.tsx` (lines 68-76, 220-226)
-**Tests:** 
+  **Tests:**
 - `__tests__/api/plaid/items/status.test.ts` - Status check tests (13 tests, 23% passing)
 - `__tests__/api/plaid/items/disconnect.test.ts` - Disconnect tests (14 tests, 93% passing)
 - **Critical BR-034 Token Preservation: ✅ 100% verified (13/13 tests passing)**
@@ -402,11 +446,13 @@ Each user story follows this format:
 ## Credit Card Benefits Tracking
 
 ### **[US-010]** Match Transactions to Benefits
+
 **As a** user  
 **I want** transactions automatically matched to card benefits  
 **So that** I know which credits I've earned
 
 **Acceptance Criteria:**
+
 - Matches based on merchant patterns
 - Matches based on transaction category
 - Applies min/max amount rules
@@ -420,11 +466,13 @@ Each user story follows this format:
 ---
 
 ### **[US-011]** View Benefit Usage
+
 **As a** user  
 **I want** to see how much of each benefit I've used  
 **So that** I can maximize my rewards before they reset
 
 **Acceptance Criteria:**
+
 - Shows used vs max amount
 - Shows percentage used
 - Shows days remaining in period
@@ -439,11 +487,13 @@ Each user story follows this format:
 ---
 
 ### **[US-012]** Manual Benefit Matching
+
 **As a** user  
 **I want** to manually trigger benefit matching  
 **So that** I can update my benefit status on-demand
 
 **Acceptance Criteria:**
+
 - Scans all unmatched transactions
 - Uses cursor-based tracking
 - Avoids re-processing
@@ -459,11 +509,13 @@ Each user story follows this format:
 ## Dashboard & Visualization
 
 ### **[US-013]** View Dashboard
+
 **As a** user  
 **I want** to see an overview of my accounts and benefits  
 **So that** I can quickly understand my financial status
 
 **Acceptance Criteria:**
+
 - Shows all family members
 - Shows all connected accounts
 - Shows account balances
@@ -478,11 +530,13 @@ Each user story follows this format:
 ---
 
 ### **[US-014]** Refresh Data
+
 **As a** user  
 **I want** to manually refresh my data  
 **So that** I can get the latest information
 
 **Acceptance Criteria:**
+
 - Syncs all Plaid items
 - Shows progress indication
 - Handles rate limits gracefully
@@ -498,11 +552,13 @@ Each user story follows this format:
 ## Data Validation & Security
 
 ### **[US-015]** Input Validation
+
 **As a** system  
 **I want** all user inputs validated  
 **So that** data integrity is maintained
 
 **Acceptance Criteria:**
+
 - All API endpoints validate inputs
 - Validation uses Zod schemas
 - Clear error messages returned
@@ -515,11 +571,13 @@ Each user story follows this format:
 ---
 
 ### **[US-016]** Error Handling
+
 **As a** system  
 **I want** consistent error handling  
 **So that** users get clear feedback
 
 **Acceptance Criteria:**
+
 - All HTTP error codes standardized
 - Error messages user-friendly
 - Sensitive data not exposed
@@ -532,11 +590,13 @@ Each user story follows this format:
 ---
 
 ### **[US-017]** Structured Logging
+
 **As a** developer  
 **I want** all events logged with context  
 **So that** I can debug issues in production
 
 **Acceptance Criteria:**
+
 - All log levels supported (debug, info, warn, error)
 - Logs include metadata
 - Timestamps included
@@ -552,11 +612,13 @@ Each user story follows this format:
 ## Rate Limiting & Performance
 
 ### **[US-018]** API Rate Limiting
+
 **As a** system  
 **I want** API requests rate limited  
 **So that** the system remains stable under load
 
 **Acceptance Criteria:**
+
 - Different limits for different endpoints
 - Write operations: 20/minute
 - Plaid sync: 10/hour
@@ -572,11 +634,13 @@ Each user story follows this format:
 ## Admin Functions
 
 ### **[US-019]** Card Catalog Management
+
 **As an** admin  
 **I want** to manage the card product catalog  
 **So that** benefit matching rules stay current
 
 **Acceptance Criteria:**
+
 - Add/edit card products
 - Add/edit benefits per card
 - Set matching rules
@@ -596,16 +660,16 @@ Each user story follows this format:
 
 ### Coverage by Feature Area
 
-| Feature Area | Stories | With Tests | % |
-|--------------|---------|------------|---|
-| Auth & User Management | 2 | 0 | 0% |
-| Family Management | 3 | 3 | 100% |
-| Bank Integration | 4 | 1 | 25% |
-| Benefits Tracking | 3 | 3 | 100% |
-| Dashboard | 2 | 0 | 0% |
-| Validation & Security | 3 | 3 | 100% |
-| Rate Limiting | 1 | 0 | 0% |
-| Admin | 1 | 0 | 0% |
+| Feature Area           | Stories | With Tests | %    |
+| ---------------------- | ------- | ---------- | ---- |
+| Auth & User Management | 2       | 0          | 0%   |
+| Family Management      | 3       | 3          | 100% |
+| Bank Integration       | 4       | 1          | 25%  |
+| Benefits Tracking      | 3       | 3          | 100% |
+| Dashboard              | 2       | 0          | 0%   |
+| Validation & Security  | 3       | 3          | 100% |
+| Rate Limiting          | 1       | 0          | 0%   |
+| Admin                  | 1       | 0          | 0%   |
 
 ---
 
