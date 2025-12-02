@@ -33,88 +33,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useBankBrand } from "@/hooks/use-bank-brand";
 import { FamilyMemberSelector } from "./family-member-selector";
-import { CardProductMatcher } from "./card-product-matcher";
-import { LinkedCardDisplay } from "./linked-card-display";
-import { PlaidLinkUpdate } from "@/components/shared/plaid-link-update";
+import { BankLogo } from "./bank-logo";
+import { BankDetailsSheet } from "./bank-details-sheet";
 
-function BankLogo({
-  name,
-  bankId,
-}: {
-  name: string | null;
-  bankId?: string | null;
-}) {
-  const { brand, loading } = useBankBrand(bankId || null);
-  const [error, setError] = useState(false);
-
-  // Get initials from bank name
-  const getInitials = (bankName: string | null) => {
-    if (!bankName) return "B";
-    const words = bankName.split(" ").filter((w) => w.length > 0);
-    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-    return words
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase();
-  };
-
-  // Get a color based on bank name (consistent hash)
-  const getColor = (bankName: string | null) => {
-    if (!bankName) return "bg-brand-primary";
-    const colors = [
-      "bg-blue-600",
-      "bg-indigo-600",
-      "bg-violet-600",
-      "bg-purple-600",
-      "bg-fuchsia-600",
-      "bg-pink-600",
-      "bg-rose-600",
-      "bg-orange-600",
-      "bg-amber-600",
-      "bg-emerald-600",
-      "bg-teal-600",
-      "bg-cyan-600",
-      "bg-sky-600",
-    ];
-    const hash = bankName
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
-
-  if (loading || !brand?.logoUrl || error) {
-    return (
-      <div
-        className={`w-10 h-10 rounded-lg flex items-center justify-center relative`}
-        style={{ backgroundColor: brand?.brandColor || undefined }}
-      >
-        {!brand?.brandColor && (
-          <div
-            className={`absolute inset-0 rounded-lg ${getColor(name)} opacity-100`}
-          />
-        )}
-        <span className="text-white text-xs font-bold relative z-10">
-          {getInitials(name)}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-10 h-10 rounded-lg bg-white p-1 flex items-center justify-center overflow-hidden">
-      <img
-        src={brand.logoUrl}
-        alt={name || "Bank Logo"}
-        className="w-full h-full object-contain"
-        loading="lazy"
-        onError={() => setError(true)}
-      />
-    </div>
-  );
-}
-
-interface PlaidAccount {
+export interface PlaidAccount {
   id: string;
   name: string;
   officialName: string | null;
@@ -146,7 +68,7 @@ interface PlaidAccount {
   } | null;
 }
 
-interface PlaidItem {
+export interface PlaidItem {
   id: string;
   itemId: string;
   institutionName: string | null;
@@ -156,7 +78,7 @@ interface PlaidItem {
   bankId?: string | null;
 }
 
-interface FamilyMember {
+export interface FamilyMember {
   id: string;
   name: string;
   avatar?: string | null;
@@ -165,13 +87,15 @@ interface FamilyMember {
 
 export function BankAccountsView({
   activeUser = "all",
+  onLinkSuccess,
 }: {
   activeUser?: string;
+  onLinkSuccess?: () => void;
 }) {
   const [items, setItems] = useState<PlaidItem[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [linkingAccountId, setLinkingAccountId] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<PlaidItem | null>(null);
 
   const fetchData = async () => {
     try {
@@ -293,15 +217,14 @@ export function BankAccountsView({
     fetchData();
   }, []);
 
-  // Calculate linking stats for drawer
-  const allAccounts = items.flatMap((item) => item.accounts);
-  const linkedAccounts = allAccounts.filter(
-    (acc) => acc.extended?.cardProductId,
-  );
-  const linkingStats = {
-    totalAccounts: allAccounts.length,
-    linkedAccounts: linkedAccounts.length,
-    unlinkAccounts: allAccounts.length - linkedAccounts.length,
+  const formatCurrency = (
+    amount: number | null,
+    currency: string | null = "USD",
+  ) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+    }).format(amount || 0);
   };
 
   return (
@@ -318,7 +241,10 @@ export function BankAccountsView({
               <RefreshCw className="w-4 h-4 mr-2" /> Sync All
             </Button>
           )}
-          <PlaidLinkWithFamily familyMembers={familyMembers} />
+          <PlaidLinkWithFamily
+            familyMembers={familyMembers}
+            onSuccess={fetchData}
+          />
         </div>
       </div>
 
@@ -341,157 +267,78 @@ export function BankAccountsView({
           </div>
         </div>
       ) : (
-        <div className="grid gap-6">
-          {filteredItems.map((item) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
-            >
-              <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5">
-                <div className="flex items-center gap-4">
-                  <BankLogo name={item.institutionName} bankId={item.bankId} />
-                  <div>
-                    <h3 className="font-semibold text-white">
-                      {item.institutionName || "Unknown Bank"}
-                    </h3>
-                    <p className="text-xs text-slate-400 capitalize">
-                      {item.status}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FamilyMemberSelector
-                    currentMemberId={item.familyMemberId}
-                    members={familyMembers}
-                    onSelect={(memberId) =>
-                      updateItemFamilyMember(item.id, memberId)
-                    }
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredItems.map((item) => {
+            const totalBalance = item.accounts.reduce(
+              (sum, acc) => sum + (acc.currentBalance || 0),
+              0,
+            );
+
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={() => setSelectedItem(item)}
+                className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors cursor-pointer group relative overflow-hidden"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <BankLogo
+                    name={item.institutionName}
+                    bankId={item.bankId}
+                    size="md"
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => disconnectItem(item.id)}
-                    className="text-slate-400 hover:text-red-400 hover:bg-red-400/10"
-                    title="Disconnect Bank"
+                  <div
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      item.status === "active"
+                        ? "bg-green-500/10 text-green-400"
+                        : item.status === "needs_reauth"
+                          ? "bg-red-500/10 text-red-400"
+                          : "bg-slate-500/10 text-slate-400"
+                    }`}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Alert for items needing reauth */}
-              {item.status === "needs_reauth" && (
-                <div className="p-4 border-b border-white/5">
-                  <Alert
-                    variant="destructive"
-                    className="bg-red-500/10 border-red-500/20"
-                  >
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Action Required</AlertTitle>
-                    <AlertDescription className="mt-2 space-y-3">
-                      <p>
-                        Your connection to {item.institutionName} needs to be
-                        updated. This usually happens when you change your
-                        password or need to re-authorize access.
-                      </p>
-                      <PlaidLinkUpdate
-                        itemId={item.id}
-                        institutionName={item.institutionName || "this bank"}
-                        onSuccess={() => window.location.reload()}
-                        variant="destructive"
-                        size="sm"
-                      />
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              )}
-
-              <div className="p-4 space-y-3">
-                {item.accounts.map((account) => (
-                  <div key={account.id} className="space-y-2">
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 hover:bg-black/30 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <CreditCard className="w-5 h-5 text-slate-500" />
-                        <div>
-                          <p className="text-sm font-medium text-slate-200">
-                            {account.extended?.nickname ??
-                              account.officialName ??
-                              account.name}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            •••• {account.mask}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-mono text-sm text-white">
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: account.isoCurrencyCode || "USD",
-                            }).format(account.currentBalance || 0)}
-                          </p>
-                          <p className="text-xs text-slate-500 capitalize">
-                            {account.subtype || account.type}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => setLinkingAccountId(account.id)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
-                          title="Link to Card Product"
-                        >
-                          <LinkIcon className="w-3 h-3" />
-                          {account.extended?.cardProduct ? "Change" : "Link"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Linked Card Preview */}
-                    {account.extended?.cardProduct && (
-                      <div className="pl-4">
-                        <LinkedCardDisplay
-                          product={account.extended.cardProduct}
-                        />
-                      </div>
-                    )}
+                    {item.status === "needs_reauth"
+                      ? "Action Required"
+                      : item.status}
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          ))}
+                </div>
+
+                <h3 className="font-semibold text-white text-lg mb-1 truncate">
+                  {item.institutionName || "Unknown Bank"}
+                </h3>
+
+                <p className="text-slate-400 text-sm mb-4">
+                  {item.accounts.length} Account
+                  {item.accounts.length !== 1 ? "s" : ""}
+                </p>
+
+                <div className="flex items-center justify-between text-sm border-t border-white/5 pt-3">
+                  <span className="text-slate-500">Total Balance</span>
+                  <span className="text-white font-mono">
+                    {formatCurrency(totalBalance)}
+                  </span>
+                </div>
+
+                {/* Hover effect */}
+                <div className="absolute inset-0 border-2 border-primary/0 group-hover:border-primary/50 rounded-xl transition-colors pointer-events-none" />
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
-      {/* Matcher Modal */}
-      {linkingAccountId &&
-        (() => {
-          const allAccounts = items.flatMap((i) => i.accounts);
-          const account = allAccounts.find((a) => a.id === linkingAccountId);
-          const item = items.find((i) =>
-            i.accounts.some((a) => a.id === linkingAccountId),
-          );
-
-          if (!account || !item) return null;
-
-          return (
-            <CardProductMatcher
-              isOpen={!!linkingAccountId}
-              onClose={() => setLinkingAccountId(null)}
-              accountId={account.id}
-              accountName={account.name}
-              institutionName={item.institutionName}
-              bankId={item.bankId} // ✅ Use FK relationship!
-              currentProductId={account.extended?.cardProductId}
-              stats={linkingStats}
-              onSuccess={() => {
-                setLinkingAccountId(null);
-                fetchData(); // Refresh to show linked card
-              }}
-            />
-          );
-        })()}
+      <BankDetailsSheet
+        item={selectedItem}
+        isOpen={!!selectedItem}
+        onClose={() => setSelectedItem(null)}
+        familyMembers={familyMembers}
+        onUpdateFamilyMember={updateItemFamilyMember}
+        onDisconnect={async (itemId) => {
+          await disconnectItem(itemId);
+          setSelectedItem(null);
+        }}
+        onUpdateSuccess={fetchData}
+      />
     </div>
   );
 }

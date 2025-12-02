@@ -107,7 +107,7 @@
 
 #### 4a. "Fix Connection" Button (Update Mode)
 
-- **Location:** Banks Tab > Bank card with `needs_reauth` status > Inside red alert banner
+- **Location:** Banks Tab > Bank Details Sheet > Red alert banner
 - **Visual:** Red destructive button, RefreshCw icon, "Fix Connection" text
 - **Visibility:** Only shown when item status is `needs_reauth`
 - **Click Action:**

@@ -48,10 +48,12 @@ interface FamilyMember {
 
 interface PlaidLinkWithFamilyProps {
   familyMembers: FamilyMember[];
+  onSuccess?: () => void;
 }
 
 export default function PlaidLinkWithFamily({
   familyMembers,
+  onSuccess: onLinkSuccess,
 }: PlaidLinkWithFamilyProps) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -123,6 +125,9 @@ export default function PlaidLinkWithFamily({
         }
 
         router.refresh();
+        if (onLinkSuccess) {
+          onLinkSuccess();
+        }
       } catch (error) {
         console.error("Exchange token error:", error);
         const errorMessage =
