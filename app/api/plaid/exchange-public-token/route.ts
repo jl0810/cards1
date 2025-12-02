@@ -145,12 +145,38 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Exchange public token (Only if not a duplicate)
-    const exchangeResponse = await plaidClient.itemPublicTokenExchange({
-      public_token,
-    });
+    let exchangeResponse;
+    let exchangeAttempts = 3;
+    while (exchangeAttempts > 0) {
+      try {
+        exchangeResponse = await plaidClient.itemPublicTokenExchange({
+          public_token,
+        });
+        break;
+      } catch (err) {
+        const plaidError = err as {
+          response?: { data?: { error_code?: string } };
+        };
+        const errorCode = plaidError?.response?.data?.error_code;
+        // If token is invalid (already used or expired), don't retry
+        if (errorCode === "INVALID_PUBLIC_TOKEN") {
+          throw err;
+        }
 
-    const accessToken = exchangeResponse.data.access_token;
-    const itemId = exchangeResponse.data.item_id;
+        exchangeAttempts--;
+        if (exchangeAttempts === 0) throw err;
+
+        logger.warn("Retrying token exchange", {
+          attempt: 3 - exchangeAttempts,
+          error: err,
+          linkSessionId,
+        });
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+
+    const accessToken = exchangeResponse!.data.access_token;
+    const itemId = exchangeResponse!.data.item_id;
 
     // 3. Get Accounts info (Fetch from Plaid since metadata might be incomplete for full details like balances)
     let accounts: AccountBase[] = [];
