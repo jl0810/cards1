@@ -13,7 +13,7 @@
  * @tested __tests__/components/velocity/credit-card.test.ts
  */
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -167,16 +167,22 @@ export function CreditCard({
   const { brand } = useBankBrand(acc.bankId || null);
 
   // Sync optimistic status with server data
+  // Only reset optimistic status if server sends us a DIFFERENT status than what we expected
+  const prevPaymentCycleStatus = React.useRef(acc.paymentCycleStatus);
+
   useEffect(() => {
+    // If the server status changed AND it's different from our optimistic update
     if (
       acc.paymentCycleStatus &&
+      acc.paymentCycleStatus !== prevPaymentCycleStatus.current &&
       optimisticStatus &&
-      acc.paymentCycleStatus !== optimisticStatus &&
-      !isToggling // Don't reset during toggle operations
+      acc.paymentCycleStatus === optimisticStatus
     ) {
+      // Server caught up with our optimistic update, clear it
       setOptimisticStatus(null);
     }
-  }, [acc.paymentCycleStatus, optimisticStatus, isToggling]);
+    prevPaymentCycleStatus.current = acc.paymentCycleStatus;
+  }, [acc.paymentCycleStatus, optimisticStatus]);
 
   // Resolve Color: Database -> Manual Map -> Fallback
   const knownColor = Object.keys(BANK_COLORS).find((key) =>
@@ -209,23 +215,36 @@ export function CreditCard({
 
   // 2. UPDATE HANDLER
   const handleTogglePaidStatus = async (e: React.MouseEvent) => {
+    console.log("🔵 handleTogglePaidStatus called!", {
+      isPaid,
+      status,
+      isToggling,
+    });
     e.stopPropagation();
 
-    if (isToggling) return; // Prevent multiple clicks
+    if (isToggling) {
+      console.log("⚠️ Already toggling, returning early");
+      return; // Prevent multiple clicks
+    }
 
     // Determine the new state based on current state
     const newStatus = isPaid
       ? "STATEMENT_GENERATED"
       : "PAID_AWAITING_STATEMENT";
 
+    console.log("🎯 New status will be:", newStatus);
+
     // Set loading state
     setIsToggling(true);
+    console.log("⏳ Set isToggling to true");
 
     // Optimistic Update
     setOptimisticStatus(newStatus);
+    console.log("✨ Set optimistic status:", newStatus);
 
     try {
       if (isPaid) {
+        console.log("🔄 Unmarking as paid...");
         // Handle UN-MARKING (Undo)
         const res = await fetch(`/api/account/${acc.id}/unmark-paid`, {
           method: "POST",
@@ -233,17 +252,27 @@ export function CreditCard({
           body: JSON.stringify({}),
         });
 
+        console.log("📡 Unmark API response:", {
+          ok: res.ok,
+          status: res.status,
+        });
+
         if (res.ok) {
-          toast.success("Payment cancelled");
-          router.refresh();
+          toast.success("Marked as unpaid");
+          console.log("✅ Unmarked successfully");
+          // Don't call router.refresh() - it doesn't work with client state
+          // The optimistic update will persist until page refresh
         } else {
           throw new Error("Failed to cancel payment");
         }
       } else {
+        console.log("💰 Marking as paid...");
         // Handle MARKING AS PAID
         const amount = Number(
           acc.liabilities.last_statement_balance?.replace(/[^0-9.]+/g, "") || 0,
         );
+
+        console.log("💵 Payment amount:", amount);
 
         const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
           method: "POST",
@@ -254,21 +283,29 @@ export function CreditCard({
           }),
         });
 
+        console.log("📡 Mark paid API response:", {
+          ok: res.ok,
+          status: res.status,
+        });
+
         if (res.ok) {
           toast.success("Marked as paid");
-          router.refresh();
+          console.log("✅ Marked successfully");
+          // Don't call router.refresh() - it doesn't work with client state
+          // The optimistic update will persist until page refresh
         } else {
           throw new Error("Request failed");
         }
       }
     } catch (error) {
-      console.error("Toggle payment status error:", error);
+      console.error("❌ Toggle payment status error:", error);
       toast.error("Failed to update status");
       // Reset optimistic status on error
       setOptimisticStatus(null);
     } finally {
       // Reset loading state
       setIsToggling(false);
+      console.log("🏁 Set isToggling to false");
     }
   };
 

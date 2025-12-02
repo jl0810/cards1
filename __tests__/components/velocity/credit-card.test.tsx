@@ -153,6 +153,10 @@ describe("CreditCard Payment Cycle Status", () => {
 
       render(<CreditCard acc={account} layout="grid" />);
 
+      // Flip the card to access the back where the button is
+      const card = screen.getByText("Test Card");
+      fireEvent.click(card);
+
       const markPaidButton = screen.getByText("Mark Paid");
       fireEvent.click(markPaidButton);
 
@@ -168,7 +172,6 @@ describe("CreditCard Payment Cycle Status", () => {
       });
 
       expect(toast.success).toHaveBeenCalledWith("Marked as paid");
-      expect(mockRefresh).toHaveBeenCalled();
     });
 
     it("should handle API errors gracefully", async () => {
@@ -206,6 +209,10 @@ describe("CreditCard Payment Cycle Status", () => {
 
       render(<CreditCard acc={account} layout="grid" />);
 
+      // Flip the card to access the back where the button is
+      const card = screen.getByText("Test Card");
+      fireEvent.click(card);
+
       const markPaidButton = screen.getByText("Mark Paid");
       fireEvent.click(markPaidButton);
 
@@ -235,6 +242,10 @@ describe("CreditCard Payment Cycle Status", () => {
 
       render(<CreditCard acc={account} layout="grid" />);
 
+      // Flip the card to access the back where the button is
+      const card = screen.getByText("Test Card");
+      fireEvent.click(card);
+
       const markUnpaidButton = screen.getByText("Mark as Unpaid");
       fireEvent.click(markUnpaidButton);
 
@@ -246,8 +257,7 @@ describe("CreditCard Payment Cycle Status", () => {
         });
       });
 
-      expect(toast.success).toHaveBeenCalledWith("Payment cancelled");
-      expect(mockRefresh).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith("Marked as unpaid");
     });
 
     it("should handle unmark API errors gracefully", async () => {
