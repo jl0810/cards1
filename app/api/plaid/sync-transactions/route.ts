@@ -151,6 +151,34 @@ export async function POST(req: NextRequest) {
         nextCursor = data.next_cursor;
         iterations++;
       } catch (syncError) {
+        const plaidError = (
+          syncError as { response?: { data?: { error_code?: string } } }
+        )?.response?.data;
+
+        // Handle terminal errors
+        if (plaidError?.error_code === "ITEM_NOT_FOUND") {
+          logger.error("Item not found (revoked), marking as disconnected", {
+            itemId,
+          });
+          await prisma.plaidItem.update({
+            where: { id: itemId },
+            data: { status: "disconnected" },
+          });
+          hasMore = false; // Stop syncing
+          break; // Exit loop
+        }
+
+        // Handle re-auth errors
+        if (plaidError?.error_code === "ITEM_LOGIN_REQUIRED") {
+          logger.warn("Item requires re-login", { itemId });
+          await prisma.plaidItem.update({
+            where: { id: itemId },
+            data: { status: "needs_reauth" }, // Or 'error' depending on your schema/UI
+          });
+          hasMore = false;
+          break;
+        }
+
         logger.error("Error on sync iteration", syncError, {
           iteration: iterations,
           itemId,

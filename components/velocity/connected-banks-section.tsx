@@ -351,7 +351,7 @@ export function ConnectedBanksSection({
 }) {
   const [items, setItems] = useState<PlaidItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDisconnected, setShowDisconnected] = useState(false);
+  const [showDisconnected, setShowDisconnected] = useState(true);
 
   const fetchItems = async () => {
     try {

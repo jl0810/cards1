@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     let duplicateAccounts: Array<{
       mask: string | null;
       subtype: string | null;
-      plaidItem: { id: string; institutionId: string | null };
+      plaidItem: { id: string; institutionId: string | null; status: string };
     }> = [];
 
     if (newAccounts.length > 0) {
@@ -136,16 +136,37 @@ export async function POST(req: NextRequest) {
 
     if (duplicateAccounts.length > 0) {
       const existingItem = duplicateAccounts[0].plaidItem;
-      logger.info("Duplicate account detected, skipping token exchange", {
-        existingItemId: existingItem.id,
-        familyMemberId: familyMember.id,
-        duplicateAccountMasks: duplicateAccounts.map((a) => a.mask),
-      });
-      return NextResponse.json({
-        ok: true,
-        itemId: existingItem.id,
-        duplicate: true,
-      });
+
+      // RESURRECTION LOGIC: If the existing item is disconnected/broken, we allow re-linking
+      // and will transfer the accounts to the new item later.
+      if (
+        existingItem.status === "disconnected" ||
+        existingItem.status === "error"
+      ) {
+        logger.info(
+          "Resurrecting disconnected item - proceeding with exchange",
+          {
+            existingItemId: existingItem.id,
+            status: existingItem.status,
+          },
+        );
+        // We do NOT return here. We proceed to create the new item.
+        // We will handle the transfer AFTER creating the new item.
+      } else {
+        logger.info(
+          "Duplicate account detected (active), skipping token exchange",
+          {
+            existingItemId: existingItem.id,
+            familyMemberId: familyMember.id,
+            duplicateAccountMasks: duplicateAccounts.map((a) => a.mask),
+          },
+        );
+        return NextResponse.json({
+          ok: true,
+          itemId: existingItem.id,
+          duplicate: true,
+        });
+      }
     }
 
     // 2. Exchange public token (Only if not a duplicate)
@@ -251,6 +272,11 @@ export async function POST(req: NextRequest) {
       }
 
       // Step 2: Create PlaidItem (if this fails, we rollback Vault)
+      const isResurrection =
+        duplicateAccounts.length > 0 &&
+        (duplicateAccounts[0].plaidItem.status === "disconnected" ||
+          duplicateAccounts[0].plaidItem.status === "error");
+
       plaidItem = await prisma.plaidItem.create({
         data: {
           userId: userProfile.id,
@@ -259,66 +285,96 @@ export async function POST(req: NextRequest) {
           accessTokenId: secretId,
           institutionId: institutionId,
           institutionName: institutionName,
-          accounts: {
-            create: accounts.map((acc: unknown) => {
-              const account = acc as {
-                account_id: string;
-                name: string;
-                official_name: string;
-                mask: string;
-                type: string;
-                subtype: string[];
-                balances: {
-                  current: number;
-                  available: number;
-                  limit?: number;
-                  iso_currency_code?: string;
-                };
-              };
-              const creditLiability = liabilitiesData[account.account_id] as
-                | z.infer<typeof PlaidCreditLiabilitySchema>
-                | undefined;
-              // Find purchase APR or take the first one
-              const apr =
-                creditLiability?.aprs?.find(
-                  (a: { apr_type: string; apr_percentage: number }) =>
-                    a.apr_type === "purchase_apr",
-                )?.apr_percentage || creditLiability?.aprs?.[0]?.apr_percentage;
+          accounts: isResurrection
+            ? undefined
+            : {
+                create: accounts.map((acc: unknown) => {
+                  const account = acc as {
+                    account_id: string;
+                    name: string;
+                    official_name: string;
+                    mask: string;
+                    type: string;
+                    subtype: string[];
+                    balances: {
+                      current: number;
+                      available: number;
+                      limit?: number;
+                      iso_currency_code?: string;
+                    };
+                  };
+                  const creditLiability = liabilitiesData[
+                    account.account_id
+                  ] as z.infer<typeof PlaidCreditLiabilitySchema> | undefined;
+                  // Find purchase APR or take the first one
+                  const apr =
+                    creditLiability?.aprs?.find(
+                      (a: { apr_type: string; apr_percentage: number }) =>
+                        a.apr_type === "purchase_apr",
+                    )?.apr_percentage ||
+                    creditLiability?.aprs?.[0]?.apr_percentage;
 
-              return {
-                accountId: account.account_id,
-                name: account.name,
-                officialName: account.official_name,
-                mask: account.mask,
-                type: account.type,
-                subtype: account.subtype?.[0] || null,
-                currentBalance: account.balances.current,
-                availableBalance: account.balances.available,
-                limit: account.balances.limit,
-                isoCurrencyCode: account.balances.iso_currency_code,
-                familyMember: {
-                  connect: { id: familyMember.id },
-                },
-                // Liability fields
-                apr: apr,
-                minPaymentAmount: creditLiability?.minimum_payment_amount,
-                lastStatementBalance: creditLiability?.last_statement_balance,
-                nextPaymentDueDate: creditLiability?.next_payment_due_date
-                  ? new Date(creditLiability.next_payment_due_date)
-                  : null,
-                lastStatementIssueDate:
-                  creditLiability?.last_statement_issue_date
-                    ? new Date(creditLiability.last_statement_issue_date)
-                    : null,
-                lastPaymentAmount: creditLiability?.last_payment_amount,
-                lastPaymentDate: creditLiability?.last_payment_date
-                  ? new Date(creditLiability.last_payment_date)
-                  : null,
-              };
-            }),
-          },
+                  return {
+                    accountId: account.account_id,
+                    name: account.name,
+                    officialName: account.official_name,
+                    mask: account.mask,
+                    type: account.type,
+                    subtype: account.subtype?.[0] || null,
+                    currentBalance: account.balances.current,
+                    availableBalance: account.balances.available,
+                    limit: account.balances.limit,
+                    isoCurrencyCode: account.balances.iso_currency_code,
+                    familyMember: {
+                      connect: { id: familyMember.id },
+                    },
+                    // Liability fields
+                    apr: apr,
+                    minPaymentAmount: creditLiability?.minimum_payment_amount,
+                    lastStatementBalance:
+                      creditLiability?.last_statement_balance,
+                    nextPaymentDueDate: creditLiability?.next_payment_due_date
+                      ? new Date(creditLiability.next_payment_due_date)
+                      : null,
+                    lastStatementIssueDate:
+                      creditLiability?.last_statement_issue_date
+                        ? new Date(creditLiability.last_statement_issue_date)
+                        : null,
+                    lastPaymentAmount: creditLiability?.last_payment_amount,
+                    lastPaymentDate: creditLiability?.last_payment_date
+                      ? new Date(creditLiability.last_payment_date)
+                      : null,
+                  };
+                }),
+              },
         },
       });
+
+      // Handle Resurrection: Transfer accounts from old item
+      if (isResurrection) {
+        const oldItem = duplicateAccounts[0].plaidItem;
+        logger.info("Transferring accounts from disconnected item", {
+          oldItemId: oldItem.id,
+          newItemId: plaidItem.id,
+        });
+
+        // 1. Transfer Accounts
+        await prisma.plaidAccount.updateMany({
+          where: { plaidItemId: oldItem.id },
+          data: { plaidItemId: plaidItem.id },
+        });
+
+        // 2. Transfer Transactions
+        await prisma.plaidTransaction.updateMany({
+          where: { plaidItemId: oldItem.id },
+          data: { plaidItemId: plaidItem.id },
+        });
+
+        // 3. Delete old item
+        await prisma.plaidItem.delete({
+          where: { id: oldItem.id },
+        });
+      }
     } catch (error) {
       // NOTE: Vault secrets are NOT deleted on error for two reasons:
       // 1. Plaid compliance requires keeping all access tokens for audit purposes
