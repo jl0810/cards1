@@ -273,12 +273,26 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
       expect(response.data.item.available_products).toBeDefined();
     });
 
-    it("should handle item removal", async () => {
+    it("CRITICAL: should remove item and stop billing", async () => {
+      // This is CRITICAL - /item/remove is REQUIRED to stop subscription billing
+      // Per Plaid docs: https://plaid.com/docs/api/items/#itemremove
+      // Without this call, we continue to be billed for disconnected items!
+
       const response = await plaidClient.itemRemove({
         access_token: accessToken,
       });
 
       expect(response.data.request_id).toBeDefined();
+
+      // After removal:
+      // 1. Access token is invalidated
+      // 2. Subscription billing stops
+      // 3. Item cannot be used anymore
+
+      // Verify token is actually invalid by trying to use it
+      await expect(
+        plaidClient.accountsGet({ access_token: accessToken }),
+      ).rejects.toThrow();
 
       // Remove from cleanup list since we already removed it
       const index = testResources.accessTokens.indexOf(accessToken);

@@ -1,78 +1,123 @@
 /**
  * Plaid Item Disconnect API
- * Marks bank connection as inactive while preserving access token per Plaid requirement
- * 
+ * Removes Item from Plaid and marks as disconnected in database
+ *
  * @module app/api/plaid/items/[itemId]/disconnect
  */
 
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
-import { logger } from '@/lib/logger';
-import { Errors } from '@/lib/api-errors';
-import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { Errors } from "@/lib/api-errors";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { plaidClient } from "@/lib/plaid";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
- * Disconnect a Plaid item (mark as disconnected, but preserve access_token per Plaid requirement)
- * 
+ * Disconnect a Plaid item
+ *
+ * CRITICAL: Calls Plaid's /item/remove to:
+ * - Invalidate the access_token
+ * - Stop subscription billing for Transactions/Liabilities/Investments
+ * - Follow Plaid's best practice for user offboarding
+ *
  * @route POST /api/plaid/items/[itemId]/disconnect
- * @implements BR-034 - Access Token Preservation
+ * @implements Plaid /item/remove requirement
  * @satisfies US-006 - Link Bank Account (disconnect capability)
  * @satisfies US-020 - Monitor Bank Connection Health
  * @tested __tests__/api/plaid/items/disconnect.test.ts
- * 
+ *
+ * @see https://plaid.com/docs/api/items/#itemremove
+ *
  * @param {Request} req - HTTP request
  * @param {Object} params - Route parameters
  * @param {string} params.itemId - ID of Plaid item to disconnect
  * @returns {Promise<NextResponse>} Success response
  */
 export async function POST(
-    req: Request,
-    { params }: { params: Promise<{ itemId: string }> }
+  req: Request,
+  { params }: { params: Promise<{ itemId: string }> },
 ) {
-    // Rate limit: 5 disconnects per minute (sensitive/destructive operation)
-    const limited = await rateLimit(req, RATE_LIMITS.sensitive);
-    if (limited) {
-        return new Response('Too many requests', { status: 429 });
+  // Rate limit: 5 disconnects per minute (sensitive/destructive operation)
+  const limited = await rateLimit(req, RATE_LIMITS.sensitive);
+  if (limited) {
+    return new Response("Too many requests", { status: 429 });
+  }
+
+  const { itemId } = await params;
+
+  try {
+    const { userId } = await auth();
+    if (!userId) return Errors.unauthorized();
+    if (!itemId || itemId.trim() === "")
+      return Errors.badRequest("Item ID is required");
+
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { clerkId: userId },
+    });
+    if (!userProfile) return Errors.notFound("User profile");
+
+    // Verify ownership (IDOR protection)
+    const plaidItem = await prisma.plaidItem.findFirst({
+      where: {
+        id: itemId,
+        userId: userProfile.id,
+      },
+    });
+
+    if (!plaidItem) return Errors.notFound("Plaid item");
+
+    // Get access token from Vault
+    const secretId = plaidItem.accessTokenId;
+    const vaultResult = await prisma.$queryRaw<
+      Array<{ decrypted_secret: string }>
+    >`
+            SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
+        `;
+
+    const accessToken = vaultResult[0]?.decrypted_secret;
+    if (!accessToken) {
+      logger.error("Access token not found in Vault", {
+        itemId,
+        accessTokenId: plaidItem.accessTokenId,
+      });
+      return Errors.internal("Access token not found");
     }
 
-    const { itemId } = await params;
-
+    // CRITICAL: Call Plaid's /item/remove to:
+    // 1. Invalidate the access_token
+    // 2. Stop subscription billing
+    // 3. Follow Plaid's best practice
     try {
-        const { userId } = await auth();
-        if (!userId) return Errors.unauthorized();
-        if (!itemId || itemId.trim() === '') return Errors.badRequest('Item ID is required');
-
-        const userProfile = await prisma.userProfile.findUnique({
-            where: { clerkId: userId },
-        });
-        if (!userProfile) return Errors.notFound('User profile');
-
-        // Verify ownership (IDOR protection)
-        const plaidItem = await prisma.plaidItem.findFirst({
-            where: {
-                id: itemId,
-                userId: userProfile.id
-            }
-        });
-
-        if (!plaidItem) return Errors.notFound('Plaid item');
-
-        // Update status to disconnected
-        // IMPORTANT: We do NOT delete the access_token from Vault per Plaid's requirement
-        await prisma.plaidItem.update({
-            where: { id: itemId },
-            data: {
-                status: 'disconnected'
-            }
-        });
-
-        return NextResponse.json({ success: true });
-
-    } catch (error) {
-        logger.error('Error disconnecting item', error, { itemId: itemId });
-        return Errors.internal();
+      await plaidClient.itemRemove({
+        access_token: accessToken,
+      });
+      logger.info("Successfully removed Item from Plaid", {
+        itemId,
+        plaidItemId: plaidItem.itemId,
+        institutionName: plaidItem.institutionName,
+      });
+    } catch (plaidError) {
+      // Log but don't fail - we still want to mark as disconnected in our DB
+      logger.error("Failed to remove Item from Plaid", plaidError, {
+        itemId,
+        plaidItemId: plaidItem.itemId,
+      });
     }
+
+    // Mark as disconnected in database
+    await prisma.plaidItem.update({
+      where: { id: itemId },
+      data: {
+        status: "disconnected",
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    logger.error("Error disconnecting item", error, { itemId: itemId });
+    return Errors.internal();
+  }
 }
