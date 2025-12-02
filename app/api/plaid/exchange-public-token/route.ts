@@ -277,78 +277,104 @@ export async function POST(req: NextRequest) {
         (duplicateAccounts[0].plaidItem.status === "disconnected" ||
           duplicateAccounts[0].plaidItem.status === "error");
 
-      plaidItem = await prisma.plaidItem.create({
-        data: {
-          userId: userProfile.id,
-          familyMemberId: familyMember.id,
-          itemId: itemId,
-          accessTokenId: secretId,
-          institutionId: institutionId,
-          institutionName: institutionName,
-          accounts: isResurrection
-            ? undefined
-            : {
-                create: accounts.map((acc: unknown) => {
-                  const account = acc as {
-                    account_id: string;
-                    name: string;
-                    official_name: string;
-                    mask: string;
-                    type: string;
-                    subtype: string[];
-                    balances: {
-                      current: number;
-                      available: number;
-                      limit?: number;
-                      iso_currency_code?: string;
-                    };
-                  };
-                  const creditLiability = liabilitiesData[
-                    account.account_id
-                  ] as z.infer<typeof PlaidCreditLiabilitySchema> | undefined;
-                  // Find purchase APR or take the first one
-                  const apr =
-                    creditLiability?.aprs?.find(
-                      (a: { apr_type: string; apr_percentage: number }) =>
-                        a.apr_type === "purchase_apr",
-                    )?.apr_percentage ||
-                    creditLiability?.aprs?.[0]?.apr_percentage;
-
-                  return {
-                    accountId: account.account_id,
-                    name: account.name,
-                    officialName: account.official_name,
-                    mask: account.mask,
-                    type: account.type,
-                    subtype: account.subtype?.[0] || null,
-                    currentBalance: account.balances.current,
-                    availableBalance: account.balances.available,
-                    limit: account.balances.limit,
-                    isoCurrencyCode: account.balances.iso_currency_code,
-                    familyMember: {
-                      connect: { id: familyMember.id },
-                    },
-                    // Liability fields
-                    apr: apr,
-                    minPaymentAmount: creditLiability?.minimum_payment_amount,
-                    lastStatementBalance:
-                      creditLiability?.last_statement_balance,
-                    nextPaymentDueDate: creditLiability?.next_payment_due_date
-                      ? new Date(creditLiability.next_payment_due_date)
-                      : null,
-                    lastStatementIssueDate:
-                      creditLiability?.last_statement_issue_date
-                        ? new Date(creditLiability.last_statement_issue_date)
-                        : null,
-                    lastPaymentAmount: creditLiability?.last_payment_amount,
-                    lastPaymentDate: creditLiability?.last_payment_date
-                      ? new Date(creditLiability.last_payment_date)
-                      : null,
-                  };
-                }),
-              },
-        },
+      // Check if item with this Plaid Item ID already exists
+      const existingPlaidItem = await prisma.plaidItem.findUnique({
+        where: { itemId: itemId },
       });
+
+      if (existingPlaidItem) {
+        logger.info(
+          "Item already exists (same Item ID), updating access token",
+          {
+            itemId,
+            dbId: existingPlaidItem.id,
+          },
+        );
+
+        plaidItem = await prisma.plaidItem.update({
+          where: { id: existingPlaidItem.id },
+          data: {
+            accessTokenId: secretId,
+            status: "active",
+            institutionId,
+            institutionName,
+            // We don't update accounts here, they are already attached
+          },
+        });
+      } else {
+        plaidItem = await prisma.plaidItem.create({
+          data: {
+            userId: userProfile.id,
+            familyMemberId: familyMember.id,
+            itemId: itemId,
+            accessTokenId: secretId,
+            institutionId: institutionId,
+            institutionName: institutionName,
+            accounts: isResurrection
+              ? undefined
+              : {
+                  create: accounts.map((acc: unknown) => {
+                    const account = acc as {
+                      account_id: string;
+                      name: string;
+                      official_name: string;
+                      mask: string;
+                      type: string;
+                      subtype: string[];
+                      balances: {
+                        current: number;
+                        available: number;
+                        limit?: number;
+                        iso_currency_code?: string;
+                      };
+                    };
+                    const creditLiability = liabilitiesData[
+                      account.account_id
+                    ] as z.infer<typeof PlaidCreditLiabilitySchema> | undefined;
+                    // Find purchase APR or take the first one
+                    const apr =
+                      creditLiability?.aprs?.find(
+                        (a: { apr_type: string; apr_percentage: number }) =>
+                          a.apr_type === "purchase_apr",
+                      )?.apr_percentage ||
+                      creditLiability?.aprs?.[0]?.apr_percentage;
+
+                    return {
+                      accountId: account.account_id,
+                      name: account.name,
+                      officialName: account.official_name,
+                      mask: account.mask,
+                      type: account.type,
+                      subtype: account.subtype?.[0] || null,
+                      currentBalance: account.balances.current,
+                      availableBalance: account.balances.available,
+                      limit: account.balances.limit,
+                      isoCurrencyCode: account.balances.iso_currency_code,
+                      familyMember: {
+                        connect: { id: familyMember.id },
+                      },
+                      // Liability fields
+                      apr: apr,
+                      minPaymentAmount: creditLiability?.minimum_payment_amount,
+                      lastStatementBalance:
+                        creditLiability?.last_statement_balance,
+                      nextPaymentDueDate: creditLiability?.next_payment_due_date
+                        ? new Date(creditLiability.next_payment_due_date)
+                        : null,
+                      lastStatementIssueDate:
+                        creditLiability?.last_statement_issue_date
+                          ? new Date(creditLiability.last_statement_issue_date)
+                          : null,
+                      lastPaymentAmount: creditLiability?.last_payment_amount,
+                      lastPaymentDate: creditLiability?.last_payment_date
+                        ? new Date(creditLiability.last_payment_date)
+                        : null,
+                    };
+                  }),
+                },
+          },
+        });
+      }
 
       // Handle Resurrection: Transfer accounts from old item
       if (isResurrection) {

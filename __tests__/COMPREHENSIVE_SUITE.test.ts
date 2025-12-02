@@ -318,6 +318,11 @@ describe("COMPREHENSIVE TEST SUITE - All Business Rules", () => {
       });
 
       it("[BUG TEST] should NOT leave orphaned secrets if PlaidItem creation fails", async () => {
+        // Ensure we try to create a new item, not update existing
+        (prisma.plaidItem.findUnique as unknown as JestMock).mockResolvedValue(
+          null,
+        );
+
         const accessToken = "orphan-token-" + Date.now();
         const itemId = "orphan-item-" + Date.now();
 
