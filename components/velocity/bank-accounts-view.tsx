@@ -143,7 +143,7 @@ export function BankAccountsView({
           fetch("/api/plaid/sync-transactions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ itemId: item.itemId, cursor: null }),
+            body: JSON.stringify({ itemId: item.id, cursor: null }),
           }),
         ),
       ),

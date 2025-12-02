@@ -8,7 +8,13 @@ import type { z } from "zod";
 type Transaction = z.infer<typeof TransactionSchema>;
 type PlaidItem = z.infer<typeof PlaidItemSchema>;
 
-const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => (
+const FadeIn = ({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
@@ -19,7 +25,7 @@ const FadeIn = ({ children, delay = 0 }: { children: React.ReactNode, delay?: nu
   </motion.div>
 );
 
-export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
+export function ActivityView({ activeUser = "all" }: { activeUser?: string }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -27,7 +33,7 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
 
   const fetchTransactions = async () => {
     try {
-      const res = await fetch('/api/plaid/transactions');
+      const res = await fetch("/api/plaid/transactions");
       if (res.ok) {
         const data = await res.json();
         setTransactions(data);
@@ -48,24 +54,25 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
 
     try {
       // Get all Plaid items to sync
-      const itemsRes = await fetch('/api/plaid/items');
-      if (!itemsRes.ok) throw new Error('Failed to fetch items');
+      const itemsRes = await fetch("/api/plaid/items");
+      if (!itemsRes.ok) throw new Error("Failed to fetch items");
 
-      const items = await itemsRes.json();
+      const response = await itemsRes.json();
+      const items = response.data || [];
 
       if (items.length === 0) {
-        toast.info('No bank accounts connected');
+        toast.info("No bank accounts connected");
         setSyncing(false);
         return;
       }
 
       // Sync all items
       const syncPromises = items.map((item: PlaidItem) =>
-        fetch('/api/plaid/sync-transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemId: item.itemId })
-        })
+        fetch("/api/plaid/sync-transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemId: item.id }),
+        }),
       );
 
       await Promise.all(syncPromises);
@@ -73,22 +80,24 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
       // Refresh transactions
       await fetchTransactions();
 
-      toast.success('Transactions synced successfully!');
+      toast.success("Transactions synced successfully!");
     } catch (error) {
-      console.error('Sync error:', error);
-      toast.error('Failed to sync transactions');
+      console.error("Sync error:", error);
+      toast.error("Failed to sync transactions");
     } finally {
       setSyncing(false);
     }
   };
 
-  const filteredTransactions = transactions.filter(t => {
+  const filteredTransactions = transactions.filter((t) => {
     // Filter by search term
-    const matchesSearch = t.merchantName?.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch =
+      t.merchantName?.toLowerCase().includes(search.toLowerCase()) ||
       t.name.toLowerCase().includes(search.toLowerCase());
 
     // Filter by active user
-    const matchesUser = activeUser === 'all' || t.plaidItem?.familyMemberId === activeUser;
+    const matchesUser =
+      activeUser === "all" || t.plaidItem?.familyMemberId === activeUser;
 
     return matchesSearch && matchesUser;
   });
@@ -99,9 +108,9 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (date.toDateString() === today.toDateString()) return "Today";
+    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   return (
@@ -113,8 +122,8 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
           disabled={syncing}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-xl font-medium text-white transition-all hover:shadow-lg hover:shadow-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-          <span>{syncing ? 'Syncing...' : 'Sync Transactions'}</span>
+          <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+          <span>{syncing ? "Syncing..." : "Sync Transactions"}</span>
         </button>
 
         {/* Search Bar */}
@@ -151,16 +160,23 @@ export function ActivityView({ activeUser = 'all' }: { activeUser?: string }) {
                     <CreditCard className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">{t.merchantName || t.name}</p>
+                    <p className="text-sm font-bold text-white">
+                      {t.merchantName || t.name}
+                    </p>
                     <p className="text-xs text-slate-500">
-                      {t.category ? t.category[0] : 'Uncategorized'} • {formatDate(t.date)}
+                      {t.category ? t.category[0] : "Uncategorized"} •{" "}
+                      {formatDate(t.date)}
                     </p>
                     {t.plaidItem?.institutionName && (
-                      <p className="text-[10px] text-slate-600">{t.plaidItem.institutionName}</p>
+                      <p className="text-[10px] text-slate-600">
+                        {t.plaidItem.institutionName}
+                      </p>
                     )}
                   </div>
                 </div>
-                <p className={`text-sm font-mono font-bold ${t.amount > 0 ? 'text-white' : 'text-green-400'}`}>
+                <p
+                  className={`text-sm font-mono font-bold ${t.amount > 0 ? "text-white" : "text-green-400"}`}
+                >
                   ${Math.abs(t.amount).toFixed(2)}
                 </p>
               </div>
