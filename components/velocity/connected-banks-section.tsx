@@ -88,10 +88,10 @@ function BankConnectionCard({
       label: "Active",
     },
     disconnected: {
-      color: "text-slate-400",
-      bg: "bg-slate-500/10",
-      icon: Unplug,
-      label: "Disconnected",
+      color: "text-red-400",
+      bg: "bg-red-500/10",
+      icon: AlertCircle,
+      label: "Disabled",
     },
     error: {
       color: "text-red-400",
@@ -178,6 +178,11 @@ function BankConnectionCard({
               <StatusIcon className="w-3 h-3" />
               {status.label}
             </div>
+            {item.status === "disconnected" && (
+              <div className="mt-2 text-xs text-red-400/90 font-medium">
+                Bank will no longer sync. You must re-add the bank.
+              </div>
+            )}
           </div>
 
           {/* Expand Button */}
