@@ -70,6 +70,10 @@ export async function POST(req: NextRequest) {
     // Validate request body
     const bodyValidation = await validateBody(PlaidExchangeTokenSchema, req);
     if (!bodyValidation.success) {
+      logger.error("Token exchange validation failed", {
+        userId,
+        error: "Body validation failed - check request payload",
+      });
       return bodyValidation.error;
     }
 
