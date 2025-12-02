@@ -24,6 +24,7 @@ import {
 } from "@/lib/validations";
 import { validateBody } from "@/lib/validation-middleware";
 import { z } from "zod";
+import { AccountBase } from "plaid";
 
 /**
  * Exchanges a Plaid public token for an access token and creates a new PlaidItem.
@@ -54,8 +55,13 @@ export async function POST(req: NextRequest) {
     return new Response("Too many requests", { status: 429 });
   }
 
+  let userId: string | null = null;
+  let institutionId: string | undefined;
+  let linkSessionId: string | undefined;
+
   try {
-    const { userId } = await auth();
+    const authResult = await auth();
+    userId = authResult.userId;
 
     if (!userId) {
       return Errors.unauthorized();
@@ -68,6 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { public_token, metadata, familyMemberId } = bodyValidation.data;
+    linkSessionId = metadata?.link_session_id;
 
     // 2. Get UserProfile
     const userProfile = await prisma.userProfile.findUnique({
@@ -93,7 +100,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const institutionId = metadata?.institution?.id;
+    institutionId = metadata?.institution?.id;
     const institutionName =
       metadata?.institution?.name || "Unknown Institution";
     const newAccounts = metadata?.accounts || [];
@@ -146,36 +153,54 @@ export async function POST(req: NextRequest) {
     const itemId = exchangeResponse.data.item_id;
 
     // 3. Get Accounts info (Fetch from Plaid since metadata might be incomplete for full details like balances)
-    let accounts;
+    let accounts: AccountBase[] = [];
     const liabilitiesData: Record<
       string,
       z.infer<typeof PlaidCreditLiabilitySchema>
     > = {};
 
-    try {
-      const liabilitiesResponse = await plaidClient.liabilitiesGet({
-        access_token: accessToken,
-      });
-      accounts = liabilitiesResponse.data.accounts;
+    // Retry logic for fetching accounts (3 attempts)
+    let fetchAttempts = 3;
+    while (fetchAttempts > 0) {
+      try {
+        const liabilitiesResponse = await plaidClient.liabilitiesGet({
+          access_token: accessToken,
+        });
+        accounts = liabilitiesResponse.data.accounts;
 
-      // Map liabilities by account_id for easy lookup
-      if (liabilitiesResponse.data.liabilities?.credit) {
-        liabilitiesResponse.data.liabilities.credit.forEach(
-          (l: z.infer<typeof PlaidCreditLiabilitySchema>) => {
-            if (l.account_id) {
-              liabilitiesData[l.account_id] = l;
-            }
-          },
-        );
+        // Map liabilities by account_id for easy lookup
+        if (liabilitiesResponse.data.liabilities?.credit) {
+          liabilitiesResponse.data.liabilities.credit.forEach(
+            (l: z.infer<typeof PlaidCreditLiabilitySchema>) => {
+              if (l.account_id) {
+                liabilitiesData[l.account_id] = l;
+              }
+            },
+          );
+        }
+        break; // Success
+      } catch (err) {
+        logger.warn("Failed to fetch liabilities", {
+          error: err,
+          attempt: 4 - fetchAttempts,
+        });
+
+        // Fallback to accountsGet on last attempt or if liabilities not supported
+        if (fetchAttempts === 1) {
+          try {
+            const accountsResponse = await plaidClient.accountsGet({
+              access_token: accessToken,
+            });
+            accounts = accountsResponse.data.accounts;
+            break;
+          } catch (finalErr) {
+            throw finalErr; // Fail if both fail
+          }
+        }
+
+        fetchAttempts--;
+        if (fetchAttempts > 0) await new Promise((r) => setTimeout(r, 1000));
       }
-    } catch (err) {
-      logger.warn("Failed to fetch liabilities, falling back to accountsGet", {
-        error: err,
-      });
-      const accountsResponse = await plaidClient.accountsGet({
-        access_token: accessToken,
-      });
-      accounts = accountsResponse.data.accounts;
     }
 
     // 4. Save to Vault and DB atomically with rollback
@@ -334,7 +359,25 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, itemId: plaidItemDbId });
   } catch (error) {
-    logger.error("Error exchanging public token", error);
+    const plaidError = error as {
+      response?: {
+        data?: {
+          request_id?: string;
+          error_code?: string;
+          error_message?: string;
+        };
+      };
+    };
+
+    logger.error("Error exchanging public token", {
+      error,
+      userId,
+      institutionId,
+      plaidRequestId: plaidError?.response?.data?.request_id,
+      plaidErrorCode: plaidError?.response?.data?.error_code,
+      plaidErrorMessage: plaidError?.response?.data?.error_message,
+      linkSessionId,
+    });
     return Errors.internal();
   }
 }
