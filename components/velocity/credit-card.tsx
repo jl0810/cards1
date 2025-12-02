@@ -167,8 +167,15 @@ export function CreditCard({
 
   // Sync optimistic status with server data
   useEffect(() => {
-    // Don't reset optimistic status - let it persist
-  }, [acc.paymentCycleStatus, optimisticStatus]);
+    if (
+      acc.paymentCycleStatus &&
+      optimisticStatus &&
+      acc.paymentCycleStatus !== optimisticStatus &&
+      !isToggling // Don't reset during toggle operations
+    ) {
+      setOptimisticStatus(null);
+    }
+  }, [acc.paymentCycleStatus, optimisticStatus, isToggling]);
 
   // Resolve Color: Database -> Manual Map -> Fallback
   const knownColor = Object.keys(BANK_COLORS).find((key) =>
@@ -185,8 +192,6 @@ export function CreditCard({
     optimisticStatus ||
     (acc.paymentCycleStatus as PaymentCycleStatus) ||
     "STATEMENT_GENERATED";
-  const statusConfig = getPaymentCycleColor(status);
-  const statusLabel = getPaymentCycleLabel(status);
 
   // 1. DEFINE STATUS STATES
   // Group the statuses to make the logic cleaner
@@ -198,53 +203,8 @@ export function CreditCard({
   // The button should show if it is Payable OR if it is already Paid (so we can undo)
   const showActionButton = isPayable || isPaid;
 
-  // List view doesn't support flip
-  if (layout === "list") {
-    return (
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-glass-200 border border-white/5 hover:bg-glass-300 transition-colors cursor-pointer">
-        <div className="flex items-center gap-4">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold shadow-md text-white"
-            style={{
-              background: brandColor
-                ? `linear-gradient(135deg, ${brandColor}, #1a1a1a)`
-                : `linear-gradient(to bottom right, ${acc.color})`,
-            }}
-          >
-            {acc.bank[0]}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">{acc.name}</p>
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-slate-400">
-                •••• {acc.mask || "4291"}
-              </p>
-              {/* Status Badge in List View */}
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusConfig.bg} ${statusConfig.text} bg-opacity-10 border border-white/5`}
-              >
-                {statusConfig.badge} {statusLabel}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-sm font-mono font-bold text-white">
-            ${acc.balance.toLocaleString()}
-          </p>
-          <p
-            className={`text-[10px] font-bold ${acc.due === "Overdue" ? "text-red-400" : "text-slate-500"}`}
-          >
-            {acc.due === "Overdue"
-              ? "Overdue"
-              : acc.due === "N/A"
-                ? "Due date unavailable"
-                : `Due in ${acc.due}`}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const statusConfig = getPaymentCycleColor(status);
+  const statusLabel = getPaymentCycleLabel(status);
 
   // 2. UPDATE HANDLER
   const handleTogglePaidStatus = async (e: React.MouseEvent) => {
@@ -307,6 +267,146 @@ export function CreditCard({
     }
   };
 
+  // List view doesn't support flip
+  if (layout === "list") {
+    return (
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-glass-200 border border-white/5 hover:bg-glass-300 transition-colors cursor-pointer">
+        <div className="flex items-center gap-4">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold shadow-md text-white"
+            style={{
+              background: brandColor
+                ? `linear-gradient(135deg, ${brandColor}, #1a1a1a)`
+                : `linear-gradient(to bottom right, ${acc.color})`,
+            }}
+          >
+            {acc.bank[0]}
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">{acc.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-400">
+                •••• {acc.mask || "4291"}
+              </p>
+              {/* Status Badge in List View */}
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusConfig.bg} ${statusConfig.text} bg-opacity-10 border border-white/5`}
+              >
+                {statusConfig.badge} {statusLabel}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-mono font-bold text-white">
+            ${acc.balance.toLocaleString()}
+          </p>
+          <p
+            className={`text-[10px] font-bold ${acc.due === "Overdue" ? "text-red-400" : "text-slate-500"}`}
+          >
+            {acc.due === "Overdue"
+              ? "Overdue"
+              : acc.due === "N/A"
+                ? "Due date unavailable"
+                : `Due in ${acc.due}`}
+          </p>
+          {/* Payment Toggle Button in List View */}
+          {showActionButton && (
+            <button
+              onClick={handleTogglePaidStatus}
+              className={`mt-2 group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${
+                isPaid
+                  ? "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Green when marked as paid (done)
+                  : "bg-red-500/20 hover:bg-red-500/30 border border-red-500/40" // Red when unpaid (action needed)
+              }`}
+            >
+              <div
+                className={`w-3 h-3 rounded-full flex items-center justify-center shadow-lg transition-transform ${
+                  isPaid
+                    ? "bg-emerald-500" // Green when marked as paid (done)
+                    : "bg-red-500 group-hover:scale-110" // Red when unpaid (action needed)
+                }`}
+              >
+                <CheckCircle className="w-1.5 h-1.5 text-white" />
+              </div>
+              <span
+                className={`text-[8px] font-bold uppercase tracking-wider ${
+                  isPaid ? "text-emerald-300" : "text-red-300"
+                }`}
+              >
+                {isPaid ? "Mark as Unpaid" : "Mark Paid"}
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+<<<<<<< HEAD
+  // 2. UPDATE HANDLER
+  const handleTogglePaidStatus = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (isToggling) return; // Prevent multiple clicks
+
+    // Determine the new state based on current state
+    const newStatus = isPaid
+      ? "STATEMENT_GENERATED"
+      : "PAID_AWAITING_STATEMENT";
+
+    // Set loading state
+    setIsToggling(true);
+
+    // Optimistic Update
+    setOptimisticStatus(newStatus);
+
+    try {
+      if (isPaid) {
+        // Handle UN-MARKING (Undo)
+        const res = await fetch(`/api/account/${acc.id}/unmark-paid`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (res.ok) {
+          // Success - keep optimistic status
+        } else {
+          throw new Error("Failed to cancel payment");
+        }
+      } else {
+        // Handle MARKING AS PAID
+        const amount = Number(
+          acc.liabilities.last_statement?.replace(/[^0-9.]+/g, "") || 0,
+        );
+
+        const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: new Date().toISOString(),
+            amount,
+          }),
+        });
+
+        if (res.ok) {
+          // Success - keep optimistic status
+        } else {
+          throw new Error("Request failed");
+        }
+      }
+    } catch (error) {
+      console.error("Toggle payment status error:", error);
+      // Reset optimistic status on error
+      setOptimisticStatus(null);
+    } finally {
+      // Reset loading state
+      setIsToggling(false);
+    }
+  };
+
+=======
+>>>>>>> e207d34 (feat: implement payment cycle status toggle with mobile-first UI)
   // Grid View with Flip Interaction
   return (
     <div

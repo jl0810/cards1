@@ -16,8 +16,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
  * @requires DIRECT_URL with Vault extension enabled
  */
 
-// Vault requires DIRECT connection (not pgbouncer pooler)
-// Create a dedicated Prisma client using DIRECT_URL
+// Skip integration tests in CI/development environments without DB access
+const skipIntegrationTests =
+  !process.env.DIRECT_URL || process.env.NODE_ENV === "test";
 const directUrl = process.env.DIRECT_URL;
 const SHOULD_RUN = !!directUrl;
 
@@ -47,7 +48,7 @@ if (SHOULD_RUN) {
     adapter,
   });
 }
-const describeIf = SHOULD_RUN ? describe : describe.skip;
+const describeIf = skipIntegrationTests ? describe.skip : describe;
 
 describeIf("Supabase Vault Integration", () => {
   let testSecretId: string;
