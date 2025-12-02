@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Users,
   Link as LinkIcon,
+  AlertCircle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -28,11 +29,13 @@ const PlaidLinkWithFamily = dynamic(
   },
 );
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useBankBrand } from "@/hooks/use-bank-brand";
 import { FamilyMemberSelector } from "./family-member-selector";
 import { CardProductMatcher } from "./card-product-matcher";
 import { LinkedCardDisplay } from "./linked-card-display";
+import { PlaidLinkUpdate } from "@/components/shared/plaid-link-update";
 
 function BankLogo({
   name,
@@ -377,6 +380,33 @@ export function BankAccountsView({
                   </Button>
                 </div>
               </div>
+
+              {/* Alert for items needing reauth */}
+              {item.status === "needs_reauth" && (
+                <div className="p-4 border-b border-white/5">
+                  <Alert
+                    variant="destructive"
+                    className="bg-red-500/10 border-red-500/20"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Action Required</AlertTitle>
+                    <AlertDescription className="mt-2 space-y-3">
+                      <p>
+                        Your connection to {item.institutionName} needs to be
+                        updated. This usually happens when you change your
+                        password or need to re-authorize access.
+                      </p>
+                      <PlaidLinkUpdate
+                        itemId={item.id}
+                        institutionName={item.institutionName || "this bank"}
+                        onSuccess={() => window.location.reload()}
+                        variant="destructive"
+                        size="sm"
+                      />
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
 
               <div className="p-4 space-y-3">
                 {item.accounts.map((account) => (
