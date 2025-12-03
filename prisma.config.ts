@@ -7,8 +7,10 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // Prisma 7: migrations use this URL (must be direct, non-pooled connection)
+    url: env("DIRECT_URL"),
+    // Application runtime can use pooled connection via PrismaClient constructor
     // @ts-expect-error - directUrl is supported in Prisma 7 CLI but types might be missing
-    directUrl: env("DIRECT_URL"),
+    directUrl: env("DATABASE_URL"),
   },
 });

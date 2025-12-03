@@ -9,7 +9,7 @@
  */
 
 // Account actions
-export { markAccountPaid, updateAccountNickname } from "./accounts";
+export { updateAccountNickname } from "./accounts";
 
 // Benefit actions
 export { matchBenefits } from "./benefits";

@@ -1,16 +1,15 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { UserPreferencesSettings } from "@/components/shared/user-preferences-settings";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { UserProfile } from "@clerk/nextjs";
+import { FamilySettings } from "@/components/settings/family-settings";
+import { listFamilyMembers } from "@/app/actions/family";
 
+export default async function SettingsPage() {
+  const familyMembersResult = await listFamilyMembers();
+  const familyMembers = familyMembersResult.success
+    ? familyMembersResult.data
+    : [];
 
-export default function SettingsPage() {
   return (
     <AppShell>
       <div className="grid gap-8">
@@ -28,8 +27,13 @@ export default function SettingsPage() {
           />
         </div>
 
+        {/* Section 2: Family Members */}
+        <div>
+          <h2 className="text-2xl font-semibold mb-4">Family Management</h2>
+          <FamilySettings initialMembers={familyMembers} />
+        </div>
 
-        {/* Section 2: User Preferences (Your custom component) */}
+        {/* Section 3: User Preferences (Your custom component) */}
         <div>
           <h2 className="text-2xl font-semibold mb-4">Preferences</h2>
           <UserPreferencesSettings />

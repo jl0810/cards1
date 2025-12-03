@@ -19,6 +19,7 @@ import { useBankBrand } from "@/hooks/use-bank-brand";
 import { FamilyMemberDropdown } from "./family-member-dropdown";
 import { LinkedCardDisplay } from "./linked-card-display";
 import { CardProductMatcher } from "./card-product-matcher";
+import { getAccountDisplayName } from "@/lib/utils/account-display";
 
 interface PlaidItem {
   id: string;
@@ -35,10 +36,12 @@ interface PlaidItem {
   accounts: Array<{
     id: string;
     name: string;
+    officialName?: string | null;
     mask: string | null;
     currentBalance: number | null;
     extended?: {
       id: string;
+      nickname?: string | null;
       cardProductId: string | null;
       cardProduct?: {
         id: string;
@@ -222,7 +225,7 @@ function BankConnectionCard({
                       <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                         <div>
                           <p className="text-sm font-bold text-white">
-                            {account.name}
+                            {getAccountDisplayName(account)}
                           </p>
                           <p className="text-xs text-slate-400">
                             ••••{account.mask || "****"}
@@ -324,7 +327,7 @@ function BankConnectionCard({
               isOpen={!!linkingAccountId}
               onClose={() => setLinkingAccountId(null)}
               accountId={account.id}
-              accountName={account.name}
+              accountName={getAccountDisplayName(account)}
               institutionName={item.institutionName}
               currentProductId={account.extended?.cardProductId}
               onSuccess={() => {

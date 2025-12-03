@@ -687,3 +687,86 @@ Each user story follows this format:
 ```
 
 ```
+
+---
+
+### **[US-030]** Manage Family Member Names
+
+**As a** user  
+**I want** to edit family member names inline  
+**So that** I can customize how family members are displayed in the app
+
+**Acceptance Criteria:**
+
+- User can click edit icon next to family member name
+- User can update the name inline without navigating away
+- Primary user's family name can differ from their Clerk profile name
+- Changes are saved immediately with visual feedback
+- Toast notification confirms successful update
+- Updated names appear throughout the app
+
+**Business Rules:** [BR-002]  
+**Code:**
+
+- `components/settings/family-settings.tsx::InlineEditableAccountName`
+- `app/actions/family.ts::updateFamilyMember`
+- `app/settings/page.tsx`
+
+**Tests:** `__tests__/components/settings/family-settings.test.tsx`
+
+---
+
+### **[US-031]** Customize Account Display Names
+
+**As a** user  
+**I want** to set friendly names for my accounts  
+**So that** I can easily identify them with custom labels
+
+**Acceptance Criteria:**
+
+- User can click edit icon next to account name in bank details
+- User can enter a custom nickname for any account
+- Nickname takes priority over official name in all displays
+- User can clear nickname to revert to official name
+- "(Custom)" badge shows when nickname is set
+- Changes persist across sessions
+- Nickname appears in all account displays throughout app
+
+**Business Rules:** [BR-014]  
+**Code:**
+
+- `components/velocity/inline-editable-account-name.tsx`
+- `app/actions/accounts.ts::updateAccountNickname`
+- `lib/utils/account-display.ts::getAccountDisplayName`
+- `components/velocity/bank-details-sheet.tsx`
+- `components/velocity/connected-banks-section.tsx`
+
+**Tests:** `__tests__/actions/accounts.test.ts`
+
+---
+
+### **[US-032]** User Account Deletion (GDPR Compliant)
+
+**As a** user  
+**I want** my account and data to be properly deleted when I delete my account  
+**So that** my privacy is protected and compliance requirements are met
+
+**Acceptance Criteria:**
+
+- User can delete account via Clerk dashboard
+- Plaid items are deactivated via API (stops billing)
+- Plaid access tokens are removed from Vault
+- Financial transaction data is hard deleted
+- User profile is soft deleted with PII scrubbed
+- Family member data is anonymized
+- User marked as "Deleted User" for audit trail
+- Deletion timestamp is recorded
+- Process complies with GDPR and Plaid requirements
+
+**Business Rules:** [BR-001, BR-002]  
+**Code:**
+
+- `lib/webhooks/handlers/user.ts::handleUserDeleted`
+- `prisma/schema.prisma::UserProfile.deletedAt`
+
+**Tests:** `__tests__/webhooks/user-deletion.test.ts`

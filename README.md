@@ -463,3 +463,26 @@ npx tsx scripts/make-admin.ts <user_id>  # Make user admin
 **Last Updated:** November 26, 2025  
 **Version:** 2.1  
 **Status:** 🟢 Production Ready
+
+## Database Configuration (Prisma 7 + Supabase)
+
+This project uses Prisma ORM v7 with Supabase. Key configuration details:
+
+- **Migrations**: Use direct connection (port 5432) via `DIRECT_URL`
+- **Application**: Uses pooled connection (port 6543) via `DATABASE_URL`
+- **Config File**: `prisma.config.ts` (NOT `schema.prisma`)
+
+For detailed setup instructions, see [docs/PRISMA_SUPABASE_CONFIG.md](./docs/PRISMA_SUPABASE_CONFIG.md)
+
+### Quick Commands
+
+```bash
+# Check migration status
+npx prisma migrate status
+
+# Apply migrations
+npx prisma migrate deploy
+
+# Generate Prisma Client
+npx prisma generate
+```

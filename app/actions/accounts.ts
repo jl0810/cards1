@@ -1,144 +1,30 @@
 "use server";
 
-/**
- * Account Server Actions
- * Handles account-related mutations (mark paid, nickname)
- *
- * @module app/actions/accounts
- * @implements BR-016 - Account Nickname Persistence
- * @implements BR-017 - Payment Tracking
- * @satisfies US-009 - Nickname Accounts
- * @satisfies US-010 - Track Payments
- */
-
 import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { logger } from "@/lib/logger";
 import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger";
 
-// ============================================================================
-// Schemas
-// ============================================================================
-
-const MarkPaidSchema = z.object({
+const UpdateAccountNicknameSchema = z.object({
   accountId: z.string().min(1, "Account ID is required"),
-  amount: z.number().optional(),
-  date: z.string().datetime().optional(),
+  nickname: z.string().max(100).nullable(),
 });
 
-const UpdateNicknameSchema = z.object({
-  accountId: z.string().min(1, "Account ID is required"),
-  nickname: z.string().max(50).nullable(),
-});
-
-// ============================================================================
-// Types
-// ============================================================================
-
-type ActionResult<T = unknown> =
+export type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string; fieldErrors?: Record<string, string[]> };
 
-// ============================================================================
-// Actions
-// ============================================================================
-
 /**
- * Mark a credit card account payment as paid
+ * Update the friendly name (nickname) for a Plaid account
  *
- * @implements BR-017 - Payment Tracking
- * @satisfies US-010 - Track Payments
- */
-export async function markAccountPaid(
-  input: z.infer<typeof MarkPaidSchema>,
-): Promise<ActionResult<{ paidDate: Date; paidAmount: number }>> {
-  // 1. Auth Check
-  const { userId } = await auth();
-  if (!userId) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  // 2. Validation
-  const validated = MarkPaidSchema.safeParse(input);
-  if (!validated.success) {
-    return {
-      success: false,
-      error: "Validation failed",
-      fieldErrors: validated.error.flatten().fieldErrors,
-    };
-  }
-
-  const { accountId, amount, date } = validated.data;
-  const paidDate = date ? new Date(date) : new Date();
-
-  try {
-    // 3. Verify account exists and get balance for default amount
-    const account = await prisma.plaidAccount.findUnique({
-      where: { id: accountId },
-      include: {
-        extended: true,
-        plaidItem: { select: { userId: true } },
-      },
-    });
-
-    if (!account) {
-      return { success: false, error: "Account not found" };
-    }
-
-    // Verify ownership through the Plaid item
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!userProfile || account.plaidItem.userId !== userProfile.id) {
-      return { success: false, error: "Access denied" };
-    }
-
-    // 4. Mutation
-    const paidAmount = amount ?? account.lastStatementBalance ?? 0;
-
-    await prisma.accountExtended.upsert({
-      where: { plaidAccountId: accountId },
-      create: {
-        plaidAccountId: accountId,
-        paymentMarkedPaidDate: paidDate,
-        paymentMarkedPaidAmount: paidAmount,
-      },
-      update: {
-        paymentMarkedPaidDate: paidDate,
-        paymentMarkedPaidAmount: paidAmount,
-      },
-    });
-
-    // 5. Revalidate
-    revalidatePath("/dashboard");
-
-    logger.info("Payment marked as paid", { accountId, userId, paidAmount });
-
-    return {
-      success: true,
-      data: { paidDate, paidAmount },
-    };
-  } catch (error) {
-    Sentry.captureException(error, {
-      user: { id: userId },
-      extra: { action: "markAccountPaid", accountId },
-    });
-    logger.error("Error marking account as paid", error, { accountId, userId });
-    return { success: false, error: "Failed to mark payment" };
-  }
-}
-
-/**
- * Update account nickname
- *
- * @implements BR-016 - Account Nickname Persistence
- * @satisfies US-009 - Nickname Accounts
+ * @satisfies US-007 - View Account Details (allows customization)
+ * @param input - Account ID and new nickname
+ * @returns Success or error result
  */
 export async function updateAccountNickname(
-  input: z.infer<typeof UpdateNicknameSchema>,
+  input: z.infer<typeof UpdateAccountNicknameSchema>,
 ): Promise<ActionResult<{ nickname: string | null }>> {
   // 1. Auth Check
   const { userId } = await auth();
@@ -147,7 +33,7 @@ export async function updateAccountNickname(
   }
 
   // 2. Validation
-  const validated = UpdateNicknameSchema.safeParse(input);
+  const validated = UpdateAccountNicknameSchema.safeParse(input);
   if (!validated.success) {
     return {
       success: false,
@@ -160,41 +46,49 @@ export async function updateAccountNickname(
 
   try {
     // 3. Verify ownership
-    const account = await prisma.plaidAccount.findUnique({
-      where: { accountId: accountId },
-      include: { plaidItem: { select: { userId: true } } },
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!userProfile) {
+      return { success: false, error: "User profile not found" };
+    }
+
+    // Check if account belongs to user's family
+    const account = await prisma.plaidAccount.findFirst({
+      where: {
+        id: accountId,
+        familyMember: {
+          userId: userProfile.id,
+        },
+      },
     });
 
     if (!account) {
       return { success: false, error: "Account not found" };
     }
 
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
-    });
-
-    if (!userProfile || account.plaidItem.userId !== userProfile.id) {
-      return { success: false, error: "Access denied" };
-    }
-
-    // 4. Mutation
-    await prisma.accountExtended.upsert({
-      where: { plaidAccountId: account.id },
-      update: { nickname },
+    // 4. Upsert AccountExtended with nickname
+    const extended = await prisma.accountExtended.upsert({
+      where: { plaidAccountId: accountId },
       create: {
-        plaidAccountId: account.id,
-        nickname,
+        plaidAccountId: accountId,
+        nickname: nickname,
+      },
+      update: {
+        nickname: nickname,
       },
     });
 
     // 5. Revalidate
     revalidatePath("/dashboard");
+    revalidatePath("/accounts");
 
-    logger.info("Account nickname updated", { accountId, userId, nickname });
+    logger.info("Account nickname updated", { userId, accountId, nickname });
 
     return {
       success: true,
-      data: { nickname },
+      data: { nickname: extended.nickname },
     };
   } catch (error) {
     Sentry.captureException(error, {
@@ -202,9 +96,9 @@ export async function updateAccountNickname(
       extra: { action: "updateAccountNickname", accountId },
     });
     logger.error("Error updating account nickname", error, {
-      accountId,
       userId,
+      accountId,
     });
-    return { success: false, error: "Failed to update nickname" };
+    return { success: false, error: "Failed to update account nickname" };
   }
 }

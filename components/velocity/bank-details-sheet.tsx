@@ -16,6 +16,7 @@ import { FamilyMemberSelector } from "./family-member-selector";
 import { BankLogo } from "./bank-logo";
 import { LinkedCardDisplay } from "./linked-card-display";
 import { CardProductMatcher } from "./card-product-matcher";
+import { InlineEditableAccountName } from "./inline-editable-account-name";
 import type { PlaidItem, FamilyMember } from "./bank-accounts-view";
 
 interface BankDetailsSheetProps {
@@ -119,12 +120,11 @@ export function BankDetailsSheet({
                       <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                         <CreditCard className="w-5 h-5 text-slate-400" />
                       </div>
-                      <div>
-                        <p className="font-medium text-white">
-                          {account.extended?.nickname ??
-                            account.officialName ??
-                            account.name}
-                        </p>
+                      <div className="flex-1">
+                        <InlineEditableAccountName
+                          account={account}
+                          onUpdate={onUpdateSuccess}
+                        />
                         <p className="text-sm text-slate-400">
                           •••• {account.mask}
                         </p>

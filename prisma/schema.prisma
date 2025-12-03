@@ -58,6 +58,7 @@ model UserProfile {
   lastLoginAt         DateTime?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+  deletedAt           DateTime?
   analyticsSharing    Boolean        @default(true)
   autoSave            Boolean        @default(true)
   betaFeatures        Boolean        @default(false)
