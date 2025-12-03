@@ -191,6 +191,9 @@ export function WalletView({
   onActiveUserChange?: (userId: string) => void;
 }) {
   const [layout, setLayout] = useState("grid");
+  const [balanceViewMode, setBalanceViewMode] = useState<
+    "current" | "statement"
+  >("current");
   const [activeBank, setActiveBank] = useState("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<string | null>(
     null,
@@ -317,29 +320,56 @@ export function WalletView({
       <div className="space-y-4">
         <div className="flex items-center justify-between px-4">
           <h3 className="text-lg font-bold text-white">Cards & Accounts</h3>
-          <div className="bg-white/5 p-1 rounded-lg flex gap-1 border border-white/10">
-            <button
-              onClick={() => setLayout("grid")}
-              className={`p-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center justify-center ${
-                layout === "grid"
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-300"
-              }`}
-              aria-label="Grid view"
-            >
-              <CreditCardIcon size={18} />
-            </button>
-            <button
-              onClick={() => setLayout("list")}
-              className={`p-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center justify-center ${
-                layout === "list"
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "text-slate-500 hover:text-slate-300"
-              }`}
-              aria-label="List view"
-            >
-              <List size={18} />
-            </button>
+          <div className="flex items-center gap-2">
+            {/* Balance View Toggle */}
+            <div className="bg-white/5 p-1 rounded-lg flex gap-1 border border-white/10">
+              <button
+                onClick={() => setBalanceViewMode("current")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  balanceViewMode === "current"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                Current
+              </button>
+              <button
+                onClick={() => setBalanceViewMode("statement")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  balanceViewMode === "statement"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                Stmt
+              </button>
+            </div>
+
+            {/* Layout Toggle */}
+            <div className="bg-white/5 p-1 rounded-lg flex gap-1 border border-white/10">
+              <button
+                onClick={() => setLayout("grid")}
+                className={`p-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center justify-center ${
+                  layout === "grid"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+                aria-label="Grid view"
+              >
+                <CreditCardIcon size={18} />
+              </button>
+              <button
+                onClick={() => setLayout("list")}
+                className={`p-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center justify-center ${
+                  layout === "list"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+                aria-label="List view"
+              >
+                <List size={18} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -349,7 +379,11 @@ export function WalletView({
           <AnimatePresence mode="popLayout">
             {filteredAccounts.map((acc, i) => (
               <FadeIn key={acc.id} delay={i * 0.05}>
-                <CreditCard acc={acc} layout={layout} />
+                <CreditCard
+                  acc={acc}
+                  layout={layout}
+                  balanceViewMode={balanceViewMode}
+                />
               </FadeIn>
             ))}
           </AnimatePresence>

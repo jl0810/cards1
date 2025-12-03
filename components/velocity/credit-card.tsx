@@ -154,10 +154,12 @@ export function CreditCard({
   acc,
   layout,
   onRename,
+  balanceViewMode = "current",
 }: {
   acc: Account;
   layout: string;
   onRename?: (id: string, newName: string) => void;
+  balanceViewMode?: "current" | "statement";
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [optimisticStatus, setOptimisticStatus] =
@@ -339,47 +341,72 @@ export function CreditCard({
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-mono font-bold text-white">
-            ${acc.balance.toLocaleString()}
-          </p>
-          <p
-            className={`text-[10px] font-bold ${acc.due === "Overdue" ? "text-red-400" : "text-slate-500"}`}
-          >
-            {acc.due === "Overdue"
-              ? "Overdue"
-              : acc.due === "N/A"
-                ? "Due date unavailable"
-                : `Due in ${acc.due}`}
-          </p>
-          {/* Payment Toggle Button in List View */}
-          {showActionButton && (
-            <button
-              onClick={handleTogglePaidStatus}
-              className={`mt-2 group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${
-                isPaid
-                  ? "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Green when marked as paid (done)
-                  : "bg-red-500/20 hover:bg-red-500/30 border border-red-500/40" // Red when unpaid (action needed)
-              }`}
+        <div className="flex items-center gap-6 text-right">
+          {/* Statement Balance Column */}
+          <div className="hidden sm:block">
+            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5">
+              Statement
+            </p>
+            <p className="text-sm font-mono font-bold text-white">
+              {acc.liabilities?.last_statement_balance
+                ? `$${Number(acc.liabilities.last_statement_balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                : acc.liabilities?.last_statement || "N/A"}
+            </p>
+          </div>
+
+          {/* Current Balance Column */}
+          <div>
+            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-0.5 sm:block hidden">
+              Current
+            </p>
+            <p className="text-sm font-mono font-bold text-white">
+              $
+              {acc.balance.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+
+          {/* Due Date & Action */}
+          <div className="flex flex-col items-end min-w-[100px]">
+            <p
+              className={`text-[10px] font-bold ${acc.due === "Overdue" ? "text-red-400" : "text-slate-500"}`}
             >
-              <div
-                className={`w-3 h-3 rounded-full flex items-center justify-center shadow-lg transition-transform ${
+              {acc.due === "Overdue"
+                ? "Overdue"
+                : acc.due === "N/A"
+                  ? "No due date"
+                  : `Due ${acc.due}`}
+            </p>
+            {/* Payment Toggle Button in List View */}
+            {showActionButton && (
+              <button
+                onClick={handleTogglePaidStatus}
+                className={`mt-1.5 group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${
                   isPaid
-                    ? "bg-emerald-500" // Green when marked as paid (done)
-                    : "bg-red-500 group-hover:scale-110" // Red when unpaid (action needed)
+                    ? "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Green when marked as paid (done)
+                    : "bg-red-500/20 hover:bg-red-500/30 border border-red-500/40" // Red when unpaid (action needed)
                 }`}
               >
-                <CheckCircle className="w-1.5 h-1.5 text-white" />
-              </div>
-              <span
-                className={`text-[8px] font-bold uppercase tracking-wider ${
-                  isPaid ? "text-emerald-300" : "text-red-300"
-                }`}
-              >
-                {isPaid ? "Mark as Unpaid" : "Mark Paid"}
-              </span>
-            </button>
-          )}
+                <div
+                  className={`w-3 h-3 rounded-full flex items-center justify-center shadow-lg transition-transform ${
+                    isPaid
+                      ? "bg-emerald-500" // Green when marked as paid (done)
+                      : "bg-red-500 group-hover:scale-110" // Red when unpaid (action needed)
+                  }`}
+                >
+                  <CheckCircle className="w-1.5 h-1.5 text-white" />
+                </div>
+                <span
+                  className={`text-[8px] font-bold uppercase tracking-wider ${
+                    isPaid ? "text-emerald-300" : "text-red-300"
+                  }`}
+                >
+                  {isPaid ? "Mark Unpaid" : "Mark Paid"}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -511,13 +538,22 @@ export function CreditCard({
               {/* Balance - Big & Bold */}
               <div className="space-y-0.5">
                 <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                  Current Balance
+                  {balanceViewMode === "statement"
+                    ? "Statement Balance"
+                    : "Current Balance"}
                 </p>
                 <h3 className="text-3xl font-mono font-bold tracking-tighter text-white drop-shadow-lg">
-                  $
-                  {acc.balance.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
+                  {balanceViewMode === "statement"
+                    ? acc.liabilities?.last_statement_balance
+                      ? `$${Number(
+                          acc.liabilities.last_statement_balance,
+                        ).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}`
+                      : acc.liabilities?.last_statement || "$0.00"
+                    : `$${acc.balance.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}`}
                 </h3>
               </div>
 

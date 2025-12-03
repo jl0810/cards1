@@ -130,6 +130,15 @@ This document provides complete traceability from user stories through business 
 
 **Summary:** 11/11 (100% ✅, was 88%) tested
 
+#### Dashboard & Visualization
+
+| Story  | Rules | Code Files | Tests | Coverage |
+| ------ | ----- | ---------- | ----- | -------- |
+| US-013 | 1     | 1          | 0     | ❌ 0%    |
+| US-024 | 1     | 2          | 0     | ❌ 0%    |
+
+**Summary:** 0/2 (0%) tested
+
 #### Validation & Security
 
 | Story  | Rules | Code Files | Tests | Coverage |
@@ -174,26 +183,30 @@ This document provides complete traceability from user stories through business 
    - Need: Data loading tests
    - Need: Error state tests
 
+4. **US-024** Balance View Toggle - 0% tested
+   - Need: Component tests for toggle interaction
+   - Need: Unit tests for balance fallback logic
+
 ### Medium Priority (Background Operations)
 
-4. ~~**US-007** Sync Transactions~~ - ✅ **COMPLETE** (15 tests)
+5. ~~**US-007** Sync Transactions~~ - ✅ **COMPLETE** (15 tests)
    - ✅ Rate limiting tests (BR-012)
    - ✅ Atomic transaction tests (BR-013)
    - ✅ Sync iteration tests (BR-011)
 
-5. **US-012** Manual Benefit Matching - 0% tested
+6. **US-012** Manual Benefit Matching - 0% tested
    - Need: Cursor tracking tests
    - Need: Match count tests
 
 ### Low Priority (Admin/Internal)
 
-6. ~~**US-018** API Rate Limiting~~ - ✅ **COMPLETE** (17 tests)
+7. ~~**US-018** API Rate Limiting~~ - ✅ **COMPLETE** (17 tests)
    - ✅ Rate limit constants
    - ✅ Per-user limiting
    - ✅ IP-based limiting
    - ✅ Middleware wrapper
    - ✅ Fail-open behavior
-7. **US-019** Card Catalog - 50% tested
+8. **US-019** Card Catalog - 50% tested
 
 ---
 

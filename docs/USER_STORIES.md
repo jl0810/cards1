@@ -655,11 +655,16 @@ Each user story follows this format:
 
 ---
 
+{{ ... }}
+**Tests:** None yet
+
+---
+
 ## Summary Statistics
 
-**Total User Stories:** 19  
-**Stories with Tests:** 8 (42%)  
-**Stories without Tests:** 11 (58%)
+**Total User Stories:** 20  
+ **Stories with Tests:** 8 (40%)  
+ **Stories without Tests:** 12 (60%)
 
 ### Coverage by Feature Area
 
@@ -669,12 +674,16 @@ Each user story follows this format:
 | Family Management      | 3       | 3          | 100% |
 | Bank Integration       | 4       | 1          | 25%  |
 | Benefits Tracking      | 3       | 3          | 100% |
-| Dashboard              | 2       | 0          | 0%   |
+| Dashboard              | 3       | 0          | 0%   |
 | Validation & Security  | 3       | 3          | 100% |
 | Rate Limiting          | 1       | 0          | 0%   |
 | Admin                  | 1       | 0          | 0%   |
 
 ---
 
-**Last Updated:** November 26, 2025  
-**Version:** 1.0
+**Last Updated:** December 3, 2025  
+ **Version:** 1.1
+
+```
+
+```

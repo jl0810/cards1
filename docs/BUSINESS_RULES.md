@@ -834,6 +834,24 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 ---
 
+### **[BR-040]** Balance View Toggle
+
+**Category:** User Interface
+**Description:** Users can toggle the credit card balance display between "Current Balance" (real-time from Plaid) and "Statement Balance" (last statement amount). This preference allows users to focus on either their immediate liability or their statement due amount.
+
+**Logic:**
+
+- **Current Balance:** Display `acc.balance`.
+- **Statement Balance:** Display `acc.liabilities.last_statement_balance`.
+- **Fallback:** If `last_statement_balance` is missing/null, fallback to `acc.liabilities.last_statement` (string) or "N/A".
+- **List View:** Display BOTH balances side-by-side.
+
+**User Stories:** [US-024]
+**Code:** `components/velocity/wallet-view.tsx`, `components/velocity/credit-card.tsx`
+**Tests:** None
+
+---
+
 ### **[BR-041]** Accessibility Standards
 
 **Category:** User Experience / Compliance  

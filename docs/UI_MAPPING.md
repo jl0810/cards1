@@ -20,6 +20,8 @@
 | **Status Badge**                  | Banks Tab > Bank Card                                   | Visual indicator          | BR-033                 | US-020         | `PlaidItem.status` field                               | `bank-accounts-view.tsx`                                             |
 | **"Link Card" button**            | Banks Tab > Bank Card > Account                         | Click → Card matcher      | BR-032                 | US-019         | `api/plaid/accounts/[accountId]/link-product/route.ts` | `components/velocity/card-product-matcher.tsx`                       |
 | **"Mark Paid" button**            | Dashboard > Wallet > Credit Card Back (Magnetic Stripe) | Click → Records payment   | BR-035                 | US-021         | `api/account/[accountId]/mark-paid/route.ts`           | `components/velocity/credit-card.tsx::handleMarkAsPaid`              |
+| **"Balance View" Toggle**         | Wallet View > Top Bar                                   | Click → Toggles Balance   | BR-038                 | US-024         | N/A                                                    | `components/velocity/wallet-view.tsx`                                |
+| **"Layout" Toggle**               | Wallet View > Top Bar                                   | Click → Toggles Grid/List | N/A                    | US-024         | N/A                                                    | `components/velocity/wallet-view.tsx`                                |
 | **"Refresh All" button**          | Dashboard > Top bar                                     | Click → Sync all          | BR-011, BR-012, BR-013 | US-007         | `api/plaid/sync-transactions/route.ts`                 | `dashboard/page.tsx::refreshAll`                                     |
 
 ---
@@ -307,6 +309,27 @@
 - Credit cards in Wallet view → Display with payment status
 - "Mark Paid" button (card back, magnetic stripe) → US-021, BR-035
 
+### Wallet View Controls
+
+#### 5. "Balance View" Toggle
+
+- **Location:** Wallet View > Top Bar (next to Layout toggle)
+- **Visual:** Segmented control ("Current" | "Stmt")
+- **Click Action:** Toggles displayed balance on all credit cards
+- **States:**
+  - **Current:** Shows `acc.balance` (real-time balance)
+  - **Stmt:** Shows `acc.liabilities.last_statement_balance` (statement balance)
+- **Business Rules:** BR-038
+- **User Story:** US-024
+
+#### 6. "Layout" Toggle
+
+- **Location:** Wallet View > Top Bar
+- **Visual:** Icon buttons (Grid | List)
+- **Click Action:** Switches between Grid (card view) and List (row view)
+- **List View:** Shows both Current and Statement balances side-by-side for comparison
+- **User Story:** US-024
+
 ### Banks Tab
 
 **Elements:**
@@ -335,9 +358,9 @@
 ---
 
 **Last Updated:** December 3, 2025  
-**Version:** 1.2  
-**Total UI Elements Documented:** 15 primary buttons + status indicators  
-**Major Changes:** Added Smart Fix logic, Total Balance display, and Bank Icons row.
+**Version:** 1.3  
+**Total UI Elements Documented:** 17 primary buttons + status indicators  
+**Major Changes:** Added Balance View Toggle and Layout Toggle documentation.
 
 ```
 
