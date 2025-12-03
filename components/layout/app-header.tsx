@@ -1,4 +1,4 @@
-import { Zap, BellRing } from "lucide-react";
+import { Zap, BellRing, CreditCard } from "lucide-react";
 import { ReactNode } from "react";
 
 interface AppHeaderProps {
@@ -10,11 +10,11 @@ export function AppHeader({ children }: AppHeaderProps) {
     <header className="pt-6 pb-4 px-5 sticky top-0 z-20 bg-dark-900/80 backdrop-blur-xl border-b border-white/5">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Zap className="text-white w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <CreditCard className="text-white w-5 h-5" />
           </div>
           <h1 className="text-lg font-bold tracking-tight text-white">
-            PointMax
+            CardsGoneCrazy
           </h1>
         </div>
         <button className="relative p-2 hover:bg-white/5 rounded-full transition-colors">

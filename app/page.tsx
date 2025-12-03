@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import ShimmerButton from "@/components/ui/shimmer-button";
 import Marquee from "@/components/ui/marquee";
 import { BorderBeam } from "@/components/ui/border-beam";
-import { CreditCard, Send, ShieldCheck, Zap, Layout, Globe, ChevronDown } from "lucide-react";
+import {
+  CreditCard,
+  Send,
+  ShieldCheck,
+  Zap,
+  Layout,
+  Globe,
+  ChevronDown,
+} from "lucide-react";
 import NextLink from "next/link";
 import * as React from "react";
 import { motion } from "framer-motion";
@@ -77,12 +85,17 @@ export default function Home() {
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
               <h1 className="text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-8xl mb-8">
-                <span className="text-gradient block mb-2">Maximize Your Points</span>
-                <span className="text-gradient-primary block">Optimize Your Wealth</span>
+                <span className="text-gradient block mb-2">
+                  Maximize Your Points
+                </span>
+                <span className="text-gradient-primary block">
+                  Optimize Your Wealth
+                </span>
               </h1>
               <p className="mt-6 text-xl max-w-2xl mx-auto leading-relaxed text-gray-300">
-                The ultimate dashboard for tracking credit card rewards, bank accounts, and financial velocity.
-                Master the game of points and travel for free.
+                The ultimate dashboard for tracking credit card rewards, bank
+                accounts, and financial velocity. Master the game of points and
+                travel for free.
               </p>
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <motion.div
@@ -90,21 +103,27 @@ export default function Home() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <ShimmerButton className="shadow-2xl">
-                    <a href="/sign-up" className="text-lg font-semibold">Start Tracking</a>
+                    <a href="/sign-up" className="text-lg font-semibold">
+                      Start Tracking
+                    </a>
                   </ShimmerButton>
                 </motion.div>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Button asChild variant="outline" size="lg" className="text-lg h-14 px-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 backdrop-blur-sm">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="lg"
+                    className="text-lg h-14 px-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 backdrop-blur-sm"
+                  >
                     <a href="/dashboard">View Demo</a>
                   </Button>
                 </motion.div>
               </div>
             </motion.div>
           </div>
-
         </section>
 
         {/* === 2. Social Proof Section === */}
@@ -132,7 +151,7 @@ export default function Home() {
                     "Discover",
                     "US Bank",
                     "Barclays",
-                    "Goldman Sachs"
+                    "Goldman Sachs",
                   ].map((name) => (
                     <div
                       key={name}
@@ -162,7 +181,8 @@ export default function Home() {
                 Everything you need to maximize rewards
               </p>
               <p className="mt-6 text-lg leading-8 text-gray-400">
-                Track balances, monitor transactions, and optimize your spending across all your cards.
+                Track balances, monitor transactions, and optimize your spending
+                across all your cards.
               </p>
             </div>
 
@@ -211,11 +231,19 @@ export default function Home() {
                 Ready to maximize your wealth?
               </h2>
               <p className="mx-auto max-w-xl text-lg leading-8 text-gray-300 mb-10">
-                Start tracking for free. Connect your accounts and see the difference immediately.
+                Start tracking for free. Connect your accounts and see the
+                difference immediately.
               </p>
               <div className="flex items-center justify-center gap-x-6">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button asChild size="lg" className="text-lg h-14 px-10 rounded-full bg-white text-black hover:bg-gray-200">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    asChild
+                    size="lg"
+                    className="text-lg h-14 px-10 rounded-full bg-white text-black hover:bg-gray-200"
+                  >
                     <a href="/sign-up">Get Started Now</a>
                   </Button>
                 </motion.div>
@@ -230,13 +258,20 @@ export default function Home() {
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} PointMax. All rights reserved.
+              &copy; {new Date().getFullYear()} CardsGoneCrazy. All rights
+              reserved.
             </p>
             <div className="flex gap-6">
-              <Link href="#" className="text-sm text-gray-500 hover:text-white transition-colors">
+              <Link
+                href="#"
+                className="text-sm text-gray-500 hover:text-white transition-colors"
+              >
                 Privacy
               </Link>
-              <Link href="#" className="text-sm text-gray-500 hover:text-white transition-colors">
+              <Link
+                href="#"
+                className="text-sm text-gray-500 hover:text-white transition-colors"
+              >
                 Terms
               </Link>
             </div>
@@ -246,4 +281,3 @@ export default function Home() {
     </div>
   );
 }
-

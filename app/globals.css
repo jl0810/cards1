@@ -12,8 +12,9 @@
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
+    /* Updated to Deep Ocean Cyan (Cyan-500) */
+    --primary: 189 94% 43%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -29,7 +30,7 @@
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --ring: 189 94% 43%;
 
     --radius: 0.75rem;
   }
@@ -44,8 +45,9 @@
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
+    /* Updated to Deep Ocean Cyan */
+    --primary: 189 94% 43%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -61,49 +63,68 @@
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --ring: 189 94% 43%;
   }
 }
 
 @layer base {
+  html {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   body {
-    background-color: hsl(var(--background));
+    background-color: #0f172a;
+    /* Fallback Slate-900 */
     color: hsl(var(--foreground));
     @apply antialiased;
-    background-image:
-      radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
-      radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
-    background-attachment: fixed;
+
+    /* DEEP OCEAN GRADIENT */
+    /* from-slate-900 via-cyan-950 to-blue-900 */
+    background-image: linear-gradient(to bottom right,
+        #0f172a,
+        /* slate-900 */
+        #083344,
+        /* cyan-950 */
+        #1e3a8a
+        /* blue-900 */
+      );
+    /* background-attachment: fixed; - Removed to fix mobile layout issues */
     background-size: cover;
+    min-height: 100vh;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
   }
 }
 
 @layer utilities {
   .glass {
-    background-color: rgba(255, 255, 255, 0.05);
+    /* Deep Ocean Glass: Darker tint (Slate-900 @ 40%) */
+    background-color: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     @apply border border-white/10 shadow-xl;
   }
 
   .glass-card {
-    background-color: rgba(0, 0, 0, 0.2);
+    /* Deep Ocean Card: Slightly darker tint */
+    background-color: rgba(15, 23, 42, 0.3);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    @apply border border-white/10 shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-primary/20;
+    @apply border border-white/10 shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-cyan-500/20;
 
     &:hover {
-      background-color: rgba(0, 0, 0, 0.3);
+      background-color: rgba(15, 23, 42, 0.5);
     }
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-white/80 to-white/50;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-100 to-blue-200;
   }
 
   .text-gradient-primary {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500;
   }
 }
 
@@ -129,17 +150,4 @@
 
 .rotate-y-180 {
   transform: rotateY(180deg);
-}
-
-/* Mobile touch target optimization - ensure 44x44px minimum for accessibility */
-@layer base {
-  button,
-  a,
-  [role="button"],
-  input[type="button"],
-  input[type="submit"],
-  input[type="reset"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
 }

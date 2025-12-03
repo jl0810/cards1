@@ -2,10 +2,10 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
   ],
   prefix: "",
   theme: {
@@ -18,8 +18,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-        handwriting: ['"Nothing You Could Do"', 'cursive'],
+        sans: ['"Plus Jakarta Sans"', "sans-serif"],
+        handwriting: ['"Nothing You Could Do"', "cursive"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -28,21 +28,21 @@ module.exports = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
 
-        // --- Velocity Theme Colors (Must be present) ---
+        // --- Deep Ocean Theme Colors ---
         dark: {
-          900: '#02040a',
-          800: '#090e1a',
-          700: '#121826'
+          900: "#0f172a", // Slate 900
+          800: "#1e293b", // Slate 800
+          700: "#334155", // Slate 700
         },
         glass: {
-          100: 'rgba(255, 255, 255, 0.03)',
-          200: 'rgba(255, 255, 255, 0.08)',
-          300: 'rgba(255, 255, 255, 0.12)'
+          100: "rgba(15, 23, 42, 0.1)", // Darker glass tint
+          200: "rgba(15, 23, 42, 0.2)",
+          300: "rgba(15, 23, 42, 0.3)",
         },
         brand: {
-          primary: '#6366f1',
-          accent: '#8b5cf6',
-          glow: '#a855f7'
+          primary: "#06b6d4", // Cyan 500
+          accent: "#0891b2", // Cyan 600
+          glow: "#22d3ee", // Cyan 400
         },
         // -----------------------------
 
@@ -76,7 +76,8 @@ module.exports = {
         },
       },
       backgroundImage: {
-        'mesh': 'radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%)',
+        // Updated mesh to use Deep Ocean colors (Slate/Cyan/Blue)
+        mesh: "radial-gradient(at 0% 0%, hsla(215, 28%, 17%, 1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(189, 48%, 20%, 1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(222, 47%, 11%, 1) 0, transparent 50%)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -125,4 +126,4 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+};

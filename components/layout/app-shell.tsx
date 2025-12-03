@@ -1,23 +1,13 @@
 "use client";
 
-
 import * as React from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import {
-  Bell,
-  CreditCard,
-  Home,
-  Menu,
-  Zap,
-  Settings,
-  X,
-} from "lucide-react";
+import { Bell, CreditCard, Home, Menu, Zap, Settings, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-
 
 // Use Next.js Link and forward the ref
 const Link = React.forwardRef<
@@ -26,7 +16,6 @@ const Link = React.forwardRef<
 >((props, ref) => <NextLink ref={ref} {...props} />);
 Link.displayName = "Link";
 
-
 // Navigation links
 const navLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -34,16 +23,14 @@ const navLinks = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
-
   // Get current page title
   const currentPage =
-    navLinks.find((link) => pathname.startsWith(link.href))?.label || "Dashboard";
-
+    navLinks.find((link) => pathname.startsWith(link.href))?.label ||
+    "Dashboard";
 
   return (
     <div className="flex min-h-screen w-full bg-muted/40">
@@ -51,16 +38,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-20 flex h-full w-64 -translate-x-full flex-col border-r bg-background transition-transform duration-300 ease-in-out lg:translate-x-0",
-          isSidebarOpen && "translate-x-0"
+          isSidebarOpen && "translate-x-0",
         )}
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 border-b px-6">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Zap className="text-white w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <CreditCard className="text-white w-5 h-5" />
             </div>
-            <span className="font-bold text-lg text-foreground tracking-tight">PointMax</span>
+            <span className="font-bold text-lg text-foreground tracking-tight">
+              CardsGoneCrazy
+            </span>
           </Link>
           <Button
             variant="ghost"
@@ -82,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 pathname.startsWith(link.href)
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               <link.icon className="h-5 w-5" />
@@ -91,7 +80,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
       </aside>
-
 
       {/* === Main Content Area === */}
       <div className="flex flex-1 flex-col lg:pl-64">
@@ -112,7 +100,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </h1>
           </div>
 
-
           {/* Header Right */}
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -124,13 +111,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>
-
 
       {/* Sidebar overlay for mobile */}
       {isSidebarOpen && (

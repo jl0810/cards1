@@ -11,7 +11,7 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Zap, Menu, X } from "lucide-react";
+import { Zap, Menu, X, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,10 +46,12 @@ export function MarketingHeader() {
         {/* Logo and Desktop Nav */}
         <div className="flex items-center gap-6">
           <LinkComponent href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Zap className="text-white w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <CreditCard className="text-white w-5 h-5" />
             </div>
-            <span className="font-bold text-lg text-white tracking-tight">PointMax</span>
+            <span className="font-bold text-lg text-white tracking-tight">
+              CardsGoneCrazy
+            </span>
           </LinkComponent>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             {navLinks.map((link) => (
@@ -84,19 +86,31 @@ export function MarketingHeader() {
             <>
               <SignedOut>
                 <SignInButton mode="modal">
-                  <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-white/10">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-300 hover:text-white hover:bg-white/10"
+                  >
                     Sign In
                   </Button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <Button size="sm" className="bg-white text-black hover:bg-gray-200">Sign Up</Button>
+                  <Button
+                    size="sm"
+                    className="bg-white text-black hover:bg-gray-200"
+                  >
+                    Sign Up
+                  </Button>
                 </SignUpButton>
               </SignedOut>
               <SignedIn>
-                <Button asChild variant="outline" size="sm" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-                  <LinkComponent href="/dashboard">
-                    Dashboard
-                  </LinkComponent>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  <LinkComponent href="/dashboard">Dashboard</LinkComponent>
                 </Button>
                 <UserButton afterSignOutUrl="/" />
               </SignedIn>
@@ -114,7 +128,7 @@ export function MarketingHeader() {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className={cn(
-              "md:hidden absolute top-16 left-0 w-full bg-black/90 border-b border-white/10 backdrop-blur-xl overflow-hidden"
+              "md:hidden absolute top-16 left-0 w-full bg-black/90 border-b border-white/10 backdrop-blur-xl overflow-hidden",
             )}
           >
             <div className="flex flex-col gap-4 p-4 sm:px-6 lg:px-8">
@@ -133,33 +147,36 @@ export function MarketingHeader() {
                   <>
                     <SignedOut>
                       <SignInButton mode="modal">
-                        <Button variant="ghost" className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10"
+                        >
                           Sign In
                         </Button>
                       </SignInButton>
                       <SignUpButton mode="modal">
-                        <Button className="w-full bg-white text-black hover:bg-gray-200">Sign Up</Button>
+                        <Button className="w-full bg-white text-black hover:bg-gray-200">
+                          Sign Up
+                        </Button>
                       </SignUpButton>
                     </SignedOut>
                     <SignedIn>
-                      <Button asChild variant="outline" className="w-full justify-start border-white/10 bg-white/5 text-white hover:bg-white/10">
-                        <Link href="/dashboard">
-                          Dashboard
-                        </Link>
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="w-full justify-start border-white/10 bg-white/5 text-white hover:bg-white/10"
+                      >
+                        <Link href="/dashboard">Dashboard</Link>
                       </Button>
                       <div className="flex items-center justify-between text-gray-300">
-                        <span className="font-medium">
-                          Account
-                        </span>
+                        <span className="font-medium">Account</span>
                         <UserButton afterSignOutUrl="/" />
                       </div>
                     </SignedIn>
                   </>
                 )}
                 <div className="flex items-center justify-between text-gray-300">
-                  <span className="font-medium">
-                    Theme
-                  </span>
+                  <span className="font-medium">Theme</span>
                   <ThemeToggle />
                 </div>
               </div>
@@ -170,4 +187,3 @@ export function MarketingHeader() {
     </header>
   );
 }
-
