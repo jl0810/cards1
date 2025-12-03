@@ -92,6 +92,8 @@ export function FamilySettings({ initialMembers }: FamilySettingsProps) {
         );
         toast.success("Member updated successfully");
         setEditingId(null);
+        // Force page refresh to show updated data everywhere
+        window.location.reload();
       } else {
         toast.error(result.error || "Failed to update member");
       }
