@@ -155,4 +155,36 @@ describe("updateAccountNickname", () => {
       expect(result.error).toBe("Account not found");
     }
   });
+
+  it("should allow reverting nickname by setting it to null", async () => {
+    (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue(
+      mockUserProfile,
+    );
+    (prisma.plaidAccount.findFirst as jest.Mock).mockResolvedValue(mockAccount);
+    (prisma.accountExtended.upsert as jest.Mock).mockResolvedValue({
+      id: "extended_123",
+      plaidAccountId: "account_123",
+      nickname: null,
+    });
+
+    const result = await updateAccountNickname({
+      accountId: "account_123",
+      nickname: null,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.nickname).toBeNull();
+    }
+    expect(prisma.accountExtended.upsert).toHaveBeenCalledWith({
+      where: { plaidAccountId: "account_123" },
+      create: {
+        plaidAccountId: "account_123",
+        nickname: null,
+      },
+      update: {
+        nickname: null,
+      },
+    });
+  });
 });

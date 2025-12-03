@@ -354,7 +354,22 @@ export function BankAccountsView({
           await disconnectItem(itemId);
           setSelectedItem(null);
         }}
-        onUpdateSuccess={fetchData}
+        onUpdateSuccess={async () => {
+          await fetchData();
+          // Update selectedItem with fresh data if it's still open
+          if (selectedItem) {
+            const updatedItems = await fetch("/api/plaid/items").then((r) =>
+              r.json(),
+            );
+            const unwrapped = updatedItems.data ?? updatedItems;
+            const updated = Array.isArray(unwrapped)
+              ? unwrapped.find((item) => item.id === selectedItem.id)
+              : null;
+            if (updated) {
+              setSelectedItem(updated);
+            }
+          }
+        }}
       />
     </div>
   );

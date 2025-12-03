@@ -33,20 +33,27 @@ export function InlineEditableAccountName({
 
   const handleSave = async () => {
     setIsSubmitting(true);
+    const newNickname = nickname.trim() || null;
+
     try {
       const result = await updateAccountNickname({
         accountId: account.id,
-        nickname: nickname.trim() || null,
+        nickname: newNickname,
       });
 
       if (result.success) {
         toast.success("Account name updated");
         setIsEditing(false);
+        // Call onUpdate to refresh parent data
         onUpdate?.();
       } else {
+        // Revert on error
+        setNickname(account.extended?.nickname || "");
         toast.error(result.error || "Failed to update account name");
       }
     } catch {
+      // Revert on error
+      setNickname(account.extended?.nickname || "");
       toast.error("An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
@@ -101,12 +108,6 @@ export function InlineEditableAccountName({
 
   return (
     <div className="flex items-center gap-2 group">
-      <p className="font-medium text-white">
-        {displayName}
-        {account.extended?.nickname && (
-          <span className="ml-2 text-xs text-slate-400">(Custom)</span>
-        )}
-      </p>
       <Button
         type="button"
         size="icon"
@@ -116,6 +117,43 @@ export function InlineEditableAccountName({
       >
         <Pencil className="h-3 w-3 text-slate-400" />
       </Button>
+      <p className="font-medium text-white flex-1">
+        {displayName}
+        {account.extended?.nickname && (
+          <span className="ml-2 text-xs text-slate-400">(Custom)</span>
+        )}
+      </p>
+      {account.extended?.nickname && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={async () => {
+            setIsSubmitting(true);
+            try {
+              const result = await updateAccountNickname({
+                accountId: account.id,
+                nickname: null,
+              });
+              if (result.success) {
+                toast.success("Reverted to original name");
+                setNickname("");
+                onUpdate?.();
+              } else {
+                toast.error("Failed to revert name");
+              }
+            } catch {
+              toast.error("An unexpected error occurred");
+            } finally {
+              setIsSubmitting(false);
+            }
+          }}
+          disabled={isSubmitting}
+          className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 text-slate-400"
+        >
+          Revert
+        </Button>
+      )}
     </div>
   );
 }

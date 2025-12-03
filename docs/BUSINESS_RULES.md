@@ -298,14 +298,28 @@ This document defines all business rules for the PointMax Velocity application.
 ### **[BR-016]** Account Nickname Persistence
 
 **Category:** Data Management  
-**Description:** Account nicknames are stored in AccountExtended table (not Plaid data) to persist across re-syncs. Max 50 characters, whitespace trimmed.
+**Description:** Account nicknames are stored in AccountExtended table (not Plaid data) to persist across re-syncs. Max 100 characters, whitespace trimmed. Display priority: nickname > officialName > name. Users can revert to original name by clearing the nickname.
 
-**User Stories:** [US-009]  
+**Business Logic:**
+
+- Nickname takes precedence in all UI displays
+- Setting nickname to null reverts to official name
+- Inline editing with real-time UI updates (no page refresh)
+- Revert button appears when custom nickname is set
+- Changes persist across sessions and sync operations
+
+**User Stories:** [US-031]  
 **Code:**
 
-- `lib/validations.ts::UpdateAccountNicknameSchema` (lines 68-75)
-- `app/api/account/[accountId]/nickname/route.ts`  
-  **Tests:** `__tests__/lib/validations.test.ts` (lines 100-118)
+- Server Action: `app/actions/accounts.ts::updateAccountNickname` (lines 26-104)
+- Display Utility: `lib/utils/account-display.ts::getAccountDisplayName` (lines 8-21)
+- UI Component: `components/velocity/inline-editable-account-name.tsx`
+- Validation: `app/actions/accounts.ts::UpdateAccountNicknameSchema` (lines 10-13)
+
+**Tests:**
+
+- `__tests__/actions/accounts.test.ts` (7 test cases including revert)
+- `__tests__/lib/utils/account-display.test.ts` (8 test cases)
 
 ---
 
