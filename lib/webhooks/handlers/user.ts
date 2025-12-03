@@ -103,19 +103,28 @@ export async function handleUserEvent(evt: WebhookEvent) {
 async function handleUserCreated(evt: WebhookEvent) {
   // Validate and type the webhook data
   const userData = ClerkUserWebhookDataSchema.parse(evt.data);
-  const { id, email_addresses, first_name, image_url, created_at } = userData;
+  const { id, email_addresses, first_name, last_name, image_url, created_at } =
+    userData;
 
   logger.info("User created webhook received", {
     userId: id,
     email: email_addresses?.[0]?.email_address,
+    firstName: first_name,
+    lastName: last_name,
   });
 
   try {
+    // Determine the best name to use
+    const displayName =
+      first_name ||
+      email_addresses?.[0]?.email_address?.split("@")[0] ||
+      "User";
+
     // Create user profile in database
     const userProfile = await prisma.userProfile.create({
       data: {
         clerkId: id,
-        name: first_name || undefined,
+        name: displayName,
         avatar: image_url || undefined,
         lastLoginAt: new Date(),
       },
@@ -125,7 +134,7 @@ async function handleUserCreated(evt: WebhookEvent) {
     await prisma.familyMember.create({
       data: {
         userId: userProfile.id,
-        name: first_name || "Primary",
+        name: displayName,
         email: email_addresses?.[0]?.email_address || undefined,
         isPrimary: true,
         role: "Owner",
@@ -135,6 +144,7 @@ async function handleUserCreated(evt: WebhookEvent) {
     logger.info("User profile and primary member created", {
       userId: id,
       profileId: userProfile.id,
+      displayName: displayName,
     });
   } catch (error) {
     logger.error("Failed to create user profile", error, { userId: id });
