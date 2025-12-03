@@ -88,6 +88,11 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+jest.mock("@/lib/rate-limit", () => ({
+  rateLimit: jest.fn().mockResolvedValue(false),
+  RATE_LIMITS: { auth: 10, sensitive: 5 },
+}));
+
 import { POST } from "@/app/api/plaid/exchange-public-token/route";
 import { auth } from "@clerk/nextjs/server";
 import * as plaidModule from "plaid";
