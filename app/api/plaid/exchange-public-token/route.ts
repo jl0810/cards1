@@ -299,10 +299,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Step 2: Create PlaidItem (if this fails, we rollback Vault)
-      const isResurrection =
-        duplicateAccounts.length > 0 &&
-        (duplicateAccounts[0].plaidItem.status === "disconnected" ||
-          duplicateAccounts[0].plaidItem.status === "error");
+      // We always create new accounts for new items. Adoption happens later.
 
       // Check if item with this Plaid Item ID already exists
       const existingPlaidItem = await prisma.plaidItem.findUnique({
@@ -337,96 +334,111 @@ export async function POST(req: NextRequest) {
             accessTokenId: secretId,
             institutionId: institutionId,
             institutionName: institutionName,
-            accounts: isResurrection
-              ? undefined
-              : {
-                  create: accounts.map((acc: unknown) => {
-                    const account = acc as {
-                      account_id: string;
-                      name: string;
-                      official_name: string;
-                      mask: string;
-                      type: string;
-                      subtype: string[];
-                      balances: {
-                        current: number;
-                        available: number;
-                        limit?: number;
-                        iso_currency_code?: string;
-                      };
-                    };
-                    const creditLiability = liabilitiesData[
-                      account.account_id
-                    ] as z.infer<typeof PlaidCreditLiabilitySchema> | undefined;
-                    // Find purchase APR or take the first one
-                    const apr =
-                      creditLiability?.aprs?.find(
-                        (a: { apr_type: string; apr_percentage: number }) =>
-                          a.apr_type === "purchase_apr",
-                      )?.apr_percentage ||
-                      creditLiability?.aprs?.[0]?.apr_percentage;
+            accounts: {
+              create: accounts.map((acc: unknown) => {
+                const account = acc as {
+                  account_id: string;
+                  name: string;
+                  official_name: string;
+                  mask: string;
+                  type: string;
+                  subtype: string[];
+                  balances: {
+                    current: number;
+                    available: number;
+                    limit?: number;
+                    iso_currency_code?: string;
+                  };
+                };
+                const creditLiability = liabilitiesData[account.account_id] as
+                  | z.infer<typeof PlaidCreditLiabilitySchema>
+                  | undefined;
+                // Find purchase APR or take the first one
+                const apr =
+                  creditLiability?.aprs?.find(
+                    (a: { apr_type: string; apr_percentage: number }) =>
+                      a.apr_type === "purchase_apr",
+                  )?.apr_percentage ||
+                  creditLiability?.aprs?.[0]?.apr_percentage;
 
-                    return {
-                      accountId: account.account_id,
-                      name: account.name,
-                      officialName: account.official_name,
-                      mask: account.mask,
-                      type: account.type,
-                      subtype: account.subtype?.[0] || null,
-                      currentBalance: account.balances.current,
-                      availableBalance: account.balances.available,
-                      limit: account.balances.limit,
-                      isoCurrencyCode: account.balances.iso_currency_code,
-                      familyMember: {
-                        connect: { id: familyMember.id },
-                      },
-                      // Liability fields
-                      apr: apr,
-                      minPaymentAmount: creditLiability?.minimum_payment_amount,
-                      lastStatementBalance:
-                        creditLiability?.last_statement_balance,
-                      nextPaymentDueDate: creditLiability?.next_payment_due_date
-                        ? new Date(creditLiability.next_payment_due_date)
-                        : null,
-                      lastStatementIssueDate:
-                        creditLiability?.last_statement_issue_date
-                          ? new Date(creditLiability.last_statement_issue_date)
-                          : null,
-                      lastPaymentAmount: creditLiability?.last_payment_amount,
-                      lastPaymentDate: creditLiability?.last_payment_date
-                        ? new Date(creditLiability.last_payment_date)
-                        : null,
-                    };
-                  }),
-                },
+                return {
+                  accountId: account.account_id,
+                  name: account.name,
+                  officialName: account.official_name,
+                  status: "active",
+                  mask: account.mask,
+                  type: account.type,
+                  subtype: account.subtype?.[0] || null,
+                  currentBalance: account.balances.current,
+                  availableBalance: account.balances.available,
+                  limit: account.balances.limit,
+                  isoCurrencyCode: account.balances.iso_currency_code,
+                  familyMember: {
+                    connect: { id: familyMember.id },
+                  },
+                  // Liability fields
+                  apr: apr,
+                  minPaymentAmount: creditLiability?.minimum_payment_amount,
+                  lastStatementBalance: creditLiability?.last_statement_balance,
+                  nextPaymentDueDate: creditLiability?.next_payment_due_date
+                    ? new Date(creditLiability.next_payment_due_date)
+                    : null,
+                  lastStatementIssueDate:
+                    creditLiability?.last_statement_issue_date
+                      ? new Date(creditLiability.last_statement_issue_date)
+                      : null,
+                  lastPaymentAmount: creditLiability?.last_payment_amount,
+                  lastPaymentDate: creditLiability?.last_payment_date
+                    ? new Date(creditLiability.last_payment_date)
+                    : null,
+                };
+              }),
+            },
           },
         });
       }
 
-      // Handle Resurrection: Transfer accounts from old item
-      if (isResurrection) {
-        const oldItem = duplicateAccounts[0].plaidItem;
-        logger.info("Transferring accounts from disconnected item", {
-          oldItemId: oldItem.id,
-          newItemId: plaidItem.id,
+      // Step 3: Adopt Settings from Inactive Accounts (Smart Fix)
+      // If we just created a new item (not updated existing), check for inactive accounts to adopt
+      if (!existingPlaidItem) {
+        const newAccounts = await prisma.plaidAccount.findMany({
+          where: { plaidItemId: plaidItem.id },
         });
 
-        // 1. Transfer Accounts
-        await prisma.plaidAccount.updateMany({
-          where: { plaidItemId: oldItem.id },
-          data: { plaidItemId: plaidItem.id },
-        });
+        for (const newAcc of newAccounts) {
+          if (!newAcc.mask) continue;
 
-        // 2. Transfer Transactions
-        await prisma.plaidTransaction.updateMany({
-          where: { plaidItemId: oldItem.id },
-          data: { plaidItemId: plaidItem.id },
-        });
+          // Find an inactive account with same mask & family member
+          const oldAcc = await prisma.plaidAccount.findFirst({
+            where: {
+              mask: newAcc.mask,
+              familyMemberId: newAcc.familyMemberId,
+              status: "inactive",
+              // Ensure it's not the one we just created
+              id: { not: newAcc.id },
+            },
+            include: { extended: true },
+          });
 
-        // 3. Delete old item
-        await prisma.plaidItem.delete({
-          where: { id: oldItem.id },
-        });
+          if (oldAcc && oldAcc.extended) {
+            logger.info("Adopting settings from inactive account", {
+              from: oldAcc.id,
+              to: newAcc.id,
+            });
+
+            // Move Extended Data (Nicknames, Notes, Payment Status)
+            await prisma.accountExtended.update({
+              where: { id: oldAcc.extended.id },
+              data: { plaidAccountId: newAcc.id },
+            });
+
+            // Mark old account as replaced to prevent double adoption
+            await prisma.plaidAccount.update({
+              where: { id: oldAcc.id },
+              data: { status: "replaced" },
+            });
+          }
+        }
       }
     } catch (error) {
       // NOTE: Vault secrets are NOT deleted on error for two reasons:

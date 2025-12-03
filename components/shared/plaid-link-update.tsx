@@ -14,6 +14,7 @@ interface PlaidLinkUpdateProps {
   variant?: "default" | "outline" | "destructive";
   size?: "default" | "sm" | "lg";
   className?: string;
+  status?: string;
 }
 
 /**
@@ -33,6 +34,7 @@ export function PlaidLinkUpdate({
   variant = "destructive",
   size = "default",
   className,
+  status,
 }: PlaidLinkUpdateProps) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,11 +46,20 @@ export function PlaidLinkUpdate({
     setError(null);
 
     try {
-      const response = await fetch("/api/plaid/link-token/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId }),
-      });
+      let response;
+      if (status === "disconnected") {
+        // Standard Mode for re-linking
+        response = await fetch("/api/plaid/create-link-token", {
+          method: "POST",
+        });
+      } else {
+        // Update Mode for repair
+        response = await fetch("/api/plaid/link-token/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ itemId }),
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -70,7 +81,7 @@ export function PlaidLinkUpdate({
     } finally {
       setLoading(false);
     }
-  }, [itemId]);
+  }, [itemId, status]);
 
   // Fetch link token on mount
   useEffect(() => {
@@ -79,14 +90,33 @@ export function PlaidLinkUpdate({
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
-    onSuccess: () => {
-      logger.info("Item successfully updated via Link", {
-        itemId,
-        institutionName,
-      });
-      toast.success(`${institutionName} connection updated!`, {
-        description: "Your bank connection is now working again.",
-      });
+    onSuccess: async (public_token, metadata) => {
+      if (status === "disconnected") {
+        try {
+          const res = await fetch("/api/plaid/exchange-public-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ public_token, metadata }),
+          });
+          if (!res.ok) throw new Error("Failed to exchange token");
+
+          toast.success(`${institutionName} re-linked successfully!`, {
+            description: "Your account history has been restored.",
+          });
+        } catch (e) {
+          logger.error("Failed to exchange token during re-link", e);
+          toast.error("Failed to complete re-link");
+          return;
+        }
+      } else {
+        logger.info("Item successfully updated via Link", {
+          itemId,
+          institutionName,
+        });
+        toast.success(`${institutionName} connection updated!`, {
+          description: "Your bank connection is now working again.",
+        });
+      }
       onSuccess();
     },
     onExit: (err, metadata) => {
@@ -138,7 +168,7 @@ export function PlaidLinkUpdate({
       ) : (
         <>
           <RefreshCw className="h-4 w-4" />
-          Fix Connection
+          {status === "disconnected" ? "Re-link" : "Fix Connection"}
         </>
       )}
     </Button>

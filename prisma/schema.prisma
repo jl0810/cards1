@@ -147,6 +147,7 @@ model PlaidAccount {
   lastPaymentDate         DateTime?
   familyMemberId          String
   officialName            String?
+  status                  String             @default("active")
   extended                AccountExtended?
   benefitUsage            BenefitUsage[]
   familyMember            FamilyMember       @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)

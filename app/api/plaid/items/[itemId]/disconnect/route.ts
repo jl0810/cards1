@@ -112,6 +112,12 @@ export async function POST(
       where: { id: itemId },
       data: {
         status: "disconnected",
+        accounts: {
+          updateMany: {
+            where: {},
+            data: { status: "inactive" },
+          },
+        },
       },
     });
 

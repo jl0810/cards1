@@ -295,19 +295,19 @@ export function BankAccountsView({
                         : item.status}
                   </div>
                 </div>
-                {item.status === "disconnected" && (
-                  <div className="mb-4 text-xs text-red-400/90 font-medium bg-red-500/5 p-2 rounded-lg border border-red-500/10">
-                    Bank will no longer sync. You must re-add the bank.
-                  </div>
-                )}
-
-                {item.status === "needs_reauth" && (
+                {(item.status === "needs_reauth" ||
+                  item.status === "disconnected") && (
                   <div className="mb-4" onClick={(e) => e.stopPropagation()}>
                     <PlaidLinkUpdate
                       itemId={item.id}
                       institutionName={item.institutionName || "Bank"}
+                      status={item.status}
                       onSuccess={fetchData}
-                      variant="destructive"
+                      variant={
+                        item.status === "disconnected"
+                          ? "default"
+                          : "destructive"
+                      }
                       className="w-full"
                     />
                   </div>

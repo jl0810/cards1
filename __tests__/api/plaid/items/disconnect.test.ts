@@ -49,7 +49,7 @@ describe("US-020 & US-006: Bank Connection Disconnect", () => {
     jest.clearAllMocks();
 
     // Default auth mock
-    (auth as jest.Mock).mockResolvedValue({ userId: mockUserId });
+    (auth as unknown as jest.Mock).mockResolvedValue({ userId: mockUserId });
 
     // Default user profile mock
     (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue({
@@ -149,7 +149,15 @@ describe("US-020 & US-006: Bank Connection Disconnect", () => {
       // Should still update status
       expect(prisma.plaidItem.update).toHaveBeenCalledWith({
         where: { id: mockItemId },
-        data: { status: "disconnected" },
+        data: {
+          status: "disconnected",
+          accounts: {
+            updateMany: {
+              where: {},
+              data: { status: "inactive" },
+            },
+          },
+        },
       });
     });
   });
@@ -177,7 +185,7 @@ describe("US-020 & US-006: Bank Connection Disconnect", () => {
 
   describe("Authorization & Ownership", () => {
     it("should reject unauthorized requests", async () => {
-      (auth as jest.Mock).mockResolvedValue({ userId: null });
+      (auth as unknown as jest.Mock).mockResolvedValue({ userId: null });
 
       const mockRequest = new Request(
         "http://localhost/api/plaid/items/item_test123/disconnect",
@@ -248,6 +256,12 @@ describe("US-020 & US-006: Bank Connection Disconnect", () => {
         where: { id: mockItemId },
         data: {
           status: "disconnected",
+          accounts: {
+            updateMany: {
+              where: {},
+              data: { status: "inactive" },
+            },
+          },
         },
       });
     });
@@ -312,7 +326,7 @@ describe("Integration: Disconnect Workflow", () => {
     const mockItemId = "item_integration";
     const mockAccessToken = "access-integration-token";
 
-    (auth as jest.Mock).mockResolvedValue({ userId: mockUserId });
+    (auth as unknown as jest.Mock).mockResolvedValue({ userId: mockUserId });
     (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue({
       id: "profile_integration",
       clerkId: mockUserId,
