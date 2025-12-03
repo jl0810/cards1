@@ -24,7 +24,8 @@ export const dynamic = "force-dynamic";
  * - Follow Plaid's best practice for user offboarding
  *
  * @route POST /api/plaid/items/[itemId]/disconnect
- * @implements Plaid /item/remove requirement
+ * @implements BR-034 - Proper Item Disconnection
+ * @implements BR-039 - Smart Fix Adoption (Soft Delete Support)
  * @satisfies US-006 - Link Bank Account (disconnect capability)
  * @satisfies US-020 - Monitor Bank Connection Health
  * @tested __tests__/api/plaid/items/disconnect.test.ts

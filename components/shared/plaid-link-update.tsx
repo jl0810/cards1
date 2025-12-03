@@ -18,12 +18,11 @@ interface PlaidLinkUpdateProps {
 }
 
 /**
- * Plaid Link Update Mode Component
- *
- * Launches Plaid Link in update mode to fix broken Items.
- * Used when an Item has ITEM_LOGIN_REQUIRED or other errors.
+ * Plaid Link Update Component
+ * Handles both "Update Mode" (repair) and "Standard Mode" (re-link) for broken connections.
  *
  * @implements BR-035 - Item Error Detection & Recovery
+ * @implements BR-039 - Smart Fix Adoption
  * @satisfies US-020 - Monitor Bank Connection Health
  * @see https://plaid.com/docs/link/update-mode/
  */

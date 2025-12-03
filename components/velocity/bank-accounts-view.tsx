@@ -86,6 +86,13 @@ export interface FamilyMember {
   isPrimary: boolean;
 }
 
+/**
+ * Bank Accounts View Component
+ * Displays connected bank accounts and allows managing connections.
+ *
+ * @satisfies US-006 - Link Bank Account
+ * @satisfies US-020 - Monitor Bank Connection Health (Status Badges, Fix Connection)
+ */
 export function BankAccountsView({
   activeUser = "all",
   onLinkSuccess,

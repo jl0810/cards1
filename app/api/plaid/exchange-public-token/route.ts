@@ -33,8 +33,9 @@ import { AccountBase } from "plaid";
  * @implements BR-008 - Duplicate Detection
  * @implements BR-009 - Secure Token Storage
  * @implements BR-010 - Family Member Assignment
+ * @implements BR-039 - Smart Fix Adoption
  * @satisfies US-006 - Link Bank Account
- * @tested None (needs integration test)
+ * @tested __tests__/api/plaid/exchange-public-token.adoption.test.ts
  *
  * This endpoint handles:
  * 1. User authentication and profile retrieval.
