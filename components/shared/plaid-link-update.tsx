@@ -13,6 +13,7 @@ interface PlaidLinkUpdateProps {
   onSuccess: () => void;
   variant?: "default" | "outline" | "destructive";
   size?: "default" | "sm" | "lg";
+  className?: string;
 }
 
 /**
@@ -31,6 +32,7 @@ export function PlaidLinkUpdate({
   onSuccess,
   variant = "destructive",
   size = "default",
+  className,
 }: PlaidLinkUpdateProps) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -121,7 +123,7 @@ export function PlaidLinkUpdate({
       disabled={loading || (!ready && !error)}
       variant={variant}
       size={size}
-      className="gap-2"
+      className={`gap-2 ${className || ""}`}
     >
       {loading ? (
         <>

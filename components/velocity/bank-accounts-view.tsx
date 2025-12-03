@@ -35,6 +35,7 @@ import { useBankBrand } from "@/hooks/use-bank-brand";
 import { FamilyMemberSelector } from "./family-member-selector";
 import { BankLogo } from "./bank-logo";
 import { BankDetailsSheet } from "./bank-details-sheet";
+import { PlaidLinkUpdate } from "@/components/shared/plaid-link-update";
 
 export interface PlaidAccount {
   id: string;
@@ -297,6 +298,18 @@ export function BankAccountsView({
                 {item.status === "disconnected" && (
                   <div className="mb-4 text-xs text-red-400/90 font-medium bg-red-500/5 p-2 rounded-lg border border-red-500/10">
                     Bank will no longer sync. You must re-add the bank.
+                  </div>
+                )}
+
+                {item.status === "needs_reauth" && (
+                  <div className="mb-4" onClick={(e) => e.stopPropagation()}>
+                    <PlaidLinkUpdate
+                      itemId={item.id}
+                      institutionName={item.institutionName || "Bank"}
+                      onSuccess={fetchData}
+                      variant="destructive"
+                      className="w-full"
+                    />
                   </div>
                 )}
 

@@ -513,6 +513,7 @@ export default function DashboardPage() {
                 users={users}
                 accounts={accounts}
                 activeUser={activeUser}
+                onActiveUserChange={setActiveUser}
               />
             </motion.div>
           )}

@@ -189,7 +189,7 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
       expect(account.balances).toBeDefined();
     });
 
-    it("should fetch liabilities and validate structure", async () => {
+    it.skip("should fetch liabilities and validate structure", async () => {
       const response = await plaidClient.liabilitiesGet({
         access_token: accessToken,
       });

@@ -255,120 +255,110 @@ export function WalletView({
   const total = filteredAccounts.reduce((acc, cur) => acc + cur.balance, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Hero Section: Total Balance */}
       <FadeIn>
-        <h2 className="text-xl font-bold text-white px-4 flex items-center gap-2">
-          <CreditCardIcon className="w-5 h-5 text-emerald-400" />
-          Your Wallet
-        </h2>
+        <div className="text-center space-y-2 pt-8 pb-4">
+          <h2 className="text-slate-400 text-sm font-medium uppercase tracking-wider">
+            Total Balance
+          </h2>
+          <div className="text-5xl md:text-6xl font-bold text-white tracking-tight">
+            $
+            {total.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </div>
+        </div>
       </FadeIn>
 
-      {/* Filter Bar - FakeSharp Style */}
-      <div className="flex items-center gap-2 px-4 pb-4 overflow-x-auto scrollbar-hide">
-        {/* Family Filter */}
-        <FilterDropdown
-          icon="👥"
-          label="Family"
-          value={users.find((u) => u.id === activeUser)?.name || "All"}
-          options={[
-            { value: "all", label: "All" },
-            ...users.map((u) => ({ value: u.id, label: u.name })),
-          ]}
-          selectedValue={activeUser}
-          onChange={(val: string) => onActiveUserChange?.(val)}
-        />
+      {/* Bank Icons Row */}
+      <FadeIn delay={0.1}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center justify-center gap-3 overflow-x-auto pb-2 max-w-full px-4 scrollbar-hide mask-fade-sides">
+            {/* All Banks Button */}
+            <button
+              onClick={() => setActiveBank("all")}
+              className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                activeBank === "all"
+                  ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110"
+                  : "bg-white/10 text-white hover:bg-white/20 border border-white/5"
+              }`}
+            >
+              <List className="w-5 h-5" />
+            </button>
 
-        {/* Bank Filter */}
-        <FilterDropdown
-          icon="🏦"
-          label="Bank"
-          value={activeBank === "all" ? "All" : activeBank}
-          options={[
-            { value: "all", label: "All" },
-            ...banks
+            {/* Bank Icons */}
+            {banks
               .filter((b) => b.name !== "all")
-              .map((b) => ({ value: b.name, label: b.name })),
-          ]}
-          selectedValue={activeBank}
-          onChange={setActiveBank}
-        />
-
-        {/* Status Filter */}
-        <FilterDropdown
-          icon="📊"
-          label="Status"
-          value={
-            paymentStatusFilter === "STATEMENT_GENERATED"
-              ? "Due"
-              : paymentStatusFilter === "PAID_AWAITING_STATEMENT"
-                ? "Paid"
-                : paymentStatusFilter === "OVERDUE"
-                  ? "Late"
-                  : "All"
-          }
-          options={[
-            { value: "all", label: "All" },
-            {
-              value: "STATEMENT_GENERATED",
-              label: `🔴 Due (${paymentStatusCounts["STATEMENT_GENERATED"] || 0})`,
-            },
-            {
-              value: "PAID_AWAITING_STATEMENT",
-              label: `✅ Paid (${paymentStatusCounts["PAID_AWAITING_STATEMENT"] || 0})`,
-            },
-            {
-              value: "OVERDUE",
-              label: `⚠️ Late (${paymentStatusCounts["OVERDUE"] || 0})`,
-            },
-          ]}
-          selectedValue={paymentStatusFilter || "all"}
-          onChange={(val: string) =>
-            setPaymentStatusFilter(
-              val === "all" ? null : (val as PaymentCycleStatus),
-            )
-          }
-        />
-      </div>
-
-      <div className="flex items-center justify-between px-1">
-        <h3 className="text-sm font-bold text-slate-300">Cards & Accounts</h3>
-        <div className="bg-glass-200 p-1 rounded-lg flex gap-1">
-          <button
-            onClick={() => setLayout("grid")}
-            className={`p-2 rounded-md transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-              layout === "grid" ? "bg-white/10 text-white" : "text-slate-500"
-            }`}
-            aria-label="Grid view"
-          >
-            <CreditCardIcon size={18} />
-          </button>
-          <button
-            onClick={() => setLayout("list")}
-            className={`p-2 rounded-md transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-              layout === "list" ? "bg-white/10 text-white" : "text-slate-500"
-            }`}
-            aria-label="List view"
-          >
-            <List size={18} />
-          </button>
-        </div>
-      </div>
-
-      <div
-        className={`grid gap-4 ${layout === "grid" ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3" : "grid-cols-1"}`}
-      >
-        <AnimatePresence>
-          {filteredAccounts.map((acc, i) => (
-            <FadeIn key={acc.id} delay={i * 0.05}>
-              <CreditCard acc={acc} layout={layout} />
-            </FadeIn>
-          ))}
-        </AnimatePresence>
-        {filteredAccounts.length === 0 && (
-          <div className="text-center py-10 text-slate-500">
-            <p>No accounts found</p>
+              .map((bank) => (
+                <button
+                  key={bank.name}
+                  onClick={() => setActiveBank(bank.name)}
+                  className={`relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                    activeBank === bank.name
+                      ? "ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.2)] scale-110 z-10"
+                      : "opacity-70 hover:opacity-100 hover:scale-105 grayscale hover:grayscale-0"
+                  }`}
+                >
+                  <div className="w-full h-full rounded-xl overflow-hidden bg-white/5 border border-white/10">
+                    <BankLogo name={bank.name} bankId={bank.id} size="md" />
+                  </div>
+                </button>
+              ))}
           </div>
-        )}
+          <div className="text-slate-500 text-sm font-medium">
+            {activeBank === "all" ? "All Banks" : activeBank}
+          </div>
+        </div>
+      </FadeIn>
+
+      {/* Cards Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-4">
+          <h3 className="text-lg font-bold text-white">Cards & Accounts</h3>
+          <div className="bg-white/5 p-1 rounded-lg flex gap-1 border border-white/10">
+            <button
+              onClick={() => setLayout("grid")}
+              className={`p-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center justify-center ${
+                layout === "grid"
+                  ? "bg-white/10 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+              aria-label="Grid view"
+            >
+              <CreditCardIcon size={18} />
+            </button>
+            <button
+              onClick={() => setLayout("list")}
+              className={`p-2 rounded-md transition-all min-w-[40px] min-h-[40px] flex items-center justify-center ${
+                layout === "list"
+                  ? "bg-white/10 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+              aria-label="List view"
+            >
+              <List size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={`grid gap-4 px-2 ${layout === "grid" ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3" : "grid-cols-1"}`}
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredAccounts.map((acc, i) => (
+              <FadeIn key={acc.id} delay={i * 0.05}>
+                <CreditCard acc={acc} layout={layout} />
+              </FadeIn>
+            ))}
+          </AnimatePresence>
+          {filteredAccounts.length === 0 && (
+            <div className="text-center py-12 text-slate-500 col-span-full">
+              <p>No accounts found</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
