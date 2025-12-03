@@ -56,23 +56,23 @@ This document outlines the simplified architecture for Plaid integration, focusi
 
 **Context:** User revoked access via bank portal or Plaid portal.
 
-- **UI:** Show **"Disconnected"** badge.
-- **Data State:**
+- **UI:** Show **"Re-link"** button on the existing card.
+- **Data State (Soft Delete):**
   - Flag Item as `disconnected`.
+  - Flag Accounts as `inactive` (Soft Delete).
   - **Archive Data:** Keep accounts and transactions read-only for history.
-- **Action:** User clicks "Reconnect" (or "Add Bank").
+- **Action:** User clicks "Re-link".
 - **Result (Fresh Link):**
   - Since the old Item is dead, this creates a **New Item** (New `item_id`).
-  - **Data Strategy (Swap Back):**
-    - Detect that this new Item matches the institution of a `disconnected` Item.
-    - _Option 1 (Simple):_ Treat as new. Old data remains archived.
-    - _Option 2 (Smart):_ If accounts match (same mask), "adopt" the old data:
-      - Link old `PlaidTransaction` records to the new `PlaidItem`.
-      - Mark old `PlaidItem` as `inactive` (hidden).
-      - This achieves the "swap back to active" effect.
+  - **Data Strategy (Smart Adoption):**
+    - System detects `inactive` accounts with matching mask/name.
+    - **Adopts** `AccountExtended` settings (nicknames, notes, payment status) to the new accounts.
+    - Marks old accounts as `replaced`.
+    - Result: Seamless restoration of user customizations.
 
-## Summary of Changes Required
+## Summary of Changes Implemented
 
-1. **UI:** Add "Fix Connection" button to `BankAccountsView` for `needs_reauth` items.
-2. **API:** Ensure `/api/plaid/items` or `/api/plaid/status` accurately reflects `ITEM_LOGIN_REQUIRED`.
-3. **Logic:** Remove complex "duplicate detection" blocking for _disconnected_ items (allow them to be replaced/re-linked).
+1. **UI:** Added "Fix Connection" / "Re-link" button to `BankAccountsView` with Smart Fix logic.
+2. **Schema:** Added `status` field to `PlaidAccount` for Soft Delete support.
+3. **API:** Implemented Adoption Logic in `exchange-public-token` to restore settings.
+4. **Logic:** Updated `disconnect` flow to mark accounts as `inactive` instead of deleting.

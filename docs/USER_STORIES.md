@@ -429,8 +429,11 @@ Each user story follows this format:
 - ✅ Status persisted to database for display
 - ✅ Last sync timestamp updates on check
 - ✅ Color-coded for quick scanning (green/yellow/red/gray)
+- ✅ **NEW:** "Fix Connection" button for `needs_reauth` items (Update Mode)
+- ✅ **NEW:** "Re-link" button for `disconnected` items (Standard Mode)
+- ✅ **NEW:** Smart Fix Adoption restores settings when re-linking
 
-**Business Rules:** [BR-033, BR-034]  
+**Business Rules:** [BR-033, BR-034, BR-035, BR-039]  
 **Code:**
 
 - Backend: `app/api/plaid/items/[itemId]/status/route.ts`

@@ -71,6 +71,8 @@ This document provides complete traceability from user stories through business 
 | **US-020** Monitor Bank Connection Health | BR-033  | `components/velocity/connected-banks-section.tsx:68-76`                                                        | `__tests__/api/plaid/items/status.test.ts`                                                                           | ⚠️ 23% (needs refinement)                 |
 | **US-020** Monitor Bank Connection Health | BR-034  | `app/api/plaid/items/[itemId]/disconnect/route.ts:32-39`                                                       | `__tests__/api/plaid/items/disconnect.test.ts`                                                                       | ✅ 93% (13/14 tests passing)              |
 | **US-020** Bank Disconnect (Never Delete) | BR-034  | `components/velocity/bank-accounts-view.tsx:262-285`                                                           | `__tests__/components/velocity/bank-accounts-view.test.tsx`                                                          | ✅ 100% (6 tests - NEW)                   |
+| **US-020** Item Recovery (Smart Fix)      | BR-035  | `components/shared/plaid-link-update.tsx`                                                                      | Manual Testing (Plaid Sandbox)                                                                                       | ✅ Verified manually                      |
+| **US-020** Smart Fix Adoption             | BR-039  | `app/api/plaid/exchange-public-token/route.ts`                                                                 | `__tests__/api/plaid/exchange-public-token.adoption.test.ts`                                                         | ✅ 100% (1 test - NEW)                    |
 | **US-006** Image Error Handling           | BR-038  | `components/velocity/linked-card-display.tsx:29-80`                                                            | `__tests__/components/velocity/linked-card-display.test.tsx`                                                         | ✅ 100% (9 tests - NEW)                   |
 | **US-006** Image Error Handling           | BR-038  | `components/velocity/card-product-matcher.tsx:205-237`                                                         | `__tests__/components/velocity/linked-card-display.test.tsx`                                                         | ✅ Tested (same pattern)                  |
 | **US-021** Account Deletion               | BR-035  | `lib/webhooks/handlers/user.ts:189-250`                                                                        | None                                                                                                                 | ⚠️ No test (webhook handler)              |
@@ -87,8 +89,8 @@ This document provides complete traceability from user stories through business 
 - **With Tests:** 47 (98%)
 - **Without Tests:** 1 (2% - webhook handler only)
 - **User Stories:** 23
-- **Business Rules:** 38 (was 37, +BR-038 for image error handling)
-- **Unit/Integration Tests:** 348 tests (was 333, +15 new tests)
+- **Business Rules:** 39 (was 38, +BR-039 for Smart Fix Adoption)
+- **Unit/Integration Tests:** 349 tests (was 348, +1 new test)
 - **Component Tests:** 2 new test suites (BankAccountsView, LinkedCardDisplay)
 - **E2E Tests:** 3 automated smoke tests + 1 manual Plaid flow test
 - **Pre-Commit:** ✅ All unit tests now run automatically on every commit
@@ -108,13 +110,13 @@ This document provides complete traceability from user stories through business 
 
 #### Bank Integration
 
-| Story  | Rules | Code Files | Tests | Coverage                            |
-| ------ | ----- | ---------- | ----- | ----------------------------------- |
-| US-006 | 3     | 2          | 1     | ✅ 100% (12 tests)                  |
-| US-007 | 3     | 2          | 2     | ✅ 100% (15 tests + constants)      |
-| US-008 | 2     | 1          | 1     | ✅ 100%                             |
-| US-009 | 1     | 1          | 1     | ✅ 100%                             |
-| US-020 | 2     | 2          | 2     | ✅ 58% (93% disconnect, 23% status) |
+| Story  | Rules | Code Files | Tests | Coverage                              |
+| ------ | ----- | ---------- | ----- | ------------------------------------- |
+| US-006 | 3     | 2          | 1     | ✅ 100% (12 tests)                    |
+| US-007 | 3     | 2          | 2     | ✅ 100% (15 tests + constants)        |
+| US-008 | 2     | 1          | 1     | ✅ 100%                               |
+| US-009 | 1     | 1          | 1     | ✅ 100%                               |
+| US-020 | 4     | 3          | 3     | ✅ 75% (Status, Disconnect, Adoption) |
 
 **Summary:** 16/17 (94%, was 64%) tested
 

@@ -569,6 +569,8 @@ This document defines all business rules for the PointMax Velocity application.
 
 ---
 
+---
+
 ### **[BR-035]** Item Error Detection & Recovery
 
 **Category:** Reliability / UX  
@@ -672,7 +674,7 @@ This document defines all business rules for the PointMax Velocity application.
 
 ---
 
-### **[BR-036]** Full Transaction Reload & Data Loss Warning
+### **[BR-038]** Full Transaction Reload & Data Loss Warning
 
 **Category:** Data Management / User Safety  
 **Description:** Users can request a full transaction reload (dump and reload) to recover from cursor corruption or start fresh. This operation deletes ALL existing transactions and benefit tracking for the bank account, resets the Plaid cursor to null, and fetches the complete transaction history. Due to the destructive nature, users must see explicit warnings and confirm the action.
@@ -811,6 +813,27 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 ---
 
+### **[BR-039]** Smart Fix Adoption
+
+**Category:** Reliability / UX
+**Description:** When a user re-links a previously disconnected bank account, the system must "adopt" the settings (nicknames, notes, payment status) from the old inactive account to the new active account. This ensures a seamless experience where users don't lose their customizations.
+
+**Logic:**
+
+1. User links a new Item (Standard Mode).
+2. System creates new PlaidAccounts.
+3. System searches for `inactive` accounts with matching `mask` and `familyMemberId`.
+4. If match found:
+   - Move `AccountExtended` record from old account to new account.
+   - Mark old account as `replaced`.
+   - Mark new account as `active`.
+
+**User Stories:** [US-020]
+**Code:** `app/api/plaid/exchange-public-token/route.ts`
+**Tests:** `__tests__/api/plaid/exchange-public-token.adoption.test.ts`
+
+---
+
 ### **[BR-041]** Accessibility Standards
 
 **Category:** User Experience / Compliance  
@@ -891,9 +914,9 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 ## Summary Statistics
 
-**Total Business Rules:** 43  
-**Rules with Tests:** 15 (35%)  
-**Rules without Tests:** 28 (65%)  
+**Total Business Rules:** 44
+**Rules with Tests:** 16 (36%)
+**Rules without Tests:** 28 (64%)  
 **NEW Rules:**
 
 - BR-041 (Accessibility Standards)

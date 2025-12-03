@@ -111,18 +111,17 @@
 - **Visual:** Red destructive button, RefreshCw icon, "Fix Connection" text
 - **Visibility:** Only shown when item status is `needs_reauth`
 - **Click Action:**
-  1. Fetches update mode link token from `/api/plaid/link-token/update`
-  2. Passes existing `access_token` (not new public_token)
-  3. Launches Plaid Link in update mode
-  4. User re-authenticates or re-authorizes
-  5. On success: Item status updates to 'active', alert disappears
+  1. Checks item status
+  2. If `needs_reauth`: Launches Plaid Link in **Update Mode** (Repair)
+  3. If `disconnected`: Launches Plaid Link in **Standard Mode** (Re-link)
+  4. On success: Item status updates to 'active', inactive accounts are adopted
 - **Alert Context:**
   - Title: "Action Required"
   - Message: "Your connection to [Bank] needs to be updated. This usually happens when you change your password or need to re-authorize access."
   - Icon: AlertCircle (red)
 - **Success:** Toast "[Bank] connection updated!" + page refreshes
 - **Error:** Toast "Connection update failed" + retry option
-- **Business Rules:** BR-035 (Item Error Detection & Recovery)
+- **Business Rules:** BR-035 (Item Error Detection & Recovery), BR-036 (Smart Fix Adoption)
 - **User Story:** US-020
 - **Reference:** https://plaid.com/docs/link/update-mode/
 
@@ -303,6 +302,8 @@
 
 - Family member cards → Display data
 - "Refresh All" button (top bar) → US-007, BR-011, BR-012, BR-013
+- **Total Balance Display** (Hero Section) → Aggregates all account balances
+- **Bank Icons Row** (Filter) → Horizontal scrollable list of connected banks
 - Credit cards in Wallet view → Display with payment status
 - "Mark Paid" button (card back, magnetic stripe) → US-021, BR-035
 
@@ -333,10 +334,10 @@
 
 ---
 
-**Last Updated:** December 1, 2025  
-**Version:** 1.1  
-**Total UI Elements Documented:** 13 primary buttons + status indicators  
-**Major Changes:** Consolidated all bank management to Banks tab (removed from Settings)
+**Last Updated:** December 3, 2025  
+**Version:** 1.2  
+**Total UI Elements Documented:** 15 primary buttons + status indicators  
+**Major Changes:** Added Smart Fix logic, Total Balance display, and Bank Icons row.
 
 ```
 
