@@ -5,10 +5,11 @@
  * @module app/api/plaid/sync-transactions
  */
 
-import { NextResponse, NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { plaidClient } from "@/lib/plaid";
-import { AccountBase, CreditCardLiability } from "plaid";
+import type { AccountBase, CreditCardLiability } from "plaid";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";

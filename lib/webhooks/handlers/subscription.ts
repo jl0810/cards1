@@ -1,4 +1,4 @@
-import { WebhookEvent } from '@clerk/nextjs/server';
+import type { WebhookEvent } from '@clerk/nextjs/server';
 import { trackEvent } from '@/lib/analytics-utils';
 
 /**

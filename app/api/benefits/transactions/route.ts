@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
-import { TransactionQuerySchema, safeValidateSchema, ApiError } from '@/lib/validations';
+import type { ApiError } from '@/lib/validations';
+import { TransactionQuerySchema, safeValidateSchema } from '@/lib/validations';
 
 export async function GET(req: Request) {
     try {

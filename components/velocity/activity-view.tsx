@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, ArrowUpRight, CreditCard, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { TransactionSchema, PlaidItemSchema } from "@/lib/validations";
+import type { TransactionSchema, PlaidItemSchema } from "@/lib/validations";
 import type { z } from "zod";
 
 type Transaction = z.infer<typeof TransactionSchema>;

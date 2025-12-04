@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
 export const templateMetadata: Metadata = {
   metadataBase: new URL("https://clerk-nextjs-app-router.vercel.app/"),

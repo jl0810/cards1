@@ -1,5 +1,5 @@
 import { Webhook } from 'svix';
-import { WebhookEvent } from '@clerk/nextjs/server';
+import type { WebhookEvent } from '@clerk/nextjs/server';
 
 interface WebhookHeaders {
   'svix-id': string;

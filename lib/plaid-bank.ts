@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Configuration, PlaidApi, PlaidEnvironments, CountryCode } from 'plaid';
-import { PlaidInstitutionExtendedSchema } from '@/lib/validations';
+import type { PlaidInstitutionExtendedSchema } from '@/lib/validations';
 import type { z } from 'zod';
 
 type PlaidInstitutionExtended = z.infer<typeof PlaidInstitutionExtendedSchema>;

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type {
+  User} from "lucide-react";
 import {
   Shield,
   CreditCard,
@@ -14,15 +16,14 @@ import {
   Pencil,
   ChevronDown,
   Users,
-  ArrowLeft,
-  User,
+  ArrowLeft
 } from "lucide-react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 
 type PanelView = "main" | "family";
 
-import { UserSchema, AccountSchema } from "@/lib/validations";
+import type { UserSchema, AccountSchema } from "@/lib/validations";
 import type { z } from "zod";
 
 type User = z.infer<typeof UserSchema>;

@@ -9,8 +9,9 @@
  * @tested __tests__/lib/validation-middleware.test.ts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { ZodSchema, z } from 'zod';
+import type { NextRequest, NextResponse } from 'next/server';
+import type { ZodSchema} from 'zod';
+import { z } from 'zod';
 import { Errors } from './api-errors';
 
 /**

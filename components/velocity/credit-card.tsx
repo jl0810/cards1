@@ -19,10 +19,11 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Wifi, Landmark, Globe, CheckCircle } from "lucide-react";
 import { useBankBrand } from "@/hooks/use-bank-brand";
+import type {
+  PaymentCycleStatus} from "@/lib/payment-cycle";
 import {
   getPaymentCycleColor,
-  getPaymentCycleLabel,
-  PaymentCycleStatus,
+  getPaymentCycleLabel
 } from "@/lib/payment-cycle";
 import { sanitizeSvg } from "@/lib/sanitize";
 

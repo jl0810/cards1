@@ -12,7 +12,7 @@ import {
   DEFAULT_CURRENCY,
   DATE_FORMATS,
 } from "@/lib/constants";
-import { PlaidItemSchema, AccountSchema } from "@/lib/validations";
+import type { PlaidItemSchema, AccountSchema } from "@/lib/validations";
 import type { FamilyMember } from "@/types/dashboard";
 import type { z } from "zod";
 import { calculatePaymentCycleStatus } from "@/lib/payment-cycle";

@@ -7,7 +7,8 @@
  * @satisfies US-023 - Admin Notifications
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Novu } from '@novu/node';
 import { requireAdmin } from '@/lib/admin';

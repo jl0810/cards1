@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CreditCard as CreditCardIcon, List } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CreditCard } from "./credit-card";
-import { PaymentCycleStatus } from "@/lib/payment-cycle";
+import type { PaymentCycleStatus } from "@/lib/payment-cycle";
 import { BankLogo } from "./bank-logo";
 
 // FilterDropdown Component
@@ -161,7 +161,7 @@ const FadeIn = ({
   </motion.div>
 );
 
-import { UserSchema, AccountSchema } from "@/lib/validations";
+import type { UserSchema, AccountSchema } from "@/lib/validations";
 import type { z } from "zod";
 
 type User = z.infer<typeof UserSchema>;

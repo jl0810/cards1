@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { BenefitSchema, ProductSchema } from "@/lib/validations";
+import type { BenefitSchema, ProductSchema } from "@/lib/validations";
 import type { z } from "zod";
 
 type Benefit = z.infer<typeof BenefitSchema>;

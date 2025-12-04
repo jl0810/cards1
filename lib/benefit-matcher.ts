@@ -183,7 +183,7 @@ export async function matchTransactionToBenefits(transaction: {
 
     // Check each benefit using DB keywords
     for (const benefit of cardBenefits) {
-        const keywords = benefit.keywords as string[];
+        const keywords = benefit.keywords;
 
         // Find if any keyword matches the transaction name OR original description
         const matchedKeyword = keywords.find(k => {

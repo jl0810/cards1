@@ -5,7 +5,7 @@
  * @module app/api/webhooks/clerk
  */
 
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -16,7 +16,7 @@ import {
   ClerkWebhookHeadersSchema,
   safeValidateSchema,
 } from "@/lib/validations";
-import { z } from "zod";
+import type { z } from "zod";
 
 /**
  * Type for Clerk webhook event

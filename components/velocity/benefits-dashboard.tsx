@@ -297,7 +297,7 @@ export function BenefitsDashboard({ accountId, period = 'month' }: BenefitsDashb
     );
 }
 
-import { TransactionSchema } from "@/lib/validations";
+import type { TransactionSchema } from "@/lib/validations";
 import type { z } from "zod";
 
 type Transaction = z.infer<typeof TransactionSchema>;

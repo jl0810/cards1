@@ -29,6 +29,9 @@ export default [
       'playwright.config.ts',
       'next-env.d.ts',
       "__mocks__/**",
+      'samplecode/**',
+      'scripts/**',
+      'prisma/**',
     ]
   },
 
@@ -40,9 +43,6 @@ export default [
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
-    },
-    plugins: {
-      '@typescript-eslint': tseslint,
     },
     rules: {
       // 🔴 CRITICAL: Block explicit 'any' types (your global rules)

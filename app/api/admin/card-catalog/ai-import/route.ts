@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { withAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
-import { BenefitRuleConfigSchema, PrismaJsonSchema } from "@/lib/validations";
+import type { BenefitRuleConfigSchema, PrismaJsonSchema } from "@/lib/validations";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import type { z } from "zod";

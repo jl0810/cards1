@@ -1,7 +1,7 @@
 'use client'
 
 import posthog from 'posthog-js'
-import { AnalyticsEventSchema } from '@/lib/validations'
+import type { AnalyticsEventSchema } from '@/lib/validations'
 import type { z } from 'zod'
 
 type EventProperties = z.infer<typeof AnalyticsEventSchema>

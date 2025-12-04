@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { forwardRef, HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
+import { forwardRef } from "react";
 
 /**
  * Glassmorphism card component following the exact specification

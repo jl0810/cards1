@@ -7,10 +7,12 @@
  * @satisfies US-013 - User Settings
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { UserProfileExtendedSchema, UpdateUserPreferencesSchema, safeValidateSchema } from '@/lib/validations';
+import type { UserProfileExtendedSchema} from '@/lib/validations';
+import { UpdateUserPreferencesSchema, safeValidateSchema } from '@/lib/validations';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';

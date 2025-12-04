@@ -5,7 +5,8 @@
  * @module app/api/plaid/exchange-public-token
  */
 
-import { NextResponse, NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { plaidClient } from "@/lib/plaid";
 import { prisma } from "@/lib/prisma";
@@ -17,14 +18,16 @@ import { ensureBankExists } from "@/lib/plaid-bank";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import {
-  PlaidExchangeTokenSchema,
+import type {
   PlaidAccountSchema,
-  PlaidCreditLiabilitySchema,
+  PlaidCreditLiabilitySchema
+} from "@/lib/validations";
+import {
+  PlaidExchangeTokenSchema
 } from "@/lib/validations";
 import { validateBody } from "@/lib/validation-middleware";
-import { z } from "zod";
-import { AccountBase } from "plaid";
+import type { z } from "zod";
+import type { AccountBase } from "plaid";
 
 /**
  * Exchanges a Plaid public token for an access token and creates a new PlaidItem.
@@ -228,8 +231,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const accessToken = exchangeResponse!.data.access_token;
-    const itemId = exchangeResponse!.data.item_id;
+    if (!exchangeResponse) {
+      throw new Error('Token exchange failed after all retry attempts');
+    }
+
+    const accessToken = exchangeResponse.data.access_token;
+    const itemId = exchangeResponse.data.item_id;
 
     // 3. Get Accounts info (Fetch from Plaid since metadata might be incomplete for full details like balances)
     let accounts: AccountBase[] = [];

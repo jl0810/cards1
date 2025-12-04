@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SuccessResponse } from "./validations";
+import type { SuccessResponse } from "./validations";
 
 /**
  * Standardized API error handling

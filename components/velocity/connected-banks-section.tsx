@@ -341,7 +341,7 @@ function BankConnectionCard({
   );
 }
 
-import {
+import type {
   FamilyMemberSchema,
   BenefitSchema,
   ProductSchema,

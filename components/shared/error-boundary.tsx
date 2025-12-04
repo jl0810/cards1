@@ -5,7 +5,7 @@ import { ErrorBoundary as SentryErrorBoundary } from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { logger } from "@/lib/logger";
-import { ReactErrorInfoSchema } from "@/lib/validations";
+import type { ReactErrorInfoSchema } from "@/lib/validations";
 import type { z } from "zod";
 
 type ReactErrorInfo = z.infer<typeof ReactErrorInfoSchema>;
@@ -56,12 +56,12 @@ export function ErrorBoundary({
       )}
       onError={(error, errorInfo) => {
         logger.error('Error caught by boundary', error, {
-          componentStack: (errorInfo as ReactErrorInfo) || 'No component stack available',
+          componentStack: (errorInfo) || 'No component stack available',
         });
         Sentry.captureException(error, {
           contexts: {
             react: {
-              componentStack: (errorInfo as ReactErrorInfo) || 'No component stack available',
+              componentStack: (errorInfo) || 'No component stack available',
             },
           },
         });
