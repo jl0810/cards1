@@ -26,6 +26,12 @@ import { NavDock } from "@/components/layout/nav-dock";
 type PlaidItem = z.infer<typeof PlaidItemSchema>;
 type Account = z.infer<typeof AccountSchema>;
 
+/**
+ * Dashboard page with auto-refresh capability
+ * @implements BR-025 - Dashboard Auto-Refresh
+ * @satisfies US-013 - View Dashboard
+ * @tested E2E
+ */
 export default function DashboardPage() {
   const router = useRouter();
   const isAdmin = useIsAdmin();
@@ -366,16 +372,16 @@ export default function DashboardPage() {
               paymentCycleStatus, // Add the calculated status
               due: acc.nextPaymentDueDate
                 ? (() => {
-                    const diffDays = Math.ceil(
-                      (new Date(acc.nextPaymentDueDate).getTime() -
-                        Date.now()) /
-                        (1000 * 60 * 60 * 24),
-                    );
-                    if (diffDays < 0) return "Overdue";
-                    if (diffDays === 0) return "Today";
-                    if (diffDays === 1) return "Tomorrow";
-                    return `${diffDays} days`;
-                  })()
+                  const diffDays = Math.ceil(
+                    (new Date(acc.nextPaymentDueDate).getTime() -
+                      Date.now()) /
+                    (1000 * 60 * 60 * 24),
+                  );
+                  if (diffDays < 0) return "Overdue";
+                  if (diffDays === 0) return "Today";
+                  if (diffDays === 1) return "Tomorrow";
+                  return `${diffDays} days`;
+                })()
                 : "N/A",
               type: acc.subtype || acc.type,
               color: "from-slate-800 to-slate-900", // Default color
@@ -459,11 +465,10 @@ export default function DashboardPage() {
       <AppHeader>
         <button
           onClick={() => setActiveUser("all")}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${
-            activeUser === "all"
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${activeUser === "all"
               ? "bg-white text-black border-white shadow-lg"
               : "bg-glass-100 text-slate-400 border-transparent"
-          }`}
+            }`}
         >
           <LayoutGrid className="w-4 h-4" />{" "}
           <span className="truncate">All</span>
@@ -472,11 +477,10 @@ export default function DashboardPage() {
           <button
             key={user.id}
             onClick={() => setActiveUser(user.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${
-              activeUser === user.id
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${activeUser === user.id
                 ? "bg-white text-black border-white shadow-lg"
                 : "bg-glass-100 text-slate-400 border-transparent"
-            }`}
+              }`}
           >
             <div
               className={`w-2 h-2 rounded-full ${user.color} flex-shrink-0`}

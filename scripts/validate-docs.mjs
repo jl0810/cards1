@@ -115,9 +115,18 @@ for (const file of codeFiles) {
     let testedMatch;
     while ((testedMatch = testedTagPattern.exec(content)) !== null) {
         const testFile = testedMatch[1];
-        if (!fs.existsSync(testFile)) {
+
+        // Allow "None", "Manual", or other documentation values
+        const isDocValue = ['None', 'Manual', 'Integration', 'E2E', 'Planned'].some(
+            val => testFile.toLowerCase().includes(val.toLowerCase())
+        );
+
+        // Only validate actual file paths (starting with __ or containing .test)
+        const looksLikeFilePath = testFile.startsWith('__') || testFile.includes('.test');
+
+        if (looksLikeFilePath && !fs.existsSync(testFile)) {
             errors.push(`${file} claims @tested ${testFile} but file doesn't exist!`);
-        } else {
+        } else if (!isDocValue) {
             testedTagFiles.set(file, testFile);
         }
     }

@@ -4,13 +4,16 @@ This project uses **Husky** for automated quality checks during `git commit` and
 
 ## 🎯 Quick Reference
 
-| Command | Description | When It Runs |
-|---------|-------------|--------------|
-| `git commit` | Triggers **pre-commit** hook | Automatically on every commit |
-| `git push` | Triggers **pre-push** hook | Automatically on every push |
-| `npm run quality:check` | Manual quality check | Run anytime |
-| `npm run quality:scan` | Full codebase scan | Run anytime |
-| `npm run lint:fix` | Auto-fix lint issues | Run when lint fails |
+| Command                 | Description                  | When It Runs                  |
+| ----------------------- | ---------------------------- | ----------------------------- |
+| `git commit`            | Triggers **pre-commit** hook | Automatically on every commit |
+| `git push`              | Triggers **pre-push** hook   | Automatically on every push   |
+| `npm run quality:check` | Manual quality check         | Run anytime                   |
+| `npm run quality:scan`  | Full codebase scan           | Run anytime                   |
+| `npm run lint:fix`      | Auto-fix lint issues         | Run when lint fails           |
+| `npm run docs:validate` | Validate traceability        | Run anytime                   |
+| `npm run docs:coverage` | Generate coverage report     | Run anytime                   |
+| `npm run docs:scan`     | Validate + coverage report   | Run anytime                   |
 
 ---
 
@@ -19,6 +22,7 @@ This project uses **Husky** for automated quality checks during `git commit` and
 Runs **automatically** on `git commit` and checks **only staged files**:
 
 ### Checks Performed:
+
 1. ✅ **TypeScript Type Check** - Production code only (excludes tests)
 2. ✅ **ESLint + Prettier** - Auto-fixes formatting, catches issues including:
    - 🔴 **Explicit `any` types** (BLOCKED)
@@ -31,6 +35,7 @@ Runs **automatically** on `git commit` and checks **only staged files**:
 6. ✅ **Belt-and-Suspenders `any` Check** - Double-checks for explicit `any`
 
 ### What Gets Blocked:
+
 - ❌ Explicit `any` types in production code
 - ❌ TypeScript errors
 - ❌ ESLint errors
@@ -39,6 +44,7 @@ Runs **automatically** on `git commit` and checks **only staged files**:
 - ❌ Outdated documentation references
 
 ### Performance:
+
 ⚡ **Fast** - Only checks staged files (~5-15 seconds)
 
 ---
@@ -48,6 +54,7 @@ Runs **automatically** on `git commit` and checks **only staged files**:
 Runs **automatically** on `git push` and checks **entire codebase**:
 
 ### Checks Performed:
+
 1. ✅ **Full TypeScript Type Check** - All production code
 2. ✅ **Full ESLint Scan (Strict)** - Zero warnings allowed
 3. ✅ **All Unit Tests** - Complete test suite
@@ -58,12 +65,14 @@ Runs **automatically** on `git push` and checks **entire codebase**:
    - Other security issues
 
 ### What Gets Blocked:
+
 - ❌ ANY type errors in codebase
 - ❌ ANY lint errors or warnings
 - ❌ ANY failing tests
 - ❌ Documentation/traceability issues
 
 ### Performance:
+
 🐢 **Slower** - Full codebase scan (~30-60 seconds)
 
 **Why?** Catches issues in **old code** that might have slipped through commits.
@@ -75,6 +84,7 @@ Runs **automatically** on `git push` and checks **entire codebase**:
 Run these commands **anytime** for quality assurance:
 
 ### Quick Check (What Pre-Commit Runs)
+
 ```bash
 npm run lint
 npm run type-check:production
@@ -82,12 +92,14 @@ npm test
 ```
 
 ### Full Quality Check
+
 ```bash
 npm run quality:check
 # Runs: type-check + lint:strict + tests
 ```
 
 ### Complete Codebase Scan
+
 ```bash
 npm run quality:scan
 # Runs: type-check + lint:strict + tests + docs validation
@@ -95,6 +107,7 @@ npm run quality:scan
 ```
 
 ### Auto-Fix Lint Issues
+
 ```bash
 npm run lint:fix
 # Automatically fixes formatting and some lint issues
@@ -106,31 +119,33 @@ npm run lint:fix
 
 ### Critical Rules (Block Commits)
 
-| Rule | Severity | Description |
-|------|----------|-------------|
-| `@typescript-eslint/no-explicit-any` | **ERROR** | Blocks explicit `any` types |
-| `@typescript-eslint/no-unused-vars` | **ERROR** | Catches unused variables |
-| `@typescript-eslint/consistent-type-imports` | **ERROR** | Enforces `import type` |
+| Rule                                         | Severity  | Description                 |
+| -------------------------------------------- | --------- | --------------------------- |
+| `@typescript-eslint/no-explicit-any`         | **ERROR** | Blocks explicit `any` types |
+| `@typescript-eslint/no-unused-vars`          | **ERROR** | Catches unused variables    |
+| `@typescript-eslint/consistent-type-imports` | **ERROR** | Enforces `import type`      |
 
 ### Warning Rules (Don't Block)
 
-| Rule | Severity | Description |
-|------|----------|-------------|
-| `@typescript-eslint/no-unsafe-assignment` | WARN | Unsafe `any` assignments |
-| `@typescript-eslint/no-unsafe-member-access` | WARN | Unsafe property access |
-| `@typescript-eslint/no-non-null-assertion` | WARN | `!` operator usage |
-| `no-console` | WARN | `console.log` (use logger) |
+| Rule                                         | Severity | Description                |
+| -------------------------------------------- | -------- | -------------------------- |
+| `@typescript-eslint/no-unsafe-assignment`    | WARN     | Unsafe `any` assignments   |
+| `@typescript-eslint/no-unsafe-member-access` | WARN     | Unsafe property access     |
+| `@typescript-eslint/no-non-null-assertion`   | WARN     | `!` operator usage         |
+| `no-console`                                 | WARN     | `console.log` (use logger) |
 
 ---
 
 ## 🎨 lint-staged Configuration
 
 **Staged files** are automatically:
+
 1. ✅ Linted with ESLint (`--fix`)
 2. ✅ Formatted with Prettier
 3. ✅ Re-staged after fixes
 
 Configuration in `package.json`:
+
 ```json
 "lint-staged": {
   "*.{js,jsx,ts,tsx}": [
@@ -152,6 +167,7 @@ Configuration in `package.json`:
 **Problem:** ESLint detected explicit `any` type usage.
 
 **Solution:**
+
 ```typescript
 // ❌ BAD - Will be blocked
 const updates: any = {};
@@ -174,6 +190,7 @@ initial?: Variant;
 **Problem:** Regular imports used only for types.
 
 **Solution:**
+
 ```typescript
 // ❌ BAD
 import { ReactNode } from "react";
@@ -189,12 +206,14 @@ ESLint can auto-fix this: `npm run lint:fix`
 **Cause:** Running tests on large test suite.
 
 **Solution:** Pre-commit only runs affected tests. If still slow:
+
 - Skip with `git commit --no-verify` (use sparingly!)
 - Rely on pre-push for comprehensive checks
 
 ### Issue: Pre-push failed but I need to push urgently
 
 **Emergency bypass** (use only when absolutely necessary):
+
 ```bash
 git push --no-verify
 ```
@@ -206,21 +225,24 @@ git push --no-verify
 ## 🔄 Skipping Hooks (When Appropriate)
 
 ### When to skip:
+
 - ✅ WIP commits on feature branch
 - ✅ Emergency hotfixes (review immediately after)
 - ✅ Merge commits (auto-skipped)
 - ✅ Reverting broken commits
 
 ### How to skip:
+
 ```bash
 # Skip pre-commit
 git commit --no-verify -m "WIP: feature in progress"
 
-# Skip pre-push  
+# Skip pre-push
 git push --no-verify
 ```
 
 ### When NOT to skip:
+
 - ❌ Regular feature commits
 - ❌ Pushing to main/production
 - ❌ Pull request commits
@@ -230,12 +252,13 @@ git push --no-verify
 
 ## 📊 Hook Performance
 
-| Hook | Files Checked | Typical Time | Max Time |
-|------|--------------|--------------|----------|
-| Pre-commit | Staged only | 5-15s | 30s |
-| Pre-push | All files | 30-60s | 2min |
+| Hook       | Files Checked | Typical Time | Max Time |
+| ---------- | ------------- | ------------ | -------- |
+| Pre-commit | Staged only   | 5-15s        | 30s      |
+| Pre-push   | All files     | 30-60s       | 2min     |
 
 **Tips for faster hooks:**
+
 - Keep commits focused (fewer files = faster)
 - Run `npm run lint:fix` before committing
 - Fix type errors as you code
@@ -245,6 +268,7 @@ git push --no-verify
 ## 🎓 Best Practices
 
 ### ✅ DO:
+
 - Run `npm run quality:check` before opening PRs
 - Fix lint warnings proactively
 - Use `npm run lint:fix` to auto-fix issues
@@ -252,6 +276,7 @@ git push --no-verify
 - Run tests locally before committing
 
 ### ❌ DON'T:
+
 - Skip hooks routinely with `--no-verify`
 - Commit broken code "to fix later"
 - Use `any` types (ESLint will catch it anyway)
@@ -262,6 +287,7 @@ git push --no-verify
 ## 🔍 Debugging Hooks
 
 Enable verbose output:
+
 ```bash
 # See what's happening in hooks
 GIT_TRACE=1 git commit -m "test"
@@ -269,11 +295,12 @@ GIT_TRACE=1 git commit -m "test"
 # Test pre-commit manually
 .husky/pre-commit
 
-# Test pre-push manually  
+# Test pre-push manually
 .husky/pre-push
 ```
 
 Check hook status:
+
 ```bash
 # Verify hooks are installed
 ls -la .husky/

@@ -27,6 +27,12 @@ interface LinkedCardDisplayProps {
   product: CardProduct;
 }
 
+/**
+ * Displays linked card product with image fallback
+ * @implements BR-038 - Image Error Handling
+ * @satisfies US-006 - Link Bank Account
+ * @tested __tests__/components/velocity/linked-card-display.test.tsx
+ */
 export function LinkedCardDisplay({ product }: LinkedCardDisplayProps) {
   const [imageError, setImageError] = React.useState(false);
 
@@ -134,11 +140,10 @@ export function LinkedCardDisplay({ product }: LinkedCardDisplayProps) {
                 <div className="flex items-start gap-1.5">
                   <div className="flex-shrink-0 mt-0.5">
                     <div
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        benefit.maxAmount
+                      className={`w-1.5 h-1.5 rounded-full ${benefit.maxAmount
                           ? "bg-current animate-pulse"
                           : "bg-current/50"
-                      }`}
+                        }`}
                     ></div>
                   </div>
                   <div className="flex-1 min-w-0">
