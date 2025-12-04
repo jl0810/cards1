@@ -4,13 +4,13 @@ import React from "react";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Trash2, CreditCard, AlertCircle, Building2 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { CreditCard, RefreshCw, Link as LinkIcon } from "lucide-react";
 import { PlaidLinkUpdate } from "@/components/shared/plaid-link-update";
 import { FamilyMemberSelector } from "./family-member-selector";
 import { BankLogo } from "./bank-logo";
@@ -65,6 +65,25 @@ export function BankDetailsSheet({
                 </SheetDescription>
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                item.status === 'active' 
+                  ? 'bg-green-500/20 text-green-400' 
+                  : 'bg-red-500/20 text-red-400'
+              }`}>
+                {item.status === 'active' ? 'Connected' : 'Needs Update'}
+              </span>
+              {item.status === "needs_reauth" && (
+                <PlaidLinkUpdate
+                  itemId={item.id}
+                  institutionName={item.institutionName || "this bank"}
+                  onSuccess={onUpdateSuccess}
+                  variant="default"
+                  size="sm"
+                  className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700"
+                />
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-between bg-white/5 p-3 rounded-lg">
@@ -78,30 +97,6 @@ export function BankDetailsSheet({
         </SheetHeader>
 
         <div className="py-6 space-y-6">
-          {/* Status Alert */}
-          {item.status === "needs_reauth" && (
-            <Alert
-              variant="destructive"
-              className="bg-red-500/10 border-red-500/20"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Action Required</AlertTitle>
-              <AlertDescription className="mt-2 space-y-3">
-                <p>
-                  Your connection to {item.institutionName} needs to be updated.
-                  This usually happens when you change your password.
-                </p>
-                <PlaidLinkUpdate
-                  itemId={item.id}
-                  institutionName={item.institutionName || "this bank"}
-                  onSuccess={onUpdateSuccess}
-                  variant="destructive"
-                  size="sm"
-                />
-              </AlertDescription>
-            </Alert>
-          )}
-
           {/* Accounts List */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">

@@ -11,6 +11,17 @@ import {
   Users,
   Link as LinkIcon,
   AlertCircle,
+  TrendingUp,
+  DollarSign,
+  Building,
+  Landmark,
+  Activity,
+  Zap,
+  Server,
+  HardDrive,
+  Power,
+  Cpu,
+  AlertTriangle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -88,10 +99,18 @@ export interface FamilyMember {
 
 /**
  * Bank Accounts View Component
- * Displays connected bank accounts and allows managing connections.
+ * Displays bank connections with server rack aesthetic and family member ownership.
  *
- * @satisfies US-006 - Link Bank Account
- * @satisfies US-020 - Monitor Bank Connection Health (Status Badges, Fix Connection)
+ * @implements BR-039 - Smart Fix Adoption
+ * @implements BR-035 - Item Error Detection & Recovery
+ * @satisfies US-020 - Monitor Bank Connection Health
+ * 
+ * Features:
+ * - Horizontal server rack layout (distinct from credit cards)
+ * - Family member ownership display
+ * - Power button status indicators
+ * - Warning badge for unlinked connections
+ * - Responsive grid layout
  */
 export function BankAccountsView({
   activeUser = "all",
@@ -132,11 +151,11 @@ export function BankAccountsView({
     }
   };
 
-  // Filter items by active user
+  // Filter items by active user and exclude inactive items (BR-039)
   const filteredItems =
     activeUser === "all"
-      ? items
-      : items.filter((item) => item.familyMemberId === activeUser);
+      ? items.filter((item) => item.status !== "inactive")
+      : items.filter((item) => item.familyMemberId === activeUser && item.status !== "inactive");
 
   const syncTransactions = async (itemId?: string) => {
     const itemsToSync = itemId
@@ -232,10 +251,29 @@ export function BankAccountsView({
     }).format(amount || 0);
   };
 
+  /**
+   * Count bank connections that need user attention
+   * @param items - Array of PlaidItem objects
+   * @returns Number of items with needs_reauth or disconnected status
+   */
+  const needsReauthCount = items.filter(
+    (item) => item.status === "needs_reauth" || item.status === "disconnected"
+  ).length;
+
   return (
     <div className="pb-24 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Bank Accounts</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-white">Bank Accounts</h2>
+          {needsReauthCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-full">
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-medium text-amber-300">
+                {needsReauthCount} Need{needsReauthCount !== 1 ? "s" : ""} Update
+              </span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <PlaidLinkWithFamily
             familyMembers={familyMembers}
@@ -263,7 +301,7 @@ export function BankAccountsView({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredItems.map((item) => {
             const totalBalance = item.accounts.reduce(
               (sum, acc) => sum + (acc.currentBalance || 0),
@@ -273,33 +311,111 @@ export function BankAccountsView({
             return (
               <motion.div
                 key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 onClick={() => setSelectedItem(item)}
-                className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors cursor-pointer group relative overflow-hidden"
+                className="bg-gradient-to-r from-slate-900/50 to-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600/50 transition-all cursor-pointer group relative"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <BankLogo
-                    name={item.institutionName}
-                    bankId={item.bankId}
-                    size="md"
-                  />
-                  <div
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      item.status === "active"
-                        ? "bg-green-500/10 text-green-400"
-                        : item.status === "needs_reauth"
-                          ? "bg-amber-500/10 text-amber-400"
+                {/* Horizontal server rack style */}
+                <div className="h-20 bg-gradient-to-r from-blue-600/10 via-purple-500/5 to-slate-700/10 relative overflow-hidden">
+                  {/* Rack rails */}
+                  <div className="absolute top-2 left-4 bottom-2 w-1 bg-slate-700/50 rounded-full"></div>
+                  <div className="absolute top-2 right-4 bottom-2 w-1 bg-slate-700/50 rounded-full"></div>
+                  
+                  {/* Server rack units */}
+                  <div className="absolute inset-0 flex items-center">
+                    {/* Bank logo as server unit */}
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-slate-800/50 rounded-lg border border-slate-600/50 flex items-center justify-center">
+                        <BankLogo
+                          name={item.institutionName}
+                          bankId={item.bankId}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Ventilation grills */}
+                    <div className="flex gap-0.5 h-8 opacity-20 mx-4">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="w-0.5 bg-slate-600 rounded-full"></div>
+                      ))}
+                    </div>
+                    
+                    {/* Status indicator with power button */}
+                    <div className="flex-1 flex items-center justify-end px-4">
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium border backdrop-blur-sm flex items-center gap-2 ${
+                        item.status === "active"
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                          : item.status === "needs_reauth"
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                            : "bg-red-500/20 text-red-300 border-red-500/30"
+                      }`}>
+                        <Power className={`w-3 h-3 ${
+                          item.status === "active" 
+                            ? "text-emerald-400" 
+                            : item.status === "needs_reauth"
+                              ? "text-amber-400"
+                              : "text-red-400"
+                        }`} />
+                        {item.status === "needs_reauth"
+                          ? "Reauth Required"
                           : item.status === "disconnected"
-                            ? "bg-red-500/10 text-red-400"
-                            : "bg-red-500/10 text-red-400"
-                    }`}
-                  >
-                    {item.status === "needs_reauth"
-                      ? "Needs Re-auth"
-                      : item.status === "disconnected"
-                        ? "Disabled"
-                        : item.status}
+                            ? "Offline"
+                            : "Connected"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info panel below rack */}
+                <div className="p-4 bg-slate-900/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {/* Family member indicator */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full border border-white/20 bg-indigo-500/20 flex items-center justify-center">
+                          <span className="text-xs font-medium text-indigo-300">
+                            {familyMembers.find(m => m.id === item.familyMemberId)?.name?.substring(0, 2)?.toUpperCase() || "FM"}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400 font-medium max-w-[80px] truncate">
+                          {familyMembers.find(m => m.id === item.familyMemberId)?.name?.substring(0, 10) || "Unknown"}
+                          {(familyMembers.find(m => m.id === item.familyMemberId)?.name?.length ?? 0) > 10 && "..."}
+                        </span>
+                      </div>
+                      
+                      <div className="w-px h-4 bg-slate-700/50"></div>
+                      
+                      <div>
+                        <h3 className="font-semibold text-white text-sm">
+                          {item.institutionName || "Unknown Bank"}
+                        </h3>
+                        <p className="text-slate-400 text-xs">
+                          {item.accounts.length} Account{item.accounts.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Connection metrics */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <Activity className="w-3 h-3" />
+                        <span>
+                          {item.status === "active" ? "Connected" : "Error"}
+                        </span>
+                      </div>
+                      
+                      <div className="h-6 w-px bg-slate-700/50"></div>
+                      
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <Server className="w-3 h-3" />
+                        <span>
+                          {item.accounts.length} Account{item.accounts.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 {(item.status === "needs_reauth" ||
@@ -320,24 +436,8 @@ export function BankAccountsView({
                   </div>
                 )}
 
-                <h3 className="font-semibold text-white text-lg mb-1 truncate">
-                  {item.institutionName || "Unknown Bank"}
-                </h3>
-
-                <p className="text-slate-400 text-sm mb-4">
-                  {item.accounts.length} Account
-                  {item.accounts.length !== 1 ? "s" : ""}
-                </p>
-
-                <div className="flex items-center justify-between text-sm border-t border-white/5 pt-3">
-                  <span className="text-slate-500">Total Balance</span>
-                  <span className="text-white font-mono">
-                    {formatCurrency(totalBalance)}
-                  </span>
-                </div>
-
-                {/* Hover effect */}
-                <div className="absolute inset-0 border-2 border-primary/0 group-hover:border-primary/50 rounded-xl transition-colors pointer-events-none" />
+                {/* Subtle hover effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl pointer-events-none" />
               </motion.div>
             );
           })}

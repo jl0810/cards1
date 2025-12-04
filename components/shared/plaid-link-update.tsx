@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 
@@ -25,6 +25,13 @@ interface PlaidLinkUpdateProps {
  * @implements BR-039 - Smart Fix Adoption
  * @satisfies US-020 - Monitor Bank Connection Health
  * @see https://plaid.com/docs/link/update-mode/
+ * 
+ * Smart Fix Flow:
+ * 1. Detect token issues (deleted, expired, login_required)
+ * 2. Launch appropriate fix flow (update vs new link)
+ * 3. After successful Plaid update, refresh item status via API
+ * 4. Status endpoint updates database: inactive → active
+ * 5. UI filters out inactive items, shows only active connections
  */
 export function PlaidLinkUpdate({
   itemId,
@@ -115,6 +122,9 @@ export function PlaidLinkUpdate({
         toast.success(`${institutionName} connection updated!`, {
           description: "Your bank connection is now working again.",
         });
+        
+        // BR-035: Refresh item status after successful update
+        refreshItemStatus(itemId);
       }
       onSuccess();
     },
@@ -146,13 +156,23 @@ export function PlaidLinkUpdate({
     }
   };
 
+  // BR-035: Refresh item status after successful update
+  const refreshItemStatus = async (itemId: string) => {
+    try {
+      await fetch(`/api/plaid/items/${itemId}/status`, { method: 'GET' });
+      logger.info("Item status refreshed after update", { itemId });
+    } catch (error) {
+      logger.error("Failed to refresh item status", { itemId, error });
+    }
+  };
+
   return (
     <Button
       onClick={handleClick}
       disabled={loading || (!ready && !error)}
       variant={variant}
       size={size}
-      className={`gap-2 ${className || ""}`}
+      className={`gap-2 bg-indigo-600 hover:bg-indigo-700 ${className || ""}`}
     >
       {loading ? (
         <>
@@ -166,7 +186,7 @@ export function PlaidLinkUpdate({
         </>
       ) : (
         <>
-          <RefreshCw className="h-4 w-4" />
+          <Wrench className="h-4 w-4" />
           {status === "disconnected" ? "Re-link" : "Fix Connection"}
         </>
       )}

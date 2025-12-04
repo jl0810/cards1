@@ -75,7 +75,7 @@ import type { z } from "zod";
 type MockPlaidModule = z.infer<typeof MockPlaidModuleSchema>;
 type ClerkAuthMock = z.infer<typeof ClerkAuthMockSchema>;
 
-const mockItemGetFn = (plaidModule as MockPlaidModule).__mockItemGet;
+const mockItemGetFn = (plaidModule as unknown as MockPlaidModule).__mockItemGet;
 
 describe("Unit: Plaid Item Status", () => {
   const testUserId = "user_123";
@@ -246,6 +246,38 @@ describe("Unit: Plaid Item Status", () => {
       expect.objectContaining({
         where: { id: testItemId },
         data: expect.objectContaining({ lastSyncedAt: expect.any(Date) }),
+      }),
+    );
+  });
+
+  it("should update status to active after successful fix (BR-035/BR-039)", async () => {
+    (auth as ClerkAuthMock).mockResolvedValue({ userId: testClerkId });
+    mockItemGetFn.mockResolvedValue({
+      data: {
+        item: {
+          institution_id: "ins_test",
+          error: null, // No error = active connection
+        },
+      },
+    });
+
+    const request = new Request(
+      `http://localhost/api/plaid/items/${testItemId}/status`,
+    );
+    const params = Promise.resolve({ itemId: testItemId });
+
+    const response = await GET(request, { params });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.status).toBe("active");
+    expect(prisma.plaidItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: testItemId },
+        data: expect.objectContaining({ 
+          status: "active",
+          lastSyncedAt: expect.any(Date) 
+        }),
       }),
     );
   });

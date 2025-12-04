@@ -168,7 +168,7 @@ export default function PlaidLinkWithFamily({
       <Button
         onClick={startLink}
         disabled={loading}
-        className="bg-brand-primary hover:bg-brand-primary/90"
+        className="bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
       >
         <Plus className="w-4 h-4 mr-2" />
         {loading ? "Connecting..." : "Connect Bank"}
@@ -185,27 +185,20 @@ export default function PlaidLinkWithFamily({
       <Button
         onClick={startLink}
         disabled={loading}
-        className="bg-brand-primary hover:bg-brand-primary/90 rounded-lg pr-2"
+        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg pr-2 transition-colors"
       >
         <Plus className="w-4 h-4 mr-2" />
         {loading ? "Connecting..." : "Connect Bank for"}
         {/* Inline family member display */}
         <div className="ml-2 flex items-center gap-1.5 pl-2 border-l border-white/20">
-          <div className="relative flex h-5 w-5 shrink-0 overflow-hidden rounded-full border border-white/30 bg-gradient-to-br from-indigo-500 to-purple-600">
-            {selectedMember?.avatar ? (
-              <img
-                src={selectedMember.avatar}
-                alt={selectedMember.name}
-                className="aspect-square h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-indigo-500 text-[9px] font-bold text-white uppercase">
-                {selectedMember?.name?.substring(0, 2) || "FM"}
-              </div>
-            )}
+          <div className="relative flex h-5 w-5 shrink-0 overflow-hidden rounded-full border border-white/30 bg-indigo-500/20 flex items-center justify-center">
+            <span className="text-xs font-medium text-indigo-300">
+              {selectedMember?.name?.substring(0, 2)?.toUpperCase() || "FM"}
+            </span>
           </div>
-          <span className="text-sm font-medium">
-            {selectedMember?.name || "Select..."}
+          <span className="text-sm font-medium text-white max-w-[100px] truncate">
+            {selectedMember?.name?.substring(0, 10) || "Select..."}
+            {selectedMember?.name?.length > 10 && "..."}
           </span>
         </div>
       </Button>
@@ -238,34 +231,27 @@ export default function PlaidLinkWithFamily({
                   whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full border border-white/10 mr-3 bg-gradient-to-br from-slate-700 to-slate-600">
-                    {member.avatar ? (
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        className="aspect-square h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white uppercase">
-                        {member.name.substring(0, 2)}
-                      </div>
-                    )}
+                  <div className="relative flex h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/20 bg-indigo-500/20 flex items-center justify-center mr-3">
+                    <span className="text-xs font-medium text-indigo-300">
+                      {member.name?.substring(0, 2)?.toUpperCase() || "FM"}
+                    </span>
                   </div>
-                  <div className="flex flex-col items-start">
-                    <span className="font-medium text-sm">{member.name}</span>
-                    {member.isPrimary && (
+                  <span className="text-sm font-medium text-white max-w-[120px] truncate">
+                    {member.name?.substring(0, 10)}
+                    {member.name?.length > 10 && "..."}
+                  </span>
+                  {member.isPrimary && (
+                    <>
                       <span className="text-[10px] text-indigo-400 font-medium">
                         Primary Owner
                       </span>
-                    )}
-                  </div>
-                  {selectedFamilyMemberId === member.id && (
-                    <motion.div
-                      layoutId="check"
-                      className="absolute right-2 text-indigo-400"
-                    >
-                      <Check className="h-4 w-4" />
-                    </motion.div>
+                      <motion.div
+                        layoutId="check"
+                        className="absolute right-2 text-indigo-400"
+                      >
+                        <Check className="h-4 w-4" />
+                      </motion.div>
+                    </>
                   )}
                 </motion.button>
               ))}

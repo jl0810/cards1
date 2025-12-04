@@ -12,6 +12,7 @@ import { syncClerkUser, syncAllClerkUsers } from "@/lib/clerk-sync";
 import { Errors, successResponse } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { cleanupCorruptedAvatars } from "@/lib/family-operations";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,16 @@ export async function POST(req: Request) {
       return Errors.unauthorized();
     }
 
-    const { syncAll } = await req.json().catch(() => ({ syncAll: false }));
+    const { syncAll, cleanupAvatars } = await req.json().catch(() => ({ syncAll: false, cleanupAvatars: false }));
+
+    if (cleanupAvatars) {
+      logger.info("Avatar cleanup requested", { requestedBy: userId });
+      const result = await cleanupCorruptedAvatars();
+      return successResponse({
+        message: `Cleaned up ${result.count} corrupted avatar URLs`,
+        count: result.count
+      });
+    }
 
     if (syncAll) {
       // Sync all users (admin only - add permission check here)

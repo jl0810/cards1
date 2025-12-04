@@ -49,6 +49,7 @@ jest.mock("lucide-react", () => ({
   Users: () => null,
   Link: () => null,
   AlertCircle: () => null,
+  AlertTriangle: () => null,
 }));
 
 jest.mock("@/components/velocity/family-member-selector", () => ({
@@ -71,6 +72,93 @@ jest.mock("@/components/ui/sheet", () => ({
 
 // Mock fetch globally
 global.fetch = jest.fn();
+
+describe("BankAccountsView", () => {
+  const mockItems = [
+    {
+      id: "1",
+      status: "active",
+      institutionName: "Chase",
+      accounts: [],
+      familyMemberId: "member1",
+      bankId: "chase",
+    },
+    {
+      id: "2", 
+      status: "needs_reauth",
+      institutionName: "Wells Fargo",
+      accounts: [],
+      familyMemberId: "member2",
+      bankId: "wells",
+    },
+    {
+      id: "3",
+      status: "disconnected", 
+      institutionName: "Bank of America",
+      accounts: [],
+      familyMemberId: "member1",
+      bankId: "boa",
+    },
+  ];
+
+  const mockFamilyMembers = [
+    { id: "member1", name: "John Smith", avatar: null, isPrimary: true },
+    { id: "member2", name: "Sarah Davis", avatar: null, isPrimary: false },
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should render warning badge when connections need attention", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: () => Promise.resolve({
+        items: mockItems,
+        family: mockFamilyMembers,
+      }),
+    });
+
+    render(<BankAccountsView activeUser="all" onLinkSuccess={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/2 Needs Update/)).toBeInTheDocument();
+    });
+  });
+
+  it("should not show warning badge when all connections are active", async () => {
+    const activeItems = mockItems.map(item => ({ ...item, status: "active" }));
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: () => Promise.resolve({
+        items: activeItems,
+        family: mockFamilyMembers,
+      }),
+    });
+
+    render(<BankAccountsView activeUser="all" onLinkSuccess={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Needs Update/)).not.toBeInTheDocument();
+    });
+  });
+
+  it("should show singular 'Need Update' for single problematic connection", async () => {
+    const singleProblemItem = [mockItems[1]]; // Only the needs_reauth item
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: () => Promise.resolve({
+        items: singleProblemItem,
+        family: mockFamilyMembers,
+      }),
+    });
+
+    render(<BankAccountsView activeUser="all" onLinkSuccess={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 Need Update/)).toBeInTheDocument();
+    });
+  });
+});
 
 describe("BankAccountsView - Disconnect Functionality", () => {
   beforeEach(() => {

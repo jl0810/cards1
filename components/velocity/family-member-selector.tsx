@@ -1,9 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronsUpDown, User, Users } from 'lucide-react';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Utility function to validate URLs
+function isValidUrl(string: string): boolean {
+    try {
+        const url = new URL(string);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (_) {
+        return false;
+    }
+}
 import {
     Popover,
     PopoverContent,
@@ -43,17 +53,21 @@ export function FamilyMemberSelector({
                 >
                     <div className="flex items-center gap-2">
                         <div className="relative flex h-5 w-5 shrink-0 overflow-hidden rounded-full border border-white/20 bg-gradient-to-br from-indigo-500 to-purple-600">
-                            {selectedMember?.avatar ? (
+                            {selectedMember?.avatar && isValidUrl(selectedMember.avatar) ? (
                                 <img
                                     src={selectedMember.avatar}
                                     alt={selectedMember.name}
                                     className="aspect-square h-full w-full object-cover"
+                                    onError={(e) => {
+                                        // Fallback to initials on image load error
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    }}
                                 />
-                            ) : (
-                                <div className="flex h-full w-full items-center justify-center bg-indigo-500 text-[9px] font-bold text-white uppercase">
-                                    {selectedMember?.name?.substring(0, 2) || 'FM'}
-                                </div>
-                            )}
+                            ) : null}
+                            <div className={`flex h-full w-full items-center justify-center bg-indigo-500 text-[9px] font-bold text-white uppercase ${(selectedMember?.avatar && isValidUrl(selectedMember.avatar)) ? 'hidden' : ''}`}>
+                                {selectedMember?.name?.substring(0, 2) || 'FM'}
+                            </div>
                         </div>
                         <span className="truncate max-w-[80px]">
                             {selectedMember?.name || 'Select...'}
@@ -83,17 +97,21 @@ export function FamilyMemberSelector({
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <div className="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full border border-white/10 mr-3 bg-gradient-to-br from-slate-700 to-slate-600">
-                                    {member.avatar ? (
+                                    {member.avatar && isValidUrl(member.avatar) ? (
                                         <img
                                             src={member.avatar}
                                             alt={member.name}
                                             className="aspect-square h-full w-full object-cover"
+                                            onError={(e) => {
+                                                // Fallback to initials on image load error
+                                                e.currentTarget.style.display = 'none';
+                                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                            }}
                                         />
-                                    ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white uppercase">
-                                            {member.name.substring(0, 2)}
-                                        </div>
-                                    )}
+                                    ) : null}
+                                    <div className={`flex h-full w-full items-center justify-center text-xs font-bold text-white uppercase ${(member.avatar && isValidUrl(member.avatar)) ? 'hidden' : ''}`}>
+                                        {member.name.substring(0, 2)}
+                                    </div>
                                 </div>
                                 <div className="flex flex-col items-start">
                                     <span className="font-medium text-sm">

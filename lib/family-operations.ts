@@ -196,3 +196,83 @@ export async function deleteFamilyMember(clerkId: string, memberId: string) {
     where: { id: memberId },
   });
 }
+
+/**
+ * Clean up corrupted avatar URLs from family members
+ * 
+ * @returns {Promise<{count: number}>} Number of cleaned up records
+ */
+export async function cleanupCorruptedAvatars() {
+  // Check both UserProfile and FamilyMember tables for corrupted data
+  const allUserProfiles = await prisma.userProfile.findMany();
+  const allFamilyMembers = await prisma.familyMember.findMany();
+  
+  const corruptedPattern = /^[A-Za-z0-9+/]{20,}={0,2}$/; // Base64 pattern
+  let cleanedCount = 0;
+  
+  console.log('Checking user profiles for corrupted data...');
+  
+  // Check UserProfile table
+  for (const profile of allUserProfiles) {
+    let needsUpdate = false;
+    const updates: any = {};
+    
+    if (profile.name && corruptedPattern.test(profile.name)) {
+      console.log(`Found corrupted profile name: ${profile.name}`);
+      updates.name = 'Unknown User';
+      needsUpdate = true;
+    }
+    
+    if (profile.avatar && corruptedPattern.test(profile.avatar)) {
+      console.log(`Found corrupted profile avatar: ${profile.avatar}`);
+      updates.avatar = null;
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
+      await prisma.userProfile.update({
+        where: { id: profile.id },
+        data: updates,
+      });
+      cleanedCount++;
+      console.log(`Cleaned up corrupted profile data: ${profile.id}`);
+    }
+  }
+  
+  console.log('Checking family members for corrupted data...');
+  
+  // Check FamilyMember table
+  for (const member of allFamilyMembers) {
+    let needsUpdate = false;
+    const updates: any = {};
+    
+    if (member.name && corruptedPattern.test(member.name)) {
+      console.log(`Found corrupted member name: ${member.name}`);
+      updates.name = 'Unknown Member';
+      needsUpdate = true;
+    }
+    
+    if (member.avatar && corruptedPattern.test(member.avatar)) {
+      console.log(`Found corrupted member avatar: ${member.avatar}`);
+      updates.avatar = null;
+      needsUpdate = true;
+    }
+    
+    if (member.email && corruptedPattern.test(member.email)) {
+      console.log(`Found corrupted member email: ${member.email}`);
+      updates.email = null;
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
+      await prisma.familyMember.update({
+        where: { id: member.id },
+        data: updates,
+      });
+      cleanedCount++;
+      console.log(`Cleaned up corrupted member data: ${member.id}`);
+    }
+  }
+
+  return { count: cleanedCount };
+}

@@ -8,6 +8,12 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
+    "lint:fix": "eslint . --fix",
+    "lint:strict": "eslint . --max-warnings 0",
+    "type-check": "tsc --noEmit",
+    "type-check:production": "tsc --noEmit --project tsconfig.production.json",
+    "quality:check": "npm run type-check && npm run lint:strict && npm run test -- --passWithNoTests",
+    "quality:scan": "echo '🔍 Running full codebase quality scan...' && npm run type-check:production && npm run lint:strict && npm run test -- --passWithNoTests && node scripts/validate-docs.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -31,8 +37,7 @@
     "ios:open": "npx cap open ios",
     "ios:dev": "npm run ios:sync && npm run ios:open",
     "sentry:finalize": "sentry-cli releases finalize",
-    "prepare": "husky",
-    "type-check": "tsc --noEmit"
+    "prepare": "husky"
   },
   "dependencies": {
     "@babel/runtime": "^7.26.10",
@@ -64,7 +69,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@react-email/components": "^0.5.7",
     "@sentry/nextjs": "^10.27.0",
-    "@t3-oss/env-nextjs": "^0.11.1",
+    "@t3-oss/env-nextjs": "^0.13.8",
     "@tailwindcss/postcss": "^4.1.16",
     "@types/node": "^24.0.3",
     "@types/pg": "^8.15.6",
@@ -125,7 +130,8 @@
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "lint-staged": "^16.2.7",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "typescript-eslint": "^8.48.1"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

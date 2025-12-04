@@ -13,7 +13,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Wrench } from 'lucide-react';
 
 export default function Error({
   error,
@@ -36,21 +36,28 @@ export default function Error({
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
           Something went wrong
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
           We&apos;ve been notified and are looking into it.
         </p>
-        <div className="space-y-3">
-          <Button onClick={reset} className="w-full">
+        <div className="flex items-center gap-2 mb-4">
+          <Button onClick={reset} className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-sm">
             Try again
           </Button>
           <Button
-            variant="outline"
-            onClick={() => (window.location.href = '/')}
-            className="w-full"
+            onClick={() => window.location.reload()}
+            className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-sm flex items-center gap-2"
           >
-            Go home
+            <Wrench className="h-3 w-3" />
+            Fix
           </Button>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => (window.location.href = '/')}
+          className="w-full px-4 py-2 text-sm"
+        >
+          Go home
+        </Button>
         {process.env.NODE_ENV === 'development' && (
           <details className="mt-6 text-left">
             <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">

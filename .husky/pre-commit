@@ -6,7 +6,7 @@ echo "🔍 Running pre-commit checks..."
 echo "→ Type checking production code..."
 npx tsc --noEmit --project tsconfig.production.json || exit 1
 
-# 2. Lint and format staged files
+# 2. Lint and format staged files (NOW INCLUDES 'any' TYPE CHECKING!)
 echo "→ Linting and formatting..."
 npx lint-staged || exit 1
 
@@ -32,4 +32,16 @@ if [ -n "$CLIENT_IN_PAGES" ]; then
   exit 1
 fi
 
+# 6. Additional type safety check for explicit 'any' (belt-and-suspenders)
+echo "→ Double-checking for explicit 'any' types..."
+STAGED_TS_FILES=$(echo "$STAGED_FILES" | grep -E '\.tsx?$' | grep -v '__tests__' | grep -v '.test.ts' | grep -v 'node_modules')
+if [ -n "$STAGED_TS_FILES" ]; then
+  ANY_COUNT=$(echo "$STAGED_TS_FILES" | xargs grep -n ': any' 2>/dev/null | wc -l | xargs)
+  if [ "$ANY_COUNT" -gt 0 ]; then
+    echo "⚠️  WARNING: Found $ANY_COUNT explicit 'any' type(s) in staged files"
+    echo "    ESLint should have caught these - check eslint.config.js"
+  fi
+fi
+
 echo "✅ All pre-commit checks passed!"
+
