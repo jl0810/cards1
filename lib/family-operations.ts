@@ -1,11 +1,11 @@
 /**
  * Family Member Business Logic
  * Pure business logic for family member operations - no HTTP concerns
- * 
+ *
  * @module lib/family-operations
  */
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 
 /**
  * Custom error types for better error handling
@@ -13,27 +13,27 @@ import { prisma } from '@/lib/prisma';
 export class UserNotFoundError extends Error {
   constructor(userId: string) {
     super(`User profile not found for userId: ${userId}`);
-    this.name = 'UserNotFoundError';
+    this.name = "UserNotFoundError";
   }
 }
 
 export class FamilyMemberNotFoundError extends Error {
   constructor(memberId: string) {
     super(`Family member not found: ${memberId}`);
-    this.name = 'FamilyMemberNotFoundError';
+    this.name = "FamilyMemberNotFoundError";
   }
 }
 
 export class UnauthorizedAccessError extends Error {
-  constructor(message: string = 'Unauthorized access to family member') {
+  constructor(message: string = "Unauthorized access to family member") {
     super(message);
-    this.name = 'UnauthorizedAccessError';
+    this.name = "UnauthorizedAccessError";
   }
 }
 
 /**
  * Get user profile by Clerk ID
- * 
+ *
  * @implements BR-003 - Family Member Ownership
  * @param {string} clerkId - Clerk user ID
  * @returns {Promise<UserProfile>} User profile
@@ -53,11 +53,11 @@ export async function getUserProfile(clerkId: string) {
 
 /**
  * Get all family members for a user
- * 
+ *
  * @implements BR-003 - Family Member Ownership
  * @satisfies US-003 - Add Family Members (view capability)
  * @tested __tests__/lib/family-operations.test.ts
- * 
+ *
  * @param {string} clerkId - Clerk user ID
  * @returns {Promise<FamilyMember[]>} Array of family members
  * @throws {UserNotFoundError} If user profile doesn't exist
@@ -67,7 +67,7 @@ export async function getFamilyMembers(clerkId: string) {
 
   const familyMembers = await prisma.familyMember.findMany({
     where: { userId: userProfile.id },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: "asc" },
   });
 
   return familyMembers;
@@ -75,12 +75,12 @@ export async function getFamilyMembers(clerkId: string) {
 
 /**
  * Create a new family member
- * 
+ *
  * @implements BR-003 - Family Member Ownership
  * @implements BR-004 - Family Member Name Requirements
  * @satisfies US-003 - Add Family Members
  * @tested __tests__/lib/family-operations.test.ts
- * 
+ *
  * @param {string} clerkId - Clerk user ID
  * @param {Object} data - Family member data
  * @returns {Promise<FamilyMember>} Created family member
@@ -93,7 +93,7 @@ export async function createFamilyMember(
     email?: string;
     avatar?: string;
     role?: string;
-  }
+  },
 ) {
   const userProfile = await getUserProfile(clerkId);
 
@@ -110,12 +110,12 @@ export async function createFamilyMember(
 
 /**
  * Update a family member
- * 
+ *
  * @implements BR-003 - Family Member Ownership
  * @implements BR-005 - Update Validation
  * @satisfies US-004 - Update Family Member
  * @tested __tests__/lib/family-operations.test.ts
- * 
+ *
  * @param {string} clerkId - Clerk user ID (for authorization)
  * @param {string} memberId - Family member ID to update
  * @param {Object} data - Updated family member data
@@ -132,7 +132,7 @@ export async function updateFamilyMember(
     email?: string;
     avatar?: string;
     role?: string;
-  }
+  },
 ) {
   const userProfile = await getUserProfile(clerkId);
 
@@ -158,13 +158,13 @@ export async function updateFamilyMember(
 
 /**
  * Delete a family member
- * 
+ *
  * @implements BR-003 - Family Member Ownership
  * @implements BR-006 - Primary member cannot be deleted
  * @implements BR-007 - Cascade delete restrictions
  * @satisfies US-005 - Delete Family Member
  * @tested __tests__/lib/family-operations.test.ts
- * 
+ *
  * @param {string} clerkId - Clerk user ID (for authorization)
  * @param {string} memberId - Family member ID to delete
  * @returns {Promise<void>}
@@ -189,7 +189,7 @@ export async function deleteFamilyMember(clerkId: string, memberId: string) {
 
   // BR-006: Primary member cannot be deleted
   if (existingMember.isPrimary) {
-    throw new UnauthorizedAccessError('Cannot delete primary family member');
+    throw new UnauthorizedAccessError("Cannot delete primary family member");
   }
 
   await prisma.familyMember.delete({
@@ -199,36 +199,36 @@ export async function deleteFamilyMember(clerkId: string, memberId: string) {
 
 /**
  * Clean up corrupted avatar URLs from family members
- * 
+ *
  * @returns {Promise<{count: number}>} Number of cleaned up records
  */
 export async function cleanupCorruptedAvatars() {
   // Check both UserProfile and FamilyMember tables for corrupted data
   const allUserProfiles = await prisma.userProfile.findMany();
   const allFamilyMembers = await prisma.familyMember.findMany();
-  
+
   const corruptedPattern = /^[A-Za-z0-9+/]{20,}={0,2}$/; // Base64 pattern
   let cleanedCount = 0;
-  
-  console.log('Checking user profiles for corrupted data...');
-  
+
+  console.log("Checking user profiles for corrupted data...");
+
   // Check UserProfile table
   for (const profile of allUserProfiles) {
     let needsUpdate = false;
-    const updates: any = {};
-    
+    const updates: Record<string, unknown> = {};
+
     if (profile.name && corruptedPattern.test(profile.name)) {
       console.log(`Found corrupted profile name: ${profile.name}`);
-      updates.name = 'Unknown User';
+      updates.name = "Unknown User";
       needsUpdate = true;
     }
-    
+
     if (profile.avatar && corruptedPattern.test(profile.avatar)) {
       console.log(`Found corrupted profile avatar: ${profile.avatar}`);
       updates.avatar = null;
       needsUpdate = true;
     }
-    
+
     if (needsUpdate) {
       await prisma.userProfile.update({
         where: { id: profile.id },
@@ -238,32 +238,32 @@ export async function cleanupCorruptedAvatars() {
       console.log(`Cleaned up corrupted profile data: ${profile.id}`);
     }
   }
-  
-  console.log('Checking family members for corrupted data...');
-  
+
+  console.log("Checking family members for corrupted data...");
+
   // Check FamilyMember table
   for (const member of allFamilyMembers) {
     let needsUpdate = false;
-    const updates: any = {};
-    
+    const updates: Record<string, unknown> = {};
+
     if (member.name && corruptedPattern.test(member.name)) {
       console.log(`Found corrupted member name: ${member.name}`);
-      updates.name = 'Unknown Member';
+      updates.name = "Unknown Member";
       needsUpdate = true;
     }
-    
+
     if (member.avatar && corruptedPattern.test(member.avatar)) {
       console.log(`Found corrupted member avatar: ${member.avatar}`);
       updates.avatar = null;
       needsUpdate = true;
     }
-    
+
     if (member.email && corruptedPattern.test(member.email)) {
       console.log(`Found corrupted member email: ${member.email}`);
       updates.email = null;
       needsUpdate = true;
     }
-    
+
     if (needsUpdate) {
       await prisma.familyMember.update({
         where: { id: member.id },
