@@ -166,7 +166,7 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
           "❌ SCHEMA MISMATCH! Plaid sends:",
           mockPlaidLinkMetadata,
         );
-        console.error("❌ Validation errors:", result.error.errors);
+        console.error("❌ Validation errors:", result.error.issues);
         throw new Error("Schema validation failed - see logs above");
       }
     });

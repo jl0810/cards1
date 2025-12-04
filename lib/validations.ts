@@ -260,13 +260,13 @@ export const ClerkUserSchema = z.object({
  */
 
 export const JestMockSchema = z.object({
-  mockRejectedValue: z.function().args(z.any()).returns(z.any()),
-  mockResolvedValue: z.function().args(z.any()).returns(z.any()),
+  mockRejectedValue: z.any(),
+  mockResolvedValue: z.any(),
 });
 
 export const ClerkAuthMockSchema = z.any(); // Clerk auth functions have complex types, using any for mock compatibility
 
-export const EnvObjectSchema = z.record(z.unknown()); // For iterating over environment keys
+export const EnvObjectSchema = z.record(z.string(), z.unknown()); // For iterating over environment keys
 
 export const PlaidProductSchema = z.enum([
   "transactions",
@@ -286,7 +286,7 @@ export const DateTimeFormatOptionsSchema = z.object({
   day: z.string().optional(),
 });
 
-export const BenefitRuleConfigSchema = z.record(z.unknown()); // Flexible rule configuration for benefits
+export const BenefitRuleConfigSchema = z.record(z.string(), z.unknown()); // Flexible rule configuration for benefits
 
 // Prisma-compatible JSON type
 export const PrismaJsonSchema = z.unknown(); // For Prisma JSON fields
@@ -376,7 +376,7 @@ export const TestUserDataSchema = z.object({
   familyMemberId: z.string(),
 });
 
-export const AnalyticsEventSchema = z.record(z.unknown());
+export const AnalyticsEventSchema = z.record(z.string(), z.unknown());
 export type AnalyticsEvent = z.infer<typeof AnalyticsEventSchema>;
 
 /**
@@ -506,7 +506,7 @@ export const CreateCardBenefitSchema = z.object({
     .optional()
     .nullable(),
   keywords: z.array(z.string()).min(1, "At least one keyword is required"),
-  ruleConfig: z.record(z.unknown()).optional().nullable(),
+  ruleConfig: z.record(z.string(), z.unknown()).optional().nullable(),
   active: z.boolean().optional().default(true),
 });
 
@@ -570,7 +570,7 @@ export const ClerkWebhookEventSchema = z.object({
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     image_url: z.string().url().optional(),
-    public_metadata: z.record(z.unknown()).optional(),
+    public_metadata: z.record(z.string(), z.unknown()).optional(),
   }),
 });
 
@@ -695,7 +695,7 @@ export const CardProductQuerySchema = z.object({
 export const UserProfileUpdateSchema = z.object({
   name: z.string().min(1).max(100).trim().optional(),
   avatar: z.string().url().nullable().optional(),
-  preferences: z.record(z.unknown()).optional(),
+  preferences: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -716,7 +716,7 @@ export const TransactionSearchSchema = z.object({
  */
 export const BulkOperationSchema = z.object({
   operation: z.enum(["delete", "update", "create"]),
-  items: z.array(z.record(z.unknown())).min(1).max(100),
+  items: z.array(z.record(z.string(), z.unknown())).min(1).max(100),
 });
 
 /**

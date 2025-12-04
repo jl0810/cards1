@@ -42,7 +42,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ accoun
     // Validate request body
     const validation = safeValidateSchema(UpdateAccountNicknameSchema, body);
     if (!validation.success) {
-        return Errors.badRequest(validation.error.errors[0]?.message || 'Invalid input');
+        return Errors.badRequest(validation.error.issues[0]?.message || 'Invalid input');
     }
     
     const { nickname } = validation.data;

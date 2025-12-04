@@ -46,7 +46,7 @@ export async function validateBody<T>(
       return {
         success: false,
         error: Errors.badRequest(
-          result.error.errors[0]?.message || 'Invalid input data'
+          result.error.issues[0]?.message || 'Invalid input data'
         )
       };
     }
@@ -86,7 +86,7 @@ export function validateQuery<T>(
       return {
         success: false,
         error: Errors.badRequest(
-          result.error.errors[0]?.message || 'Invalid query parameters'
+          result.error.issues[0]?.message || 'Invalid query parameters'
         )
       };
     }
@@ -117,7 +117,7 @@ export function validateParams<T>(
     return {
       success: false,
       error: Errors.badRequest(
-        result.error.errors[0]?.message || 'Invalid route parameters'
+        result.error.issues[0]?.message || 'Invalid route parameters'
       )
     };
   }
@@ -138,8 +138,8 @@ export const CommonSchemas = {
    * Pagination schema
    */
   pagination: z.object({
-    page: z.string().regex(/^\d+$/).transform(Number).default('1'),
-    limit: z.string().regex(/^\d+$/).transform(Number).default('10'),
+    page: z.string().regex(/^\d+$/).transform(Number).default(1),
+    limit: z.string().regex(/^\d+$/).transform(Number).default(10),
   }),
   
   /**

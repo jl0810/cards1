@@ -55,7 +55,7 @@ export async function PATCH(
     const validation = safeValidateSchema(UpdateFamilyMemberSchema, body);
     if (!validation.success) {
       return Errors.badRequest(
-        validation.error.errors[0]?.message || "Invalid input",
+        validation.error.issues[0]?.message || "Invalid input",
       );
     }
 

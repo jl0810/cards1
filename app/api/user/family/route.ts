@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         const validationResult = safeValidateSchema(CreateFamilyMemberSchema, body);
 
         if (!validationResult.success) {
-            return Errors.badRequest(validationResult.error?.errors?.[0]?.message || 'Validation failed');
+            return Errors.badRequest(validationResult.error?.issues?.[0]?.message || 'Validation failed');
         }
 
         const { name, email, avatar, role } = validationResult.data;

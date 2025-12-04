@@ -39,7 +39,7 @@ export async function PATCH(
         // Validate request body using Zod
         const validation = safeValidateSchema(AssignPlaidItemSchema, body);
         if (!validation.success) {
-            return Errors.badRequest(validation.error.errors[0]?.message || 'Invalid input');
+            return Errors.badRequest(validation.error.issues[0]?.message || 'Invalid input');
         }
 
         const { familyMemberId } = validation.data;
