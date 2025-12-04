@@ -1,0 +1,79 @@
+{
+  "timestamp": "2025-12-04T12:26:57.008Z",
+  "documentation": {
+    "userStories": 26,
+    "businessRules": 46
+  },
+  "codebase": {
+    "productionFiles": 246,
+    "testFiles": 40,
+    "totalTests": 405
+  },
+  "coverage": {
+    "businessRules": {
+      "total": 46,
+      "implemented": 43,
+      "tested": 26,
+      "implementationPercent": 93.5,
+      "testPercent": 56.5
+    },
+    "userStories": {
+      "total": 26,
+      "implemented": 28,
+      "tested": 16,
+      "implementationPercent": 107.7,
+      "testPercent": 61.5
+    },
+    "overall": {
+      "score": 79.8,
+      "grade": "C+"
+    }
+  },
+  "gaps": {
+    "unimplementedRules": [
+      "BR-025",
+      "BR-038",
+      "BR-040"
+    ],
+    "untestedRules": [
+      "BR-005",
+      "BR-016",
+      "BR-018",
+      "BR-019",
+      "BR-020",
+      "BR-025",
+      "BR-026",
+      "BR-027",
+      "BR-028",
+      "BR-029",
+      "BR-030",
+      "BR-032",
+      "BR-038",
+      "BR-040",
+      "BR-041",
+      "BR-042",
+      "BR-045",
+      "BR-046",
+      "BR-047",
+      "BR-048"
+    ],
+    "unimplementedStories": [
+      "US-014",
+      "US-030",
+      "US-031",
+      "US-032"
+    ],
+    "untestedStories": [
+      "US-021",
+      "US-009",
+      "US-013",
+      "US-014",
+      "US-015",
+      "US-016",
+      "US-017",
+      "US-018",
+      "US-030",
+      "US-032"
+    ]
+  }
+}

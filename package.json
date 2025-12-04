@@ -2,6 +2,7 @@
   "name": "nextjs-clerk-starter",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build",
@@ -14,6 +15,9 @@
     "type-check:production": "tsc --noEmit --project tsconfig.production.json",
     "quality:check": "npm run type-check && npm run lint:strict && npm run test -- --passWithNoTests",
     "quality:scan": "echo '🔍 Running full codebase quality scan...' && npm run type-check:production && npm run lint:strict && npm run test -- --passWithNoTests && node scripts/validate-docs.mjs",
+    "docs:validate": "node scripts/validate-docs.mjs",
+    "docs:coverage": "node scripts/generate-traceability-report.mjs",
+    "docs:scan": "npm run docs:validate && npm run docs:coverage",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

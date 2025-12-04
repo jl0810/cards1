@@ -92,7 +92,11 @@ console.log(`   Found ${definedStories.length} Stories and ${definedRules.length
 // Scan Codebase for Implementations
 const codeFiles = glob.sync('**/*.{ts,tsx}', { ignore: ['node_modules/**', '.next/**', 'dist/**'] });
 const implementedRules = new Set();
+const implementedStories = new Set();
 const testedRules = new Set();
+const testedStories = new Set();
+const testedTagFiles = new Map(); // Track @tested tags
+let totalTests = 0;
 
 for (const file of codeFiles) {
     const content = readFile(file);
@@ -102,32 +106,105 @@ for (const file of codeFiles) {
     const implementsMatches = extractIds(content, /@implements\s+(BR-\d{3})/g);
     implementsMatches.forEach(id => implementedRules.add(id));
 
-    // Check for tests referencing BR-XXX
+    // Check for @satisfies US-XXX
+    const satisfiesMatches = extractIds(content, /@satisfies\s+(US-\d{3})/g);
+    satisfiesMatches.forEach(id => implementedStories.add(id));
+
+    // Check for @tested tags and validate they point to real files
+    const testedTagPattern = /@tested\s+([^\s]+)/g;
+    let testedMatch;
+    while ((testedMatch = testedTagPattern.exec(content)) !== null) {
+        const testFile = testedMatch[1];
+        if (!fs.existsSync(testFile)) {
+            errors.push(`${file} claims @tested ${testFile} but file doesn't exist!`);
+        } else {
+            testedTagFiles.set(file, testFile);
+        }
+    }
+
+    // Check for tests referencing BR-XXX and US-XXX
     if (file.includes('__tests__') || file.includes('.test.') || file.includes('.spec.')) {
         const testMatches = extractIds(content, /(BR-\d{3})/g);
         testMatches.forEach(id => testedRules.add(id));
+
+        const storyTestMatches = extractIds(content, /(US-\d{3})/g);
+        storyTestMatches.forEach(id => testedStories.add(id));
+
+        // Count tests
+        const testCount = (content.match(/test\(|it\(/g) || []).length;
+        totalTests += testCount;
     }
 }
 
-// Validate Rules have Implementation
+console.log(`   Scanned ${codeFiles.length} code files, found ${totalTests} tests`);
+console.log(`   Implementation tracking: ${implementedRules.size} rules, ${implementedStories.size} stories`);
+console.log(`   Test coverage: ${testedRules.size} rules, ${testedStories.size} stories`);
+
+// --- STRICT VALIDATION (ENABLED) ---
+
+// ✅ 1. Validate Business Rules have Implementation
 const unimplementedRules = definedRules.filter(id => !implementedRules.has(id));
 if (unimplementedRules.length > 0) {
-    // Warn only for now, as we are retrofitting
-    // warnings.push(`Rules defined but not explicitly implemented in code (@implements): ${unimplementedRules.slice(0, 5).join(', ')}...`);
+    errors.push(
+        `Business Rules defined but not implemented in code:\n` +
+        `   ${unimplementedRules.join(', ')}\n` +
+        `   → Add @implements BR-XXX tags to code or remove unused rules from BUSINESS_RULES.md`
+    );
 }
 
-// Validate Rules have Tests
+// ✅ 2. Validate Business Rules have Tests (WARNING, not blocking)
 const untestedRules = definedRules.filter(id => !testedRules.has(id));
 if (untestedRules.length > 0) {
-    // warnings.push(`Rules defined but not referenced in tests: ${untestedRules.slice(0, 5).join(', ')}...`);
+    warnings.push(
+        `Business Rules not referenced in tests (${untestedRules.length}):\n` +
+        `   ${untestedRules.slice(0, 10).join(', ')}${untestedRules.length > 10 ? '...' : ''}\n` +
+        `   → Add test coverage or document as tested manually`
+    );
 }
 
-// Check for Undefined References in Code
+// ✅ 3. Validate User Stories have Implementation (WARNING)
+const unimplementedStories = definedStories.filter(id => !implementedStories.has(id));
+if (unimplementedStories.length > 0 && unimplementedStories.length < definedStories.length * 0.5) {
+    // Only warn if less than half are unimplemented (avoid noise during initial setup)
+    warnings.push(
+        `User Stories not explicitly implemented (${unimplementedStories.length}):\n` +
+        `   ${unimplementedStories.slice(0, 5).join(', ')}${unimplementedStories.length > 5 ? '...' : ''}\n` +
+        `   → Add @satisfies US-XXX tags to code`
+    );
+}
+
+// ✅ 4. Validate User Stories have Tests (WARNING)
+const untestedStories = definedStories.filter(id => !testedStories.has(id));
+if (untestedStories.length > 0 && untestedStories.length < definedStories.length * 0.5) {
+    warnings.push(
+        `User Stories without test references (${untestedStories.length}):\n` +
+        `   ${untestedStories.slice(0, 5).join(', ')}${untestedStories.length > 5 ? '...' : ''}\n` +
+        `   → Add US-XXX references to test files`
+    );
+}
+
+// ✅ 5. Check for Undefined References in Code (ERROR)
 const allReferencedRules = [...implementedRules, ...testedRules];
 const undefinedRules = allReferencedRules.filter(id => !definedRules.includes(id));
 
 if (undefinedRules.length > 0) {
-    errors.push(`Code references undefined Business Rules: ${undefinedRules.join(', ')}. Add them to BUSINESS_RULES.md`);
+    errors.push(
+        `Code references undefined Business Rules:\n` +
+        `   ${undefinedRules.join(', ')}\n` +
+        `   → Add them to BUSINESS_RULES.md or fix typos`
+    );
+}
+
+// ✅ 6. Check for Undefined User Story References (WARNING)
+const allReferencedStories = [...implementedStories, ...testedStories];
+const undefinedStories = allReferencedStories.filter(id => !definedStories.includes(id));
+
+if (undefinedStories.length > 0) {
+    warnings.push(
+        `Code references undefined User Stories:\n` +
+        `   ${undefinedStories.join(', ')}\n` +
+        `   → Add them to USER_STORIES.md or fix typos`
+    );
 }
 
 // --- 3. Output Results ---
