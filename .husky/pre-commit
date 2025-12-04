@@ -14,11 +14,15 @@ npx lint-staged || exit 1
 echo "→ Running unit tests..."
 npm test -- --passWithNoTests --bail || exit 1
 
-# 4. Validate documentation
+# 4. Validate folder structure
+echo "→ Validating folder structure..."
+node scripts/validate-folder-structure.mjs || exit 1
+
+# 5. Validate documentation
 echo "→ Validating documentation..."
 node scripts/validate-docs.mjs || exit 1
 
-# 5. Check for 'use client' in page.tsx or layout.tsx (Leaf Pattern)
+# 6. Check for 'use client' in page.tsx or layout.tsx (Leaf Pattern)
 echo "→ Checking Leaf Pattern compliance..."
 STAGED_FILES=$(git diff --cached --name-only)
 CLIENT_IN_PAGES=$(echo "$STAGED_FILES" | grep -E "app/.*/page\.tsx|app/.*/layout\.tsx" | xargs grep -l "'use client'" 2>/dev/null || true)
@@ -32,7 +36,7 @@ if [ -n "$CLIENT_IN_PAGES" ]; then
   exit 1
 fi
 
-# 6. Additional type safety check for explicit 'any' (belt-and-suspenders)
+# 7. Additional type safety check for explicit 'any' (belt-and-suspenders)
 echo "→ Double-checking for explicit 'any' types..."
 STAGED_TS_FILES=$(echo "$STAGED_FILES" | grep -E '\.tsx?$' | grep -v '__tests__' | grep -v '.test.ts' | grep -v 'node_modules')
 if [ -n "$STAGED_TS_FILES" ]; then
