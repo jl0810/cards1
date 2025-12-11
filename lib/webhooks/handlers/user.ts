@@ -9,7 +9,7 @@
  * @tested None (webhook handlers need tests)
  */
 
-import type { UserJSON } from "@clerk/backend";
+import type { UserJSON as _UserJSON } from "@clerk/backend";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import type { WebhookEvent } from "@clerk/nextjs/server";
@@ -103,8 +103,14 @@ export async function handleUserEvent(evt: WebhookEvent) {
 async function handleUserCreated(evt: WebhookEvent) {
   // Validate and type the webhook data
   const userData = ClerkUserWebhookDataSchema.parse(evt.data);
-  const { id, email_addresses, first_name, last_name, image_url, created_at } =
-    userData;
+  const {
+    id,
+    email_addresses,
+    first_name,
+    last_name,
+    image_url,
+    created_at: _created_at,
+  } = userData;
 
   logger.info("User created webhook received", {
     userId: id,

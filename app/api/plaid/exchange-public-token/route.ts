@@ -20,14 +20,21 @@ import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import type {
   PlaidAccountSchema,
-  PlaidCreditLiabilitySchema
+  PlaidCreditLiabilitySchema,
 } from "@/lib/validations";
-import {
-  PlaidExchangeTokenSchema
-} from "@/lib/validations";
+import { PlaidExchangeTokenSchema } from "@/lib/validations";
 import { validateBody } from "@/lib/validation-middleware";
 import type { z } from "zod";
 import type { AccountBase } from "plaid";
+
+interface PlaidLinkMetadata {
+  institution?: {
+    institution_id?: string;
+    name?: string;
+  };
+  accounts?: z.infer<typeof PlaidAccountSchema>[];
+  link_session_id?: string;
+}
 
 /**
  * Exchanges a Plaid public token for an access token and creates a new PlaidItem.
@@ -82,7 +89,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { public_token, metadata, familyMemberId } = bodyValidation.data;
-    linkSessionId = metadata?.link_session_id;
+    const metadataTyped = metadata as PlaidLinkMetadata;
+    linkSessionId = metadataTyped?.link_session_id;
 
     // 2. Get UserProfile
     const userProfile = await prisma.userProfile.findUnique({
@@ -108,10 +116,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    institutionId = metadata?.institution?.institution_id;
+    institutionId = metadataTyped?.institution?.institution_id;
     const institutionName =
-      metadata?.institution?.name || "Unknown Institution";
-    const newAccounts = metadata?.accounts || [];
+      metadataTyped?.institution?.name || "Unknown Institution";
+    const newAccounts = metadataTyped?.accounts || [];
 
     // 1. Check for Duplicate Accounts BEFORE exchange
     // Check if any of the new accounts already exist for this family member
@@ -232,7 +240,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!exchangeResponse) {
-      throw new Error('Token exchange failed after all retry attempts');
+      throw new Error("Token exchange failed after all retry attempts");
     }
 
     const accessToken = exchangeResponse.data.access_token;
@@ -271,20 +279,20 @@ export async function POST(req: NextRequest) {
           attempt: 4 - fetchAttempts,
         });
 
-        // Fallback to accountsGet on last attempt or if liabilities not supported
-        if (fetchAttempts === 1) {
-          try {
-            const accountsResponse = await plaidClient.accountsGet({
-              access_token: accessToken,
-            });
-            accounts = accountsResponse.data.accounts;
-            break;
-          } catch (finalErr) {
-            throw finalErr; // Fail if both fail
-          }
+        fetchAttempts--;
+        if (fetchAttempts === 0) {
+          // If liabilities fail on final attempt, we cannot fallback to accountsGet (not authorized)
+          logger.error(
+            "Failed to fetch liabilities and no fallback available",
+            {
+              error: err,
+            },
+          );
+          throw new Error(
+            "Unable to fetch account data - liabilities endpoint failed",
+          );
         }
 
-        fetchAttempts--;
         if (fetchAttempts > 0) await new Promise((r) => setTimeout(r, 1000));
       }
     }

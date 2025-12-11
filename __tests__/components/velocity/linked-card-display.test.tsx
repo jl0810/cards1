@@ -165,14 +165,3 @@ describe("LinkedCardDisplay - Image Error Handling", () => {
     expect(screen.getByText("Bonus")).toBeInTheDocument();
   });
 });
-
-describe("CardProductMatcher - Image Error Handling", () => {
-  // Note: CardProductMatcher has the same image error handling pattern
-  // These tests ensure the CardProductLogo component also handles errors
-
-  it("should handle image errors in CardProductLogo component", () => {
-    // This would require more complex setup with the full CardProductMatcher
-    // For now, we've verified the pattern is the same as LinkedCardDisplay
-    expect(true).toBe(true);
-  });
-});

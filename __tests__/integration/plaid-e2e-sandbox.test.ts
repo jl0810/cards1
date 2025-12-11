@@ -171,8 +171,8 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
       }
     });
 
-    it("should fetch accounts and validate structure", async () => {
-      const response = await plaidClient.accountsGet({
+    it("should fetch liabilities and validate account structure", async () => {
+      const response = await plaidClient.liabilitiesGet({
         access_token: accessToken,
       });
 
@@ -180,23 +180,34 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
       expect(Array.isArray(response.data.accounts)).toBe(true);
       expect(response.data.accounts.length).toBeGreaterThan(0);
 
-      // Validate account structure matches what we expect
       const account = response.data.accounts[0];
       expect(account.account_id).toBeDefined();
       expect(account.name).toBeDefined();
       expect(account.type).toBeDefined();
       expect(account.subtype).toBeDefined();
-      expect(account.balances).toBeDefined();
     });
 
-    it.skip("should fetch liabilities and validate structure", async () => {
+    it("should sync transactions", async () => {
+      const response = await plaidClient.transactionsSync({
+        access_token: accessToken,
+      });
+
+      expect(response.data).toBeDefined();
+      expect(response.data.added).toBeDefined();
+      expect(response.data.modified).toBeDefined();
+      expect(response.data.removed).toBeDefined();
+      expect(response.data.has_more).toBeDefined();
+      expect(response.data.next_cursor).toBeDefined();
+    });
+
+    it("should still allow liabilities fetch after transactions", async () => {
       const response = await plaidClient.liabilitiesGet({
         access_token: accessToken,
       });
 
       expect(response.data.accounts).toBeDefined();
-      expect(response.data.liabilities).toBeDefined();
-    });
+      expect(Array.isArray(response.data.accounts)).toBe(true);
+    }, 30000); // 30 second timeout for API call
   });
 
   describe("3. Transactions Sync", () => {
@@ -228,21 +239,6 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
       expect(response.data.has_more).toBeDefined();
       expect(response.data.next_cursor).toBeDefined();
     });
-
-    it("should fetch account balances", async () => {
-      const response = await plaidClient.accountsBalanceGet({
-        access_token: accessToken,
-      });
-
-      expect(response.data.accounts).toBeDefined();
-      expect(Array.isArray(response.data.accounts)).toBe(true);
-
-      if (response.data.accounts.length > 0) {
-        const account = response.data.accounts[0];
-        expect(account.balances).toBeDefined();
-        expect(account.balances.current).toBeDefined();
-      }
-    }, 30000); // 30 second timeout for API call
   });
 
   describe("4. Item Management", () => {
@@ -291,7 +287,7 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
 
       // Verify token is actually invalid by trying to use it
       await expect(
-        plaidClient.accountsGet({ access_token: accessToken }),
+        plaidClient.transactionsSync({ access_token: accessToken }),
       ).rejects.toThrow();
 
       // Remove from cleanup list since we already removed it
@@ -313,7 +309,7 @@ describeIf("Plaid Sandbox E2E - Schema Validation", () => {
 
     it("should handle invalid access token", async () => {
       await expect(
-        plaidClient.accountsGet({
+        plaidClient.transactionsSync({
           access_token: "invalid-access-token",
         }),
       ).rejects.toThrow();

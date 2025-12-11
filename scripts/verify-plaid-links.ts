@@ -35,7 +35,7 @@ async function verifyPlaidLinks() {
 
     try {
       // Get Accounts
-      const response = await plaidClient.accountsGet({
+      const response = await plaidClient.liabilitiesGet({
         access_token: token,
       });
 

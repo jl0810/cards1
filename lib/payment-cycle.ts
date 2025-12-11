@@ -109,7 +109,7 @@ export function calculatePaymentCycleStatus(
       (now.getTime() - paymentDate.getTime()) / (1000 * 60 * 60 * 24);
   }
 
-  const isRecentStatement = daysSinceIssue < 30;
+  const _isRecentStatement = daysSinceIssue < 30;
   const isRecentPayment = daysSincePayment < 30;
 
   // Helper for zero check (handle floating point)

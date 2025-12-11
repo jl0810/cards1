@@ -36,7 +36,7 @@ async function testToken() {
 
     // 3. Try to fetch accounts from Plaid
     console.log("🔄 Fetching accounts from Plaid...");
-    const response = await plaidClient.accountsGet({
+    const response = await plaidClient.liabilitiesGet({
       access_token: accessToken,
     });
 
@@ -46,8 +46,15 @@ async function testToken() {
     });
   } catch (error) {
     console.error("❌ Error:", error);
-    if (error.response) {
-      console.error("   Plaid Error:", error.response.data);
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error &&
+      (error as { response?: { data?: unknown } }).response
+    ) {
+      const resp = (error as { response: { data?: unknown } }).response;
+      console.error("   Plaid Error:", resp.data);
     }
   } finally {
     await prisma.$disconnect();

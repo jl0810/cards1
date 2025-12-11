@@ -205,10 +205,10 @@ This document defines all business rules for the PointMax Velocity application.
    - Retries on network errors or server errors (5xx)
    - **No retry** on `INVALID_PUBLIC_TOKEN` error (indicates token already used or expired)
 
-2. **Account Fetching Retries:**
-   - Maximum 3 attempts for `liabilitiesGet` / `accountsGet`
+2. **Account & Liability Fetch Retries:**
+   - Maximum 3 attempts for `liabilitiesGet`
    - 1-second delay between retry attempts
-   - Automatic fallback to `accountsGet` if `liabilitiesGet` fails on final attempt
+   - **No fallback** to other Plaid products (such as `accountsGet`) to avoid unintended billing
 
 3. **Logging:**
    - All retry attempts are logged with `logger.warn`

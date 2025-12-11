@@ -196,25 +196,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // BUG FIX #4: Fetch balances BEFORE transaction to include in atomic operation
+    // BUG FIX #4: Get account data and liabilities in single call (no balances call needed)
     // We need full account details to create missing accounts (self-healing)
     let accountsData: AccountBase[] = [];
-    try {
-      const balanceResponse = await plaidClient.accountsBalanceGet({
-        access_token: accessToken,
-      });
-      accountsData = balanceResponse.data.accounts;
-    } catch (balanceError) {
-      logger.error("Error fetching balances", balanceError, { itemId });
-      // Continue with sync even if balance fetch fails
-    }
-
-    // Fetch liabilities (credit card details)
     const liabilitiesMap = new Map<string, CreditCardLiability>();
     try {
       const liabilitiesResponse = await plaidClient.liabilitiesGet({
         access_token: accessToken,
       });
+      accountsData = liabilitiesResponse.data.accounts;
+
+      // Map liabilities by account_id for easy lookup
       if (liabilitiesResponse.data.liabilities?.credit) {
         for (const credit of liabilitiesResponse.data.liabilities.credit) {
           if (credit.account_id) {
@@ -223,7 +215,10 @@ export async function POST(req: NextRequest) {
         }
       }
     } catch (error) {
-      logger.warn("Failed to fetch liabilities", { error, itemId });
+      logger.error("Error fetching liabilities for account data", error, {
+        itemId,
+      });
+      // Continue with sync even if liabilities fetch fails
     }
 
     // Wrap ALL database operations in a transaction for atomicity
@@ -260,8 +255,9 @@ export async function POST(req: NextRequest) {
                 lastPaymentDate: liability?.last_payment_date
                   ? new Date(liability.last_payment_date)
                   : null,
-                apr: liability?.aprs.find((a) => a.apr_type === "purchase_apr")
-                  ?.apr_percentage,
+                apr: liability?.aprs.find(
+                  (apr) => String(apr.apr_type) === "purchase_apr",
+                )?.apr_percentage,
               },
               create: {
                 accountId: account.account_id,
@@ -289,8 +285,9 @@ export async function POST(req: NextRequest) {
                 lastPaymentDate: liability?.last_payment_date
                   ? new Date(liability.last_payment_date)
                   : null,
-                apr: liability?.aprs.find((a) => a.apr_type === "purchase_apr")
-                  ?.apr_percentage,
+                apr: liability?.aprs.find(
+                  (apr) => String(apr.apr_type) === "purchase_apr",
+                )?.apr_percentage,
               },
             })
             .catch((e) => {
@@ -413,7 +410,7 @@ export async function POST(req: NextRequest) {
     // --- MATCH BENEFITS (Async, don't block response) ---
     // Automatically scan and match benefits for the user (handles both new and old transactions)
     if (userId) {
-      (async () => {
+      void (async () => {
         try {
           // We can scope this to the specific item's accounts if we want,
           // but scanning all user accounts is safer to ensure nothing is missed.

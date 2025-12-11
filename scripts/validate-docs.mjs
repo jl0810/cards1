@@ -126,6 +126,18 @@ for (const file of codeFiles) {
 
         if (looksLikeFilePath && !fs.existsSync(testFile)) {
             errors.push(`${file} claims @tested ${testFile} but file doesn't exist!`);
+        } else if (looksLikeFilePath) {
+            // Check for placeholder content
+            const testContent = readFile(testFile);
+            if (testContent && (
+                testContent.includes('placeholder test') ||
+                testContent.includes('expect(true).toBe(true)') ||
+                testContent.length < 100 // Very short files are suspicious
+            )) {
+                errors.push(`${file} claims @tested ${testFile} but it appears to be a placeholder!`);
+            } else {
+                testedTagFiles.set(file, testFile);
+            }
         } else if (!isDocValue) {
             testedTagFiles.set(file, testFile);
         }

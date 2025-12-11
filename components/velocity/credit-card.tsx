@@ -10,20 +10,19 @@
  * @satisfies US-019 - Link Card Product
  * @satisfies US-023 - Payment Cycle Status Tracking
  * @satisfies US-036 - Secure Content Display
- * @tested __tests__/components/velocity/credit-card.test.ts
+ * @tested __tests__/components/velocity/credit-card.test.tsx
  */
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Wifi, Landmark, Globe, CheckCircle } from "lucide-react";
+import Image from "next/image";
 import { useBankBrand } from "@/hooks/use-bank-brand";
-import type {
-  PaymentCycleStatus} from "@/lib/payment-cycle";
+import type { PaymentCycleStatus } from "@/lib/payment-cycle";
 import {
   getPaymentCycleColor,
-  getPaymentCycleLabel
+  getPaymentCycleLabel,
 } from "@/lib/payment-cycle";
 import { sanitizeSvg } from "@/lib/sanitize";
 
@@ -154,20 +153,37 @@ const BANK_COLORS: Record<string, string> = {
 export function CreditCard({
   acc,
   layout,
-  onRename,
   balanceViewMode = "current",
 }: {
   acc: Account;
   layout: string;
-  onRename?: (id: string, newName: string) => void;
   balanceViewMode?: "current" | "statement";
 }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [optimisticStatus, setOptimisticStatus] =
     useState<PaymentCycleStatus | null>(null);
   const [isToggling, setIsToggling] = useState(false);
-  const router = useRouter();
-  const { brand } = useBankBrand(acc.bankId || null);
+  const brandResult = useBankBrand(acc.bankId || null);
+  const _brand = (brandResult as { brand?: unknown }).brand;
+
+  const safeBrand =
+    brandResult && typeof brandResult === "object"
+      ? {
+          logoSvg:
+            typeof (brandResult as { logoSvg?: unknown }).logoSvg === "string"
+              ? (brandResult as { logoSvg?: string }).logoSvg
+              : null,
+          logoUrl:
+            typeof (brandResult as { logoUrl?: unknown }).logoUrl === "string"
+              ? (brandResult as { logoUrl?: string }).logoUrl
+              : null,
+          brandColor:
+            typeof (brandResult as { brandColor?: unknown }).brandColor ===
+            "string"
+              ? (brandResult as { brandColor?: string }).brandColor
+              : null,
+        }
+      : null;
 
   // Sync optimistic status with server data
   // Only reset optimistic status if server sends us a DIFFERENT status than what we expected
@@ -195,7 +211,7 @@ export function CreditCard({
         Object.keys(BANK_COLORS).find((key) => acc.bank.includes(key)) as string
       ]
     : null;
-  const brandColor = brand?.brandColor || knownColor || null;
+  const brandColor = safeBrand?.brandColor || knownColor || null;
 
   // Get Payment Cycle Status visuals
   const status =
@@ -218,15 +234,9 @@ export function CreditCard({
 
   // 2. UPDATE HANDLER
   const handleTogglePaidStatus = async (e: React.MouseEvent) => {
-    console.log("🔵 handleTogglePaidStatus called!", {
-      isPaid,
-      status,
-      isToggling,
-    });
     e.stopPropagation();
 
     if (isToggling) {
-      console.log("⚠️ Already toggling, returning early");
       return; // Prevent multiple clicks
     }
 
@@ -235,19 +245,14 @@ export function CreditCard({
       ? "STATEMENT_GENERATED"
       : "PAID_AWAITING_STATEMENT";
 
-    console.log("🎯 New status will be:", newStatus);
-
     // Set loading state
     setIsToggling(true);
-    console.log("⏳ Set isToggling to true");
 
     // Optimistic Update
     setOptimisticStatus(newStatus);
-    console.log("✨ Set optimistic status:", newStatus);
 
     try {
       if (isPaid) {
-        console.log("🔄 Unmarking as paid...");
         // Handle UN-MARKING (Undo)
         const res = await fetch(`/api/account/${acc.id}/unmark-paid`, {
           method: "POST",
@@ -255,27 +260,16 @@ export function CreditCard({
           body: JSON.stringify({}),
         });
 
-        console.log("📡 Unmark API response:", {
-          ok: res.ok,
-          status: res.status,
-        });
-
         if (res.ok) {
           toast.success("Marked as unpaid");
-          console.log("✅ Unmarked successfully");
-          // Don't call router.refresh() - it doesn't work with client state
-          // The optimistic update will persist until page refresh
         } else {
           throw new Error("Failed to cancel payment");
         }
       } else {
-        console.log("💰 Marking as paid...");
         // Handle MARKING AS PAID
         const amount = Number(
           acc.liabilities.last_statement_balance?.replace(/[^0-9.]+/g, "") || 0,
         );
-
-        console.log("💵 Payment amount:", amount);
 
         const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
           method: "POST",
@@ -286,29 +280,19 @@ export function CreditCard({
           }),
         });
 
-        console.log("📡 Mark paid API response:", {
-          ok: res.ok,
-          status: res.status,
-        });
-
         if (res.ok) {
           toast.success("Marked as paid");
-          console.log("✅ Marked successfully");
-          // Don't call router.refresh() - it doesn't work with client state
-          // The optimistic update will persist until page refresh
         } else {
           throw new Error("Request failed");
         }
       }
-    } catch (error) {
-      console.error("❌ Toggle payment status error:", error);
+    } catch (_error) {
       toast.error("Failed to update status");
       // Reset optimistic status on error
       setOptimisticStatus(null);
     } finally {
       // Reset loading state
       setIsToggling(false);
-      console.log("🏁 Set isToggling to false");
     }
   };
 
@@ -473,7 +457,7 @@ export function CreditCard({
             <div className="flex justify-between items-start w-full mb-3">
               <div className="flex items-center">
                 {/* Bank Logo - High Quality SVG */}
-                {brand?.logoSvg ? (
+                {safeBrand?.logoSvg ? (
                   <div
                     className="flex items-center justify-start opacity-90"
                     style={{ height: "12px", width: "45px" }}
@@ -482,17 +466,19 @@ export function CreditCard({
                       className="brightness-0 invert"
                       style={{ width: "100%", height: "100%" }}
                       dangerouslySetInnerHTML={{
-                        __html: sanitizeSvg(brand.logoSvg || ""),
+                        __html: sanitizeSvg(safeBrand.logoSvg || ""),
                       }}
                     />
                   </div>
-                ) : brand?.logoUrl ? (
+                ) : safeBrand?.logoUrl ? (
                   <div className="h-8 flex items-center justify-start">
-                    <img
-                      src={brand.logoUrl}
+                    <Image
+                      src={safeBrand.logoUrl}
                       alt={acc.bank}
+                      height={32}
+                      width={140}
                       className={`h-full w-auto max-w-[140px] object-contain ${
-                        brand.logoUrl.includes("simpleicons.org")
+                        safeBrand.logoUrl.includes("simpleicons.org")
                           ? "opacity-90"
                           : "brightness-0 invert opacity-80"
                       }`}

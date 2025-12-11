@@ -1,5 +1,5 @@
-import type { WebhookEvent } from '@clerk/nextjs/server';
-import { trackEvent } from '@/lib/analytics-utils';
+import type { WebhookEvent } from "@clerk/nextjs/server";
+import { trackEvent } from "@/lib/analytics-utils";
 
 /**
  * Handle Clerk subscription-related webhook events
@@ -14,37 +14,44 @@ export async function handleSubscriptionEvent(evt: WebhookEvent) {
   try {
     // Clerk doesn't support subscription webhooks
     // Subscription events should be handled by Stripe webhooks in your billing system
-    console.log(`Clerk doesn't support subscription webhooks. Event ${eventType} should be handled by Stripe.`);
-    
-    // Track the event for analytics
-    trackEvent('subscription_webhook_attempt', {
-      event_type: eventType,
-      message: 'Clerk doesn support subscription webhooks - use Stripe instead'
-    });
+    console.log(
+      `Clerk doesn't support subscription webhooks. Event ${eventType} should be handled by Stripe.`,
+    );
 
-  } catch (error) {
-    console.error('Error processing subscription event:', error);
-    trackEvent('subscription_webhook_error', {
+    // Track the event for analytics
+    trackEvent("subscription_webhook_attempt", {
       event_type: eventType,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      message: "Clerk doesn support subscription webhooks - use Stripe instead",
+    });
+  } catch (error) {
+    console.error("Error processing subscription event:", error);
+    trackEvent("subscription_webhook_error", {
+      event_type: eventType,
+      error: error instanceof Error ? error.message : "Unknown error",
     });
     throw error;
   }
 }
 
 // These functions are kept for reference but won't be called by Clerk webhooks
-export async function handleSubscriptionCreated(evt: WebhookEvent) {
-  console.log('Subscription created - this should be handled by Stripe webhooks');
+export async function handleSubscriptionCreated(_evt: WebhookEvent) {
+  console.log(
+    "Subscription created - this should be handled by Stripe webhooks",
+  );
   // Implementation would go here for Stripe webhook handling
 }
 
-export async function handleSubscriptionUpdated(evt: WebhookEvent) {
-  console.log('Subscription updated - this should be handled by Stripe webhooks');
+export async function handleSubscriptionUpdated(_evt: WebhookEvent) {
+  console.log(
+    "Subscription updated - this should be handled by Stripe webhooks",
+  );
   // Implementation would go here for Stripe webhook handling
 }
 
-export async function handleSubscriptionDeleted(evt: WebhookEvent) {
-  console.log('Subscription deleted - this should be handled by Stripe webhooks');
+export async function handleSubscriptionDeleted(_evt: WebhookEvent) {
+  console.log(
+    "Subscription deleted - this should be handled by Stripe webhooks",
+  );
   // Implementation would go here for Stripe webhook handling
   // Example Stripe webhook implementation:
   /*

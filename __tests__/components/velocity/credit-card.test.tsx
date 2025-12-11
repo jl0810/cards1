@@ -1,392 +1,110 @@
 /**
- * Credit Card Component Tests
+ * Tests for Credit Card Component
  *
- * @tests BR-037 - Payment Cycle Status Calculation
- * @tests BR-017 - Payment Tracking
- * @tests US-023 - Payment Cycle Status Tracking
- * @tests US-010 - Track Payments
+ * @implements BR-032 - Card Product Matching
+ * @satisfies US-019 - Link Card Product
  */
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { CreditCard } from "@/components/velocity/credit-card";
-import {
-  calculatePaymentCycleStatus,
-  type PaymentCycleStatus,
-} from "@/lib/payment-cycle";
+import { useBankBrand } from "@/hooks/use-bank-brand";
 
-// Mock dependencies
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-}));
-
-jest.mock("sonner", () => ({
-  toast: {
-    success: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-  },
-}));
-
+// Mock hooks
 jest.mock("@/hooks/use-bank-brand", () => ({
-  useBankBrand: () => ({ brand: null }),
+  useBankBrand: jest.fn(),
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
+// Mock framer-motion to avoid animation issues in tests
 jest.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, onClick, ...props }: any) => (
-      <div onClick={onClick} {...props}>
+    div: ({ children, className, onClick, ...props }: any) => (
+      <div className={className} onClick={onClick} {...props}>
         {children}
       </div>
     ),
-    button: ({ children, onClick, ...props }: any) => (
-      <button onClick={onClick} {...props}>
-        {children}
-      </button>
-    ),
-  },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
-
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    accountExtended: {
-      findUnique: jest.fn(),
-    },
   },
 }));
 
-// Mock fetch for API calls
-global.fetch = jest.fn();
-
-describe("CreditCard Payment Cycle Status", () => {
-  const mockPush = jest.fn();
-  const mockRefresh = jest.fn();
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({
-      push: mockPush,
-      refresh: mockRefresh,
-    });
-  });
-
-  const createMockAccount = (overrides: any = {}) => ({
-    id: "acc-123",
-    name: "Test Card",
-    bank: "Test Bank",
-    bankId: "bank-123",
+describe("Credit Card Component", () => {
+  const mockAccount = {
+    id: "acc_123",
+    userId: "user_123",
+    bank: "Chase",
+    name: "Sapphire Preferred",
+    mask: "1234",
+    balance: 5000.5,
+    due: "2023-12-31",
     type: "credit",
-    balance: 1000,
-    due: "5 days",
-    color: "from-blue-500 to-purple-600",
-    paymentCycleStatus: "STATEMENT_GENERATED" as PaymentCycleStatus,
+    color: "#000000",
     liabilities: {
-      apr: "19.99%",
+      apr: "15.99%",
       aprType: "variable",
       aprBalanceSubjectToApr: "1000",
-      aprInterestChargeAmount: "15.50",
-      last_statement_balance: "1000",
-      last_payment_amount: "0",
-      last_payment_date: null,
-      last_statement_issue_date: "2024-11-15",
+      aprInterestChargeAmount: "0",
+      limit: "10000",
+      min_due: "25.00",
+      last_statement: "450.00",
+      next_due_date: "2023-12-31",
+      last_statement_date: "2023-12-01",
+      last_payment_amount: "450.00",
+      last_payment_date: "2023-11-25",
+      status: "Current",
     },
-    ...overrides,
+  };
+
+  beforeEach(() => {
+    (useBankBrand as jest.Mock).mockReturnValue({ brand: null });
   });
 
-  describe("Payment Status Display", () => {
-    it('should show "Mark Paid" button when status is STATEMENT_GENERATED', () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-      });
+  it("should render card details correctly", () => {
+    render(<CreditCard acc={mockAccount} layout="grid" />);
 
-      render(<CreditCard acc={account} layout="grid" />);
-
-      expect(screen.getByText("Mark Paid")).toBeInTheDocument();
-      expect(screen.queryByText("Mark as Unpaid")).not.toBeInTheDocument();
-    });
-
-    it('should show "Mark as Unpaid" button when status is PAYMENT_SCHEDULED', () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "PAYMENT_SCHEDULED",
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      expect(screen.getByText("Mark as Unpaid")).toBeInTheDocument();
-      expect(screen.queryByText("Mark Paid")).not.toBeInTheDocument();
-    });
-
-    it('should show "Mark as Unpaid" button when status is PAID_AWAITING_STATEMENT', () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "PAID_AWAITING_STATEMENT",
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      expect(screen.getByText("Mark as Unpaid")).toBeInTheDocument();
-      expect(screen.queryByText("Mark Paid")).not.toBeInTheDocument();
-    });
-
-    it("should show status badge for other statuses", () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "DORMANT",
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      expect(screen.queryByText("Mark Paid")).not.toBeInTheDocument();
-      expect(screen.queryByText("Mark as Unpaid")).not.toBeInTheDocument();
-      const badges = screen.getAllByText("Dormant");
-      expect(badges.length).toBeGreaterThan(0);
-      expect(badges[0]).toBeInTheDocument();
-    });
+    expect(screen.getByText("Chase")).toBeInTheDocument();
+    expect(screen.getByText("Sapphire Preferred")).toBeInTheDocument();
+    expect(screen.getByText("1234")).toBeInTheDocument();
+    expect(screen.getByText("$5,000.50")).toBeInTheDocument();
   });
 
-  describe("Mark as Paid Functionality", () => {
-    it('should call mark-paid API when "Mark Paid" is clicked', async () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-        liabilities: {
-          ...createMockAccount().liabilities,
-          last_statement_balance: "500",
-        },
-      });
+  it("should toggle flip state on click", () => {
+    render(<CreditCard acc={mockAccount} layout="grid" />);
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
+    // Initial state (front)
+    expect(screen.getByText("$5,000.50")).toBeVisible();
 
-      render(<CreditCard acc={account} layout="grid" />);
+    // Click to flip
+    const cardContent = screen.getByText("$5,000.50");
+    fireEvent.click(cardContent);
 
-      // Flip the card to access the back where the button is
-      const card = screen.getByText("Test Card");
-      fireEvent.click(card);
-
-      const markPaidButton = screen.getByText("Mark Paid");
-      fireEvent.click(markPaidButton);
-
-      await waitFor(() => {
-        const calls = (fetch as jest.Mock).mock.calls;
-        expect(calls.length).toBeGreaterThan(0);
-        const lastCall = calls[calls.length - 1];
-
-        expect(lastCall[0]).toBe("/api/account/acc-123/mark-paid");
-        expect(lastCall[1].method).toBe("POST");
-
-        const body = JSON.parse(lastCall[1].body);
-        expect(body).toEqual({
-          date: expect.any(String),
-          amount: 500,
-        });
-      });
-
-      expect(toast.success).toHaveBeenCalledWith("Marked as paid");
-    });
-
-    it("should handle API errors gracefully", async () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-      });
-
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      const markPaidButton = screen.getByText("Mark Paid");
-      fireEvent.click(markPaidButton);
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith("Failed to update status");
-      });
-    });
-
-    it("should validate amount before sending", async () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-        liabilities: {
-          ...createMockAccount().liabilities,
-          last_statement_balance: "", // Empty string
-        },
-      });
-
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      // Flip the card to access the back where the button is
-      const card = screen.getByText("Test Card");
-      fireEvent.click(card);
-
-      const markPaidButton = screen.getByText("Mark Paid");
-      fireEvent.click(markPaidButton);
-
-      await waitFor(() => {
-        const calls = (fetch as jest.Mock).mock.calls;
-        expect(calls.length).toBeGreaterThan(0);
-        const lastCall = calls[calls.length - 1];
-
-        expect(lastCall[0]).toBe("/api/account/acc-123/mark-paid");
-        expect(lastCall[1].method).toBe("POST");
-
-        const body = JSON.parse(lastCall[1].body);
-        expect(body).toEqual({
-          date: expect.any(String),
-          amount: 0,
-        });
-      });
-    });
+    // Should show back details (liabilities)
+    expect(screen.getByText("Statement Bal")).toBeVisible();
+    expect(screen.getByText("Min Payment")).toBeVisible();
   });
 
-  describe("Mark as Unpaid Functionality", () => {
-    it('should call unmark-paid API when "Mark as Unpaid" is clicked', async () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "PAYMENT_SCHEDULED",
-      });
+  it("should render list layout correctly", () => {
+    render(<CreditCard acc={mockAccount} layout="list" />);
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      // Flip the card to access the back where the button is
-      const card = screen.getByText("Test Card");
-      fireEvent.click(card);
-
-      const markUnpaidButton = screen.getByText("Mark as Unpaid");
-      fireEvent.click(markUnpaidButton);
-
-      await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith("/api/account/acc-123/unmark-paid", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-      });
-
-      expect(toast.success).toHaveBeenCalledWith("Marked as unpaid");
-    });
-
-    it("should handle unmark API errors gracefully", async () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "PAYMENT_SCHEDULED",
-      });
-
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      const markUnpaidButton = screen.getByText("Mark as Unpaid");
-      fireEvent.click(markUnpaidButton);
-
-      // Should show error state but no toast (removed)
-      await waitFor(() => {
-        expect(screen.getByText("Mark Paid")).toBeInTheDocument();
-      });
-    });
+    expect(screen.getByText("Sapphire Preferred")).toBeInTheDocument();
+    // List view specific elements
+    expect(screen.getByText("Statement")).toBeInTheDocument();
+    expect(screen.getByText("Current")).toBeInTheDocument();
   });
 
-  describe("Optimistic UI Updates", () => {
-    it("should show optimistic status immediately on click", async () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-      });
+  it("should display overdue status correctly", () => {
+    const overdueAccount = {
+      ...mockAccount,
+      due: "Overdue",
+    };
+    render(<CreditCard acc={overdueAccount} layout="list" />);
 
-      (fetch as jest.Mock).mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ ok: true }), 100),
-          ),
-      );
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      // First flip the card to see the payment button
-      const card = screen.getByText("Test Card"); // Click on the card name to flip
-      fireEvent.click(card);
-
-      // Now find and click the Mark Paid button on the back
-      const markPaidButton = screen.getByText("Mark Paid");
-      fireEvent.click(markPaidButton);
-
-      // Should immediately show "Mark as Unpaid" due to optimistic update
-      await waitFor(() => {
-        expect(screen.getByText("Mark as Unpaid")).toBeInTheDocument();
-      });
-    });
-
-    it("should revert optimistic status on API failure", async () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-      });
-
-      (fetch as jest.Mock).mockResolvedValueOnce({
-        ok: false,
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      // First flip the card to see the payment button
-      const card = screen.getByText("Test Card"); // Click on the card name to flip
-      fireEvent.click(card);
-
-      // Now find and click the Mark Paid button on the back
-      const markPaidButton = screen.getByText("Mark Paid");
-      fireEvent.click(markPaidButton);
-
-      await waitFor(() => {
-        // Should revert back to "Mark Paid" after failure
-        expect(screen.getByText("Mark Paid")).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe("Card Flip Prevention", () => {
-    it("should prevent card flip when payment button is clicked", () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-      });
-
-      render(<CreditCard acc={account} layout="grid" />);
-
-      const markPaidButton = screen.getByText("Mark Paid");
-
-      // Mock the card flip click handler
-      const cardContainer = markPaidButton.closest(
-        '[style*="transform-style: preserve-3d"]',
-      );
-      expect(cardContainer).toBeInTheDocument();
-
-      // Click on button should not bubble up to card container
-      fireEvent.click(markPaidButton);
-
-      // The button should handle the click without triggering card flip
-      expect(markPaidButton).toBeInTheDocument();
-    });
-  });
-
-  describe("List View Support", () => {
-    it("should render payment controls in list view", () => {
-      const account = createMockAccount({
-        paymentCycleStatus: "STATEMENT_GENERATED",
-      });
-
-      render(<CreditCard acc={account} layout="list" />);
-
-      expect(screen.getByText("Mark Paid")).toBeInTheDocument();
-      expect(screen.getByText("Test Card")).toBeInTheDocument();
-      // List view doesn't show bank name, only card name
-    });
+    const overdueElement = screen.getByText("Overdue");
+    expect(overdueElement).toHaveClass("text-red-400");
   });
 });

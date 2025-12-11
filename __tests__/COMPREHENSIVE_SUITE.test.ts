@@ -33,7 +33,6 @@ jest.mock("plaid", () => {
     itemPublicTokenExchange: jest.fn(),
     liabilitiesGet: jest.fn(),
     transactionsSync: jest.fn(),
-    accountsBalanceGet: jest.fn(),
   };
 
   return {
@@ -676,8 +675,8 @@ describe("COMPREHENSIVE TEST SUITE - All Business Rules", () => {
           },
         });
 
-        (plaid as any).accountsBalanceGet.mockResolvedValue({
-          data: { accounts: [] },
+        (plaid as any).liabilitiesGet.mockResolvedValue({
+          data: { accounts: [], liabilities: { credit: [] } },
         });
 
         const response = await syncTransactions(
@@ -731,8 +730,8 @@ describe("COMPREHENSIVE TEST SUITE - All Business Rules", () => {
           },
         });
 
-        (plaid as any).accountsBalanceGet.mockResolvedValue({
-          data: { accounts: [] },
+        (plaid as any).liabilitiesGet.mockResolvedValue({
+          data: { accounts: [], liabilities: { credit: [] } },
         });
 
         const response = await syncTransactions(
@@ -781,8 +780,8 @@ describe("COMPREHENSIVE TEST SUITE - All Business Rules", () => {
           });
         });
 
-        (plaid as any).accountsBalanceGet.mockResolvedValue({
-          data: { accounts: [] },
+        (plaid as any).liabilitiesGet.mockResolvedValue({
+          data: { accounts: [], liabilities: { credit: [] } },
         });
 
         const response = await syncTransactions(
