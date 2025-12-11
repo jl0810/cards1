@@ -2,16 +2,16 @@
 
 /**
  * Animated Features Grid Component
- * 
+ *
  * @module components/marketing/animated-features
  * @implements BR-046 - Animation Standards
  * @implements BR-047 - Marketing Content Display
  * @satisfies US-039 - Feature Showcase
- * @tested __tests__/components/marketing/animated-features.test.ts
+ * @tested __tests__/components/marketing/animated-features.test.tsx
  */
 
 import { motion } from "framer-motion";
-import { CreditCard, Send, ShieldCheck, Zap, Layout, Globe, ChevronDown } from "lucide-react";
+import { CreditCard, Send, Zap, Globe } from "lucide-react";
 
 const features = [
   {
