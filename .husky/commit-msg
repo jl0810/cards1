@@ -1,25 +1,3 @@
 #!/usr/bin/env sh
 
-COMMIT_MSG_FILE=$1
-COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
-
-# Skip checks for merge/revert commits
-if echo "$COMMIT_MSG" | grep -qE "^(Merge|Revert)"; then
-  exit 0
-fi
-
-# Check for traceability references
-if ! echo "$COMMIT_MSG" | grep -qE "(US-[0-9]+|BR-[0-9]+|feat|fix|docs|chore|test|refactor)"; then
-  echo ""
-  echo "⚠️  TIP: Reference User Stories (US-XXX) or Business Rules (BR-XXX) in commits"
-  echo ""
-  echo "Examples:"
-  echo "  feat: add user login (US-045)"
-  echo "  fix: validate email format (BR-012)"
-  echo ""
-  echo "Current message: $COMMIT_MSG"
-  echo ""
-  # Don't block, just warn
-fi
-
-exit 0
+../../sysadmin/scripts/hooks/commit-msg.sh $1

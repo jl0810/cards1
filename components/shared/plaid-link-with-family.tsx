@@ -64,8 +64,9 @@ export default function PlaidLinkWithFamily({
   const router = useRouter();
 
   const onSuccess = useCallback(
-    async (public_token: string, metadata: PlaidMetadata) => {
-      try {
+    (public_token: string, metadata: PlaidMetadata) => {
+      void (async () => {
+        try {
         const requestBody = {
           public_token,
           metadata,
@@ -83,7 +84,7 @@ export default function PlaidLinkWithFamily({
         let data;
         try {
           data = await response.json();
-        } catch (parseError) {
+        } catch (_parseError) {
           throw new Error(
             `Server returned invalid response (${response.status})`,
           );
@@ -97,7 +98,7 @@ export default function PlaidLinkWithFamily({
             data?.message ||
             "Failed to exchange token";
 
-          throw new Error(errorMessage);
+          throw new Error(errorMessage as string);
         }
 
         if (data.duplicate) {
@@ -120,6 +121,7 @@ export default function PlaidLinkWithFamily({
             : "Failed to link bank account";
         toast.error(errorMessage);
       }
+      })();
     },
     [router, selectedFamilyMemberId, familyMembers],
   );
@@ -152,7 +154,7 @@ export default function PlaidLinkWithFamily({
         setLoading(false);
         return;
       }
-      const data = await response.json();
+      const data = await response.json() as { link_token: string };
       setToken(data.link_token);
       setShouldOpen(true);
     } catch (error) {

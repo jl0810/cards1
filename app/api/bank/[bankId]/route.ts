@@ -3,42 +3,44 @@
  * Returns bank branding information for authenticated users
  * 
  * @module app/api/bank/[bankId]
- * @implements BR-026 - Input Validation Required
- * @satisfies US-006 - Link Bank Account (brand display)
+ * @implements BR-100 - Institution Metadata
  */
 
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
-import { Errors, successResponse } from '@/lib/api-errors';
-import { IdSchema } from '@/lib/validations';
+import { auth } from "@/lib/auth";
+import { db, schema, eq } from "@/db";
+import { Errors, successResponse } from "@/lib/api-errors";
+import { z } from "zod";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Get bank branding info
  * 
  * @route GET /api/bank/[bankId]
- * @returns Bank logo, color, and name
  */
 export async function GET(req: Request, { params }: { params: Promise<{ bankId: string }> }) {
-    // Auth check at top (BR-031)
-    const { userId } = await auth();
-    if (!userId) {
+    const session = await auth();
+    const user = session?.user;
+    if (!user?.id) {
         return Errors.unauthorized();
     }
 
     const { bankId } = await params;
-    
-    // Input validation (BR-026)
-    const validatedId = IdSchema.safeParse(bankId);
-    if (!validatedId.success) {
-        return Errors.badRequest('Invalid bank ID format');
+
+    // Simple ID validation
+    if (!bankId || bankId.length < 5) {
+        return Errors.badRequest("Invalid bank ID");
     }
-    
-    const bank = await prisma.bank.findUnique({
-        where: { id: bankId },
-        select: { logoUrl: true, logoSvg: true, brandColor: true, name: true },
+
+    const bank = await db.query.banks.findFirst({
+        where: eq(schema.banks.id, bankId),
+        columns: {
+            logoUrl: true,
+            brandColor: true,
+            name: true,
+        }
     });
-    if (!bank) return Errors.notFound('Bank');
+
+    if (!bank) return Errors.notFound("Bank");
     return successResponse(bank);
 }

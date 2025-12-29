@@ -41,7 +41,7 @@ export function BenefitsDashboard({ accountId, period = 'month' }: BenefitsDashb
     const [viewMode, setViewMode] = useState<'credits' | 'perks'>('credits');
 
     useEffect(() => {
-        fetchBenefits();
+        void fetchBenefits();
     }, [accountId]);
 
     const fetchBenefits = async () => {
@@ -52,7 +52,7 @@ export function BenefitsDashboard({ accountId, period = 'month' }: BenefitsDashb
             });
 
             const response = await fetch(`/api/benefits/usage?${params}`);
-            const data = await response.json();
+            const data = await response.json() as { benefits: BenefitProgress[] };
             setBenefits(data.benefits || []);
         } catch (error) {
             console.error('Failed to fetch benefits:', error);
@@ -71,7 +71,7 @@ export function BenefitsDashboard({ accountId, period = 'month' }: BenefitsDashb
 
             if (data.matched > 0) {
                 toast.success(`Matched ${data.matched} transactions to benefits!`);
-                fetchBenefits(); // Refresh data
+                void fetchBenefits(); // Refresh data
             } else {
                 toast.info('No new matches found');
             }
@@ -317,7 +317,7 @@ function BenefitTile({ benefit, urgency = 'upcoming' }: { benefit: BenefitProgre
 
         try {
             const response = await fetch(`/api/benefits/transactions?benefitId=${benefit.id}`);
-            const data = await response.json();
+            const data = await response.json() as { transactions: Transaction[] };
             setTransactions(data.transactions || []);
         } catch (error) {
             console.error('Failed to fetch transactions:', error);

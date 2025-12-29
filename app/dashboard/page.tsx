@@ -39,7 +39,7 @@ type Account = z.infer<typeof AccountSchema>;
  * @tested E2E
  */
 export default function DashboardPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const isAdmin = useIsAdmin();
   const [activeTab, setActiveTab] = useState("wallet");
   const [activeUser, setActiveUser] = useState("all");
@@ -245,7 +245,7 @@ export default function DashboardPage() {
             <button
               onClick={() => {
                 toast.dismiss(t);
-                performDelete(id, memberToDelete.name);
+                void performDelete(id, memberToDelete.name);
               }}
               className="flex-1 px-3 py-1.5 text-xs font-bold bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
             >
@@ -340,7 +340,7 @@ export default function DashboardPage() {
         logger.error("Expected array from /api/plaid/items", {
           receivedType: typeof items,
           receivedValue: items,
-          responseKeys: Object.keys(response),
+          responseKeys: Object.keys(response as Record<string, unknown>),
         });
         setAccounts([]);
         return;
@@ -454,8 +454,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchAccounts();
-    fetchUsers();
+    void fetchAccounts();
+    void fetchUsers();
   }, []);
 
   if (loading)

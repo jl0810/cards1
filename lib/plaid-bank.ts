@@ -1,48 +1,34 @@
-import { prisma } from "@/lib/prisma";
+/**
+ * Bank and Institution Utilities for Plaid
+ * Handles fetching institution metadata and ensuring Bank rows exist.
+ * 
+ * @module lib/plaid-bank
+ * @implements BR-100 - Institution Metadata
+ * @satisfies US-011 - Fetch Bank Logo/Colors
+ */
+
+import { db, schema, eq } from "@/db";
 import { Configuration, PlaidApi, PlaidEnvironments, CountryCode } from "plaid";
-import type { PlaidInstitutionExtendedSchema } from "@/lib/validations";
-import type { z } from "zod";
+import { plaidClient as sharedPlaidClient } from "./plaid";
 
-type PlaidInstitutionExtended = z.infer<typeof PlaidInstitutionExtendedSchema>;
+type PlaidInstitutionExtended = {
+  logo?: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  [key: string]: unknown;
+};
 
-const plaidClient = new PlaidApi(
-  new Configuration({
-    basePath:
-      process.env.PLAID_ENV === "sandbox"
-        ? PlaidEnvironments.sandbox
-        : process.env.PLAID_ENV === "development"
-          ? PlaidEnvironments.development
-          : PlaidEnvironments.production,
-    baseOptions: {
-      headers: {
-        "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID!,
-        "PLAID-SECRET": process.env.PLAID_SECRET!,
-      },
-    },
-  }),
-);
+// Use shared client
+const plaidClient = sharedPlaidClient;
 
-// Create a helper to get a properly configured Plaid client
+/**
+ * Helper to get a properly configured Plaid client
+ * @deprecated Use shared plaidClient from @/lib/plaid instead
+ */
 export function getPlaidClient() {
-  return new PlaidApi(
-    new Configuration({
-      basePath:
-        process.env.PLAID_ENV === "sandbox"
-          ? PlaidEnvironments.sandbox
-          : process.env.PLAID_ENV === "development"
-            ? PlaidEnvironments.development
-            : PlaidEnvironments.production,
-      baseOptions: {
-        headers: {
-          "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID!,
-          "PLAID-SECRET": process.env.PLAID_SECRET!,
-        },
-      },
-    }),
-  );
+  return sharedPlaidClient;
 }
 
-/** Fetch logo & colour from Plaid (optional) */
 /** Fetch logo & colour from Plaid (optional) */
 export async function fetchInstitutionInfo(
   institutionId: string,
@@ -53,14 +39,11 @@ export async function fetchInstitutionInfo(
 
   try {
     const resp = await plaidClient.institutionsGetById({
-      client_id: process.env.PLAID_CLIENT_ID!,
-      secret: process.env.PLAID_SECRET!,
       institution_id: institutionId,
       country_codes: [CountryCode.Us],
     });
     const { institution } = resp.data;
-    // Cast to PlaidInstitutionExtended because Plaid types might be missing logo_url
-    const inst = institution as PlaidInstitutionExtended;
+    const inst = institution as unknown as PlaidInstitutionExtended;
 
     // Prefer Plaid's logo (Base64) or URL
     logoUrl = inst.logo
@@ -73,19 +56,10 @@ export async function fetchInstitutionInfo(
 
   // Fallback to Logo.dev if no logo found and we have a name
   if (!logoUrl && institutionName) {
-    // 1. Try to get the official URL from Plaid to find the domain
     let domain: string | null = null;
 
-    // Check if we already fetched the full institution object above (likely not full details in getById if fetched elsewhere, but let's re-fetch to be safe if we didn't get it)
-    // Actually, we fetched it above in the try/catch block. Let's check if we can extract the URL from the first call if possible, or re-fetch.
-    // The first call was `institutionsGetById`. Plaid's `Institution` object has a `url` field.
-
     try {
-      // We need to re-fetch or use the data if we stored it. The variable `inst` above is scoped to the try block.
-      // Let's do a clean fetch here if we didn't get a logo, specifically for the URL.
       const resp = await plaidClient.institutionsGetById({
-        client_id: process.env.PLAID_CLIENT_ID!,
-        secret: process.env.PLAID_SECRET!,
         institution_id: institutionId,
         country_codes: [CountryCode.Us],
         options: { include_optional_metadata: true },
@@ -100,7 +74,6 @@ export async function fetchInstitutionInfo(
       // ignore fetch error
     }
 
-    // 2. If no domain from Plaid, try to guess it from the name
     if (!domain) {
       const cleanName = institutionName
         .toLowerCase()
@@ -111,15 +84,11 @@ export async function fetchInstitutionInfo(
       domain = `${cleanName}.com`;
     }
 
-    // 3. Construct Logo URL
     if (domain) {
       const logoDevToken = process.env.LOGO_DEV_TOKEN;
       if (logoDevToken) {
-        // Use Logo.dev (authenticated)
         logoUrl = `https://img.logo.dev/${domain}?token=${logoDevToken}&size=128&format=png`;
       } else {
-        // Fallback to public Clearbit (unauthenticated, might be rate limited or deprecated)
-        // Since user asked for backend storage, this is fine as a fallback.
         logoUrl = `https://logo.clearbit.com/${domain}`;
       }
     }
@@ -136,9 +105,9 @@ export async function ensureBankExists(plaidItem: {
 }) {
   if (!plaidItem.institutionId) return null;
 
-  // Try to find existing bank
-  let bank = await prisma.bank.findUnique({
-    where: { plaidId: plaidItem.institutionId },
+  // Try to find existing bank using Drizzle
+  let bank = await db.query.banks.findFirst({
+    where: eq(schema.banks.plaidId, plaidItem.institutionId),
   });
 
   if (!bank) {
@@ -146,21 +115,27 @@ export async function ensureBankExists(plaidItem: {
       plaidItem.institutionId,
       plaidItem.institutionName,
     );
-    bank = await prisma.bank.create({
-      data: {
+
+    const [newBank] = await db.insert(schema.banks)
+      .values({
         plaidId: plaidItem.institutionId,
         name: plaidItem.institutionName ?? plaidItem.institutionId,
         logoUrl,
         brandColor,
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    bank = newBank;
   }
 
   // Update PlaidItem with bankId if not set
-  await prisma.plaidItem.update({
-    where: { id: plaidItem.id },
-    data: { bankId: bank.id },
-  });
+  await db.update(schema.plaidItems)
+    .set({
+      bankId: bank.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.plaidItems.id, plaidItem.id));
 
   return bank.id;
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { Protect } from "@clerk/nextjs";
-import { env } from "@/env";
+import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
+import { AlertCircle } from "lucide-react";
 
 interface BillingGuardProps {
   children: React.ReactNode;
@@ -10,49 +11,48 @@ interface BillingGuardProps {
   fallback?: React.ReactNode;
 }
 
-export function BillingGuard({ 
-  children, 
-  plan = env.NEXT_PUBLIC_CLERK_REQUIRED_PLAN,
+export function BillingGuard({
+  children,
+  plan,
   feature,
   fallback = (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-      <svg className="mx-auto h-12 w-12 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-      </svg>
-      <h3 className="mt-4 text-lg font-medium text-yellow-800">Premium Feature</h3>
-      <p className="mt-2 text-sm text-yellow-700">
-        This feature requires an active subscription to access.
+    <div className="glass-card border border-yellow-500/20 rounded-2xl p-8 text-center bg-yellow-500/5 backdrop-blur-md">
+      <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+      <h3 className="text-xl font-bold text-white mb-2">Premium Feature</h3>
+      <p className="text-gray-400 mb-6 max-w-sm mx-auto">
+        This feature requires an active subscription to access. Upgrade your plan to unlock more potential.
       </p>
-      <a
+      <Link
         href="/pricing"
-        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-yellow-800 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+        className="inline-flex items-center px-6 py-2.5 bg-yellow-500 text-black font-bold rounded-full hover:bg-yellow-400 transition-colors shadow-lg shadow-yellow-500/20"
       >
         View Pricing Plans
-      </a>
+      </Link>
     </div>
   )
 }: BillingGuardProps) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  // If no specific requirement, just check authentication
   if (!plan && !feature) {
-    return <>{fallback}</>;
+    return user ? <>{children}</> : <>{fallback}</>;
   }
 
-  if (plan) {
-    return (
-      <Protect 
-        condition={(has) => has({ plan })}
-        fallback={fallback}
-      >
-        {children}
-      </Protect>
-    );
+  // For now, default to free plan since we're migrating auth
+  // Will be updated when subscription logic is moved to NextAuth.js session
+  const userPlan = 'free';
+  const userFeatures: string[] = [];
+
+  const hasPlan = plan ? userPlan === plan : true;
+  const hasFeature = feature ? userFeatures.includes(feature) : true;
+
+  if (hasPlan && hasFeature) {
+    return <>{children}</>;
   }
 
-  return (
-    <Protect 
-      condition={(has) => has({ feature: feature! })}
-      fallback={fallback}
-    >
-      {children}
-    </Protect>
-  );
+  return <>{fallback}</>;
 }

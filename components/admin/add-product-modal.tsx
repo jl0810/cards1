@@ -58,10 +58,10 @@ export function AddProductModal({ isOpen, onClose, onSuccess }: AddProductModalP
                     imageUrl: ''
                 });
             } else {
-                const data = await res.json();
+                const data = await res.json() as { error?: string };
                 toast.error(data.error || 'Failed to create product');
             }
-        } catch (error) {
+        } catch (_error) {
             toast.error('Error creating product');
         } finally {
             setSaving(false);

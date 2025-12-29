@@ -1,22 +1,15 @@
 /**
  * Admin Alerts API
- * Send system alerts to users via Novu
- *
- * @module app/api/admin/alerts
- * @implements BR-031 - Admin Role Required
- * @satisfies US-023 - Admin Notifications
+ * No-op version (Novu removed)
  */
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { Novu } from "@novu/node";
 import { requireAdmin } from "@/lib/admin";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-
-const novu = new Novu(process.env.NOVU_API_KEY!);
 
 const AlertSchema = z.object({
   title: z.string().min(1).max(200),
@@ -29,7 +22,7 @@ const AlertSchema = z.object({
 });
 
 /**
- * Send an admin alert
+ * Send an admin alert (DUMMY)
  * @route POST /api/admin/alerts
  */
 export async function POST(request: NextRequest) {
@@ -39,46 +32,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const admin = await requireAdmin();
-
+    await requireAdmin();
     const body = await request.json();
     const validation = AlertSchema.safeParse(body);
     if (!validation.success) {
       return Errors.badRequest("Invalid alert data");
     }
 
-    const {
-      title,
-      message,
-      type,
-      priority,
-      targetUserId,
-      actionUrl,
-      actionText,
-    } = validation.data;
-
-    // Create the notification trigger
-    const result = await novu.trigger("admin-alert", {
-      to: targetUserId ? { subscriberId: targetUserId } : "all-subscribers",
-      payload: {
-        title,
-        message,
-        type,
-        priority,
-        actionUrl,
-        actionText,
-        sentBy: admin.userId,
-        sentAt: new Date().toISOString(),
-      },
-    });
+    logger.info("Admin alert received (NOT SENT - Novu disabled):", validation.data);
 
     return NextResponse.json({
       success: true,
-      notificationId: result.data?.notificationId,
-      message: "Alert sent successfully",
+      message: "Alert logged successfully (Notifications disabled)",
     });
   } catch (error) {
-    logger.error("Error sending admin alert:", error);
+    logger.error("Error in admin alert (dummy):", error);
     return Errors.internal();
   }
 }
@@ -90,12 +58,9 @@ export async function POST(request: NextRequest) {
 export async function GET(_request: NextRequest) {
   try {
     await requireAdmin();
-
-    // Fetch recent alerts (for admin dashboard)
-    // This is a placeholder - you'd implement actual alert history
     return NextResponse.json({
       alerts: [],
-      message: "Alert history feature coming soon",
+      message: "Alert history coming soon",
     });
   } catch (error) {
     logger.error("Error fetching alerts:", error);

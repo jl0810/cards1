@@ -7,18 +7,16 @@
  * @satisfies US-013 - User Settings
  */
 
-import type { NextRequest} from 'next/server';
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
-import type { UserProfileExtendedSchema} from '@/lib/validations';
-import { UpdateUserPreferencesSchema, safeValidateSchema } from '@/lib/validations';
-import { Errors } from '@/lib/api-errors';
-import { logger } from '@/lib/logger';
-import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-import type { z } from 'zod';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db, schema, eq } from "@/db";
+import { UpdateUserPreferencesSchema, safeValidateSchema } from "@/lib/validations";
+import { Errors } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-type UserProfileExtended = z.infer<typeof UserProfileExtendedSchema>;
+export const dynamic = "force-dynamic";
 
 /**
  * Get user preferences
@@ -26,44 +24,28 @@ type UserProfileExtended = z.infer<typeof UserProfileExtendedSchema>;
  */
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const user = session?.user;
 
-    if (!userId) {
+    if (!user?.id) {
       return Errors.unauthorized();
     }
 
-    // Get user preferences from Supabase
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    // Get user preferences from DB using Drizzle
+    let userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
 
     if (!userProfile) {
-      // Create default preferences for new user
-      const defaultProfile = await prisma.userProfile.create({
-        data: {
-          clerkId: userId,
-        },
-      });
+      // Create default profile for new user
+      const [newProfile] = await db.insert(schema.userProfiles)
+        .values({
+          supabaseId: user.id,
+          name: user.email?.split("@")[0] || "User",
+        })
+        .returning();
 
-      return NextResponse.json({
-        theme: defaultProfile.theme || 'system',
-        language: defaultProfile.language || 'en',
-        timezone: defaultProfile.timezone || 'UTC',
-        emailNotifications: defaultProfile.emailNotifications ?? true,
-        pushNotifications: defaultProfile.pushNotifications ?? false,
-        marketingEmails: false, // Default since not in schema
-        newsletter: false, // Map to marketing emails
-        notifications: defaultProfile.pushNotifications ?? false, // Map to push notifications
-        defaultDashboard: (defaultProfile as UserProfileExtended).defaultDashboard || 'main',
-        sidebarCollapsed: (defaultProfile as UserProfileExtended).sidebarCollapsed ?? false,
-        compactMode: false, // Default since not in schema
-        betaFeatures: (defaultProfile as UserProfileExtended).betaFeatures ?? false,
-        analyticsSharing: (defaultProfile as UserProfileExtended).analyticsSharing ?? true,
-        crashReporting: true, // Default since not in schema
-        autoSave: true, // Default since not in schema
-        keyboardShortcuts: true, // Default since not in schema
-        soundEffects: false, // Default since not in schema
-      });
+      userProfile = newProfile;
     }
 
     return NextResponse.json({
@@ -72,22 +54,20 @@ export async function GET() {
       timezone: userProfile.timezone,
       emailNotifications: userProfile.emailNotifications,
       pushNotifications: userProfile.pushNotifications,
-      marketingEmails: false, // Default since not in schema
-      newsletter: false, // Map to marketing emails
-      notifications: userProfile.pushNotifications, // Map to push notifications
-      defaultDashboard: (userProfile as UserProfileExtended).defaultDashboard || 'main',
-      sidebarCollapsed: (userProfile as UserProfileExtended).sidebarCollapsed ?? false,
-      compactMode: false, // Default since not in schema
-      betaFeatures: (userProfile as UserProfileExtended).betaFeatures ?? false,
-      analyticsSharing: (userProfile as UserProfileExtended).analyticsSharing ?? true,
-      crashReporting: true, // Default since not in schema
-      autoSave: true, // Default since not in schema
-      keyboardShortcuts: true, // Default since not in schema
-      soundEffects: false, // Default since not in schema
+      marketingEmails: userProfile.marketingEmails,
+      defaultDashboard: userProfile.defaultDashboard,
+      sidebarCollapsed: userProfile.sidebarCollapsed,
+      compactMode: userProfile.compactMode,
+      betaFeatures: userProfile.betaFeatures,
+      analyticsSharing: userProfile.analyticsSharing,
+      crashReporting: userProfile.crashReporting,
+      autoSave: userProfile.autoSave,
+      keyboardShortcuts: userProfile.keyboardShortcuts,
+      soundEffects: userProfile.soundEffects,
     });
 
   } catch (error) {
-    logger.error('Error fetching user preferences:', error);
+    logger.error("Error fetching user preferences:", error);
     return Errors.internal();
   }
 }
@@ -99,72 +79,72 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   const limited = await rateLimit(request, RATE_LIMITS.write);
   if (limited) {
-    return new Response('Too many requests', { status: 429 });
+    return new Response("Too many requests", { status: 429 });
   }
 
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const user = session?.user;
 
-    if (!userId) {
+    if (!user?.id) {
       return Errors.unauthorized();
     }
 
     const body = await request.json();
     const validation = safeValidateSchema(UpdateUserPreferencesSchema, body);
     if (!validation.success) {
-      return Errors.badRequest('Invalid preferences data');
+      return Errors.badRequest("Invalid preferences data");
     }
-    
+
     const preferences = validation.data;
 
-    // Update user preferences in Supabase
-    const updatedProfile = await prisma.userProfile.upsert({
-      where: { clerkId: userId },
-      update: {
+    // Update user preferences using Drizzle upsert (onConflictDoUpdate)
+    const [updatedProfile] = await db.insert(schema.userProfiles)
+      .values({
+        supabaseId: user.id,
         theme: preferences.theme,
         language: preferences.language,
         timezone: preferences.timezone,
         emailNotifications: preferences.emailNotifications,
         pushNotifications: preferences.pushNotifications,
-        // Note: Extended preference fields will be handled separately if schema is updated
         updatedAt: new Date(),
-      },
-      create: {
-        clerkId: userId,
-        theme: preferences.theme,
-        language: preferences.language,
-        timezone: preferences.timezone,
-        emailNotifications: preferences.emailNotifications,
-        pushNotifications: preferences.pushNotifications,
-        // Note: Extended preference fields will be handled separately if schema is updated
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: schema.userProfiles.supabaseId,
+        set: {
+          theme: preferences.theme,
+          language: preferences.language,
+          timezone: preferences.timezone,
+          emailNotifications: preferences.emailNotifications,
+          pushNotifications: preferences.pushNotifications,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
     return NextResponse.json({
-      message: 'Preferences updated successfully',
+      message: "Preferences updated successfully",
       preferences: {
         theme: updatedProfile.theme,
         language: updatedProfile.language,
         timezone: updatedProfile.timezone,
         emailNotifications: updatedProfile.emailNotifications,
         pushNotifications: updatedProfile.pushNotifications,
-        marketingEmails: false,
-        newsletter: false, // Map to marketing emails
-        notifications: updatedProfile.pushNotifications, // Map to push notifications
-        defaultDashboard: (updatedProfile as UserProfileExtended).defaultDashboard || 'main',
-        sidebarCollapsed: (updatedProfile as UserProfileExtended).sidebarCollapsed ?? false,
-        compactMode: false,
-        betaFeatures: (updatedProfile as UserProfileExtended).betaFeatures ?? false,
-        analyticsSharing: (updatedProfile as UserProfileExtended).analyticsSharing ?? true,
-        crashReporting: true,
-        autoSave: true,
-        keyboardShortcuts: true,
-        soundEffects: false,
+        marketingEmails: updatedProfile.marketingEmails,
+        defaultDashboard: updatedProfile.defaultDashboard,
+        sidebarCollapsed: updatedProfile.sidebarCollapsed,
+        compactMode: updatedProfile.compactMode,
+        betaFeatures: updatedProfile.betaFeatures,
+        analyticsSharing: updatedProfile.analyticsSharing,
+        crashReporting: updatedProfile.crashReporting,
+        autoSave: updatedProfile.autoSave,
+        keyboardShortcuts: updatedProfile.keyboardShortcuts,
+        soundEffects: updatedProfile.soundEffects,
       }
     });
 
   } catch (error) {
-    logger.error('Error updating user preferences:', error);
+    logger.error("Error updating user preferences:", error);
     return Errors.internal();
   }
 }

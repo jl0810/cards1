@@ -1,12 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type {
-  User} from "lucide-react";
 import {
   Shield,
   CreditCard,
-  Plug,
   ChevronRight,
   LogOut,
   Landmark,
@@ -16,10 +13,15 @@ import {
   Pencil,
   ChevronDown,
   Users,
-  ArrowLeft
+  ArrowLeft,
+  Settings,
+  Bell
 } from "lucide-react";
-import { useClerk, useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/use-auth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type PanelView = "main" | "family";
 
@@ -29,6 +31,15 @@ import type { z } from "zod";
 type User = z.infer<typeof UserSchema>;
 type Account = z.infer<typeof AccountSchema>;
 
+interface SettingsViewProps {
+  users: User[];
+  accounts: Account[];
+  onAddMember: (name: string) => void;
+  onUpdateMember: (id: string, name: string) => void;
+  onDeleteMember: (id: string) => void;
+  onLinkBank: (bank: string, userId: string) => void;
+}
+
 export function SettingsView({
   users,
   accounts,
@@ -36,16 +47,8 @@ export function SettingsView({
   onUpdateMember,
   onDeleteMember,
   onLinkBank,
-}: {
-  users: User[];
-  accounts: Account[];
-  onAddMember: (name: string) => void;
-  onUpdateMember: (id: string, name: string) => void;
-  onDeleteMember: (id: string) => void;
-  onLinkBank: (bank: string, userId: string) => void;
-}) {
-  const { user } = useUser();
-  const clerk = useClerk();
+}: SettingsViewProps) {
+  const { user, signOut } = useAuth();
   const [activePanel, setActivePanel] = useState<PanelView>("main");
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
@@ -73,219 +76,261 @@ export function SettingsView({
   };
 
   const slideVariants = {
-    enter: { x: "100%", opacity: 0 },
-    center: { x: 0, opacity: 1 },
-    exit: { x: "100%", opacity: 0 },
+    enter: (direction: number) => ({
+      x: direction > 0 ? "100%" : "-100%",
+      opacity: 0
+    }),
+    center: {
+      x: 0,
+      opacity: 1
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? "100%" : "-100%",
+      opacity: 0
+    })
   };
 
   return (
-    <div className="relative">
-      <AnimatePresence mode="wait">
-        {activePanel === "main" && (
+    <div className="relative overflow-hidden min-h-[600px]">
+      <AnimatePresence mode="wait" custom={activePanel === "family" ? 1 : -1}>
+        {activePanel === "main" ? (
           <motion.div
             key="main"
+            custom={-1}
             initial="enter"
             animate="center"
             exit="exit"
             variants={slideVariants}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="space-y-4 pb-24"
+            className="space-y-6 pb-24"
           >
-            {/* Profile Card */}
-            <div className="glass-card p-6 rounded-3xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-              <div className="flex items-center gap-4 relative z-10">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
-                  {user?.firstName?.[0] || "U"}
-                </div>
+            {/* Profile Section */}
+            <div className="glass-card p-8 rounded-[2rem] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 rounded-full blur-[80px] -mr-32 -mt-32 group-hover:bg-brand-primary/20 transition-colors duration-500"></div>
+              <div className="flex items-center gap-6 relative z-10">
+                <Avatar className="w-20 h-20 border-2 border-white/10 shadow-2xl">
+                  <AvatarImage src={user?.image || undefined} />
+                  <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-indigo-500 to-purple-500 text-white">
+                    {user?.email?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1">
-                  <h2 className="text-xl font-bold text-white">
-                    {user?.firstName || "User"}
+                  <h2 className="text-2xl font-bold text-white tracking-tight">
+                    {user?.name || "Account Owner"}
                   </h2>
-                  <p className="text-sm text-slate-400">
-                    {user?.primaryEmailAddress?.emailAddress}
+                  <p className="text-sm text-slate-400 font-medium">
+                    {user?.email}
                   </p>
+                  <div className="mt-2 flex gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-brand-primary/20 text-brand-primary text-[10px] font-bold uppercase tracking-wider">
+                      {(user as any)?.plan || "Free"} Plan
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Settings Grid */}
+            {/* Quick Actions Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <button className="glass-card p-4 rounded-3xl flex flex-col items-center gap-3 hover:bg-white/10 transition-all border border-white/5 active:scale-95">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center">
+                  <Bell className="w-6 h-6 text-indigo-400" />
+                </div>
+                <span className="text-sm font-bold text-white">Alerts</span>
+              </button>
+              <button className="glass-card p-4 rounded-3xl flex flex-col items-center gap-3 hover:bg-white/10 transition-all border border-white/5 active:scale-95 text-slate-500 opacity-60">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-slate-400" />
+                </div>
+                <span className="text-sm font-bold">Security</span>
+              </button>
+            </div>
+
+            {/* Settings Menu */}
             <div className="space-y-3">
-              {/* Family Members */}
               <button
                 onClick={() => setActivePanel("family")}
-                className="w-full glass-card p-4 rounded-2xl flex items-center justify-between hover:bg-white/10 transition-all group"
+                className="w-full glass-card p-5 rounded-3xl flex items-center justify-between hover:bg-white/10 transition-all group border border-white/5 active:scale-[0.99]"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-pink-500/20 flex items-center justify-center shadow-inner">
                     <Users className="w-6 h-6 text-pink-400" />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-sm font-bold text-white">
-                      Family Members
+                    <h3 className="text-base font-bold text-white">
+                      Family & Household
                     </h3>
-                    <p className="text-xs text-slate-400">
-                      {users.length} member{users.length !== 1 ? "s" : ""}
+                    <p className="text-xs text-slate-400 font-medium">
+                      Manage {users.length} member{users.length !== 1 ? "s" : ""} in your household
                     </p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/20 transition-all">
+                  <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white" />
+                </div>
               </button>
 
-              {/* Security */}
-              <div className="glass-card p-4 rounded-2xl flex items-center justify-between opacity-50">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                    <Shield className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-sm font-bold text-white">Security</h3>
-                    <p className="text-xs text-slate-400">Coming soon</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sign Out */}
               <button
-                onClick={() => clerk.signOut()}
-                className="w-full glass-card p-4 rounded-2xl flex items-center justify-between hover:bg-red-500/10 transition-all group border border-transparent hover:border-red-500/20"
+                onClick={() => signOut()}
+                className="w-full glass-card p-5 rounded-3xl flex items-center justify-between hover:bg-red-500/10 transition-all group border border-transparent hover:border-red-500/20 active:scale-[0.99]"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center">
                     <LogOut className="w-6 h-6 text-red-400" />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-sm font-bold text-white">Sign Out</h3>
-                    <p className="text-xs text-slate-400">
-                      Log out of your account
+                    <h3 className="text-base font-bold text-white">Sign Out</h3>
+                    <p className="text-xs text-slate-400 font-medium">
+                      Securely end your session
                     </p>
                   </div>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center group-hover:bg-red-500/20 transition-all">
+                  <ChevronRight className="w-5 h-5 text-red-400" />
                 </div>
               </button>
             </div>
           </motion.div>
-        )}
-
-        {/* Family Members Panel */}
-        {activePanel === "family" && (
+        ) : (
           <motion.div
             key="family"
+            custom={1}
             initial="enter"
             animate="center"
             exit="exit"
             variants={slideVariants}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed top-[140px] left-0 right-0 bottom-0 bg-dark-900 z-40"
+            className="space-y-6"
           >
-            <div className="h-full flex flex-col">
-              {/* Compact Header */}
-              <div className="bg-dark-900/95 backdrop-blur-xl border-b border-white/5 px-5 py-3">
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setActivePanel("main")}
-                    className="flex items-center gap-2 text-sm font-bold text-white hover:text-brand-primary transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back
-                  </button>
-                  <button
-                    onClick={() => setIsAddingMember(!isAddingMember)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${isAddingMember ? "bg-red-500/20 text-red-400" : "bg-brand-primary/20 text-brand-primary"}`}
-                  >
-                    {isAddingMember ? "Cancel" : "+ Add Member"}
-                  </button>
-                </div>
-              </div>
+            {/* Family Header */}
+            <div className="flex items-center justify-between px-2">
+              <Button
+                variant="ghost"
+                onClick={() => setActivePanel("main")}
+                className="rounded-xl hover:bg-white/10 text-white gap-2 pr-4"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-bold">Settings</span>
+              </Button>
+              <Button
+                onClick={() => setIsAddingMember(!isAddingMember)}
+                className={cn(
+                  "rounded-xl font-bold gap-2 shadow-lg transition-all",
+                  isAddingMember
+                    ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30"
+                    : "bg-brand-primary text-white hover:bg-brand-primary/90"
+                )}
+              >
+                {isAddingMember ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {isAddingMember ? "Cancel" : "Add Member"}
+              </Button>
+            </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-                <AnimatePresence>
-                  {isAddingMember && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0, y: -10 }}
-                      animate={{ opacity: 1, height: "auto", y: 0 }}
-                      exit={{ opacity: 0, height: 0, y: -10 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="glass-card p-3 rounded-xl flex items-center gap-3 bg-brand-primary/10 border-brand-primary/20">
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white border border-dashed border-white/30">
-                          ?
-                        </div>
+            {/* Content Area */}
+            <div className="space-y-4">
+              <AnimatePresence>
+                {isAddingMember && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    className="glass-card p-4 rounded-3xl bg-brand-primary/10 border-brand-primary/20 shadow-xl"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold text-white border-2 border-dashed border-white/20">
+                        ?
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-brand-primary mb-1 block">New Family Member</label>
                         <input
                           autoFocus
                           type="text"
-                          placeholder="Enter name..."
-                          className="bg-transparent border-none text-sm font-bold text-white placeholder:text-white/30 focus:outline-none flex-1"
+                          placeholder="What's their name?"
+                          className="bg-transparent border-none text-lg font-bold text-white placeholder:text-white/20 focus:outline-none w-full"
                           value={newMemberName}
                           onChange={(e) => setNewMemberName(e.target.value)}
-                          onKeyDown={(e) =>
-                            e.key === "Enter" && handleAddMember()
-                          }
+                          onKeyDown={(e) => e.key === "Enter" && handleAddMember()}
                         />
-                        <button
-                          onClick={handleAddMember}
-                          className="p-2 bg-brand-primary hover:bg-brand-primary/80 rounded-lg transition-colors"
-                        >
-                          <Check size={16} className="text-white" />
-                        </button>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <Button
+                        size="icon"
+                        onClick={handleAddMember}
+                        className="bg-brand-primary hover:bg-brand-primary/80 rounded-2xl h-12 w-12 shadow-lg"
+                      >
+                        <Check size={24} className="text-white" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
+              <div className="space-y-3 pb-32">
                 {users.map((userItem) => (
                   <motion.div
                     key={userItem.id}
                     layout
-                    className="glass-card p-3 rounded-xl flex items-center justify-between group hover:bg-white/5 transition-colors"
+                    className="glass-card p-4 rounded-3xl flex items-center justify-between group hover:bg-white/5 transition-all border border-white/5"
                   >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div
-                        className={`w-10 h-10 rounded-full ${userItem.color} flex items-center justify-center text-sm font-bold text-white shadow-md`}
-                      >
-                        {userItem.avatar}
-                      </div>
+                    <div className="flex items-center gap-4 flex-1">
+                      <Avatar className={cn("w-12 h-12 shadow-lg", userItem.color)}>
+                        <AvatarFallback className="font-bold text-white bg-transparent">
+                          {userItem.avatar}
+                        </AvatarFallback>
+                      </Avatar>
+
                       {editingId === userItem.id ? (
-                        <input
-                          autoFocus
-                          type="text"
-                          className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-sm font-bold text-white focus:outline-none focus:border-brand-primary flex-1"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-                          onBlur={saveEdit}
-                        />
-                      ) : (
                         <div className="flex-1">
-                          <p className="text-sm font-bold text-white">
+                          <input
+                            autoFocus
+                            type="text"
+                            className="bg-white/10 border border-brand-primary/30 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20 w-full"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+                            onBlur={saveEdit}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-bold text-white truncate">
                             {userItem.name}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            {userItem.role}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                              {userItem.role}
+                            </span>
+                            {userItem.role === "Owner" && (
+                              <div className="w-1 h-1 rounded-full bg-slate-700"></div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
-                    {editingId !== userItem.id && (
-                      <>
-                        <button
-                          onClick={() => startEditing(userItem)}
-                          className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                          title="Rename"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        {userItem.role !== "Owner" && (
-                          <button
-                            onClick={() => onDeleteMember(userItem.id)}
-                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                            title="Remove Family Member"
+
+                    <div className="flex items-center gap-1">
+                      {editingId !== userItem.id && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEditing(userItem)}
+                            className="text-slate-500 hover:text-white hover:bg-white/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            <LogOut size={14} />
-                          </button>
-                        )}
-                      </>
-                    )}
+                            <Pencil size={18} />
+                          </Button>
+                          {userItem.role !== "Owner" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onDeleteMember(userItem.id)}
+                              className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={20} />
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </motion.div>
                 ))}
               </div>

@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import { db, schema, eq, and, or, gte, lte, isNull, inArray, sql } from "@/db";
 
 /**
  * Benefit matching rules for Amex Platinum Schwab and other premium cards
@@ -172,14 +172,14 @@ export async function matchTransactionToBenefits(transaction: {
     return null;
   }
 
-  // Get the account's linked card product and its benefits
-  const account = await prisma.plaidAccount.findUnique({
-    where: { accountId: transaction.plaidAccountId },
-    include: {
+  // Get the account's linked card product and its benefits using Drizzle
+  const account = await db.query.plaidAccounts.findFirst({
+    where: eq(schema.plaidAccounts.accountId, transaction.plaidAccountId),
+    with: {
       extended: {
-        include: {
+        with: {
           cardProduct: {
-            include: {
+            with: {
               benefits: true,
             },
           },
@@ -202,10 +202,10 @@ export async function matchTransactionToBenefits(transaction: {
 
   // Check each benefit using DB keywords
   for (const benefit of cardBenefits) {
-    const keywords = benefit.keywords;
+    const keywords = benefit.keywords || [];
 
     // Find if any keyword matches the transaction name OR original description
-    const matchedKeyword = keywords.find((k) => {
+    const matchedKeyword = keywords.find((k: string) => {
       const keyword = k.toLowerCase();
       return (
         transactionName.includes(keyword) || originalDesc.includes(keyword)
@@ -228,7 +228,9 @@ export async function matchTransactionToBenefits(transaction: {
       matches.push({
         benefit: {
           ...benefit,
+          keywords: benefit.keywords || [],
           ruleConfig: benefit.ruleConfig as Record<string, unknown> | null,
+          maxAmount: benefit.maxAmount ?? null,
         },
         confidence: 0.8,
         matchReason: `Keyword match: "${matchedKeyword}"`,
@@ -257,16 +259,12 @@ async function _checkBenefitUtilization(
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0);
 
-    const monthUsage = await prisma.benefitUsage.findFirst({
-      where: {
-        cardBenefitId,
-        periodStart: {
-          gte: monthStart,
-        },
-        periodEnd: {
-          lte: monthEnd,
-        },
-      },
+    const monthUsage = await db.query.benefitUsage.findFirst({
+      where: and(
+        eq(schema.benefitUsage.cardBenefitId, cardBenefitId),
+        gte(schema.benefitUsage.periodStart, monthStart),
+        lte(schema.benefitUsage.periodEnd, monthEnd),
+      ),
     });
 
     monthlyUsed = monthUsage?.usedAmount || 0;
@@ -278,16 +276,12 @@ async function _checkBenefitUtilization(
     const yearStart = new Date(year, 0, 1);
     const yearEnd = new Date(year, 11, 31);
 
-    const yearUsage = await prisma.benefitUsage.findFirst({
-      where: {
-        cardBenefitId,
-        periodStart: {
-          gte: yearStart,
-        },
-        periodEnd: {
-          lte: yearEnd,
-        },
-      },
+    const yearUsage = await db.query.benefitUsage.findFirst({
+      where: and(
+        eq(schema.benefitUsage.cardBenefitId, cardBenefitId),
+        gte(schema.benefitUsage.periodStart, yearStart),
+        lte(schema.benefitUsage.periodEnd, yearEnd),
+      ),
     });
 
     annualUsed = yearUsage?.usedAmount || 0;
@@ -319,87 +313,90 @@ export async function linkTransactionToBenefit(
   benefit: { id: string; timing: string; maxAmount: number | null },
   matchReason: string,
 ) {
-  // 1. Link Transaction
-  const txExtended = await prisma.transactionExtended.upsert({
-    where: { plaidTransactionId: transaction.id },
-    create: {
-      plaidTransactionId: transaction.id,
-      matchedBenefitId: benefit.id,
-      notes: matchReason,
-    },
-    update: {
-      matchedBenefitId: benefit.id,
-      notes: matchReason,
-    },
-  });
+  return await db.transaction(async (tx) => {
+    // 1. Link Transaction
+    const [txExtended] = await tx.insert(schema.transactionExtended)
+      .values({
+        plaidTransactionId: transaction.id,
+        matchedBenefitId: benefit.id,
+        notes: matchReason,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: schema.transactionExtended.plaidTransactionId,
+        set: {
+          matchedBenefitId: benefit.id,
+          notes: matchReason,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
-  // 2. Update BenefitUsage
-  const date = new Date(transaction.date);
-  let periodStart: Date;
-  let periodEnd: Date;
+    // 2. Update BenefitUsage
+    const date = new Date(transaction.date);
+    let periodStart: Date;
+    let periodEnd: Date;
 
-  if (benefit.timing === "Monthly") {
-    periodStart = new Date(date.getFullYear(), date.getMonth(), 1);
-    periodEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  } else if (benefit.timing === "Quarterly") {
-    // Calculate quarter (Q1: 0-2, Q2: 3-5, Q3: 6-8, Q4: 9-11)
-    const quarter = Math.floor(date.getMonth() / 3);
-    periodStart = new Date(date.getFullYear(), quarter * 3, 1);
-    periodEnd = new Date(date.getFullYear(), quarter * 3 + 3, 0);
-  } else if (benefit.timing === "SemiAnnually") {
-    // Two periods: Jan-Jun (0-5) and Jul-Dec (6-11)
-    const half = date.getMonth() < 6 ? 0 : 6;
-    periodStart = new Date(date.getFullYear(), half, 1);
-    periodEnd = new Date(date.getFullYear(), half + 6, 0);
-  } else {
-    // Annual or others default to Year
-    periodStart = new Date(date.getFullYear(), 0, 1);
-    periodEnd = new Date(date.getFullYear(), 11, 31);
-  }
+    if (benefit.timing === "Monthly") {
+      periodStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      periodEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    } else if (benefit.timing === "Quarterly") {
+      // Calculate quarter (Q1: 0-2, Q2: 3-5, Q3: 6-8, Q4: 9-11)
+      const quarter = Math.floor(date.getMonth() / 3);
+      periodStart = new Date(date.getFullYear(), quarter * 3, 1);
+      periodEnd = new Date(date.getFullYear(), quarter * 3 + 3, 0);
+    } else if (benefit.timing === "SemiAnnually") {
+      // Two periods: Jan-Jun (0-5) and Jul-Dec (6-11)
+      const half = date.getMonth() < 6 ? 0 : 6;
+      periodStart = new Date(date.getFullYear(), half, 1);
+      periodEnd = new Date(date.getFullYear(), half + 6, 0);
+    } else {
+      // Annual or others default to Year
+      periodStart = new Date(date.getFullYear(), 0, 1);
+      periodEnd = new Date(date.getFullYear(), 11, 31);
+    }
 
-  // Find existing usage to update or create new
-  const existingUsage = await prisma.benefitUsage.findFirst({
-    where: {
-      cardBenefitId: benefit.id,
-      plaidAccountId: transaction.plaidAccountId,
-      periodStart: { lte: date },
-      periodEnd: { gte: date },
-    },
-  });
-
-  const amountToAdd = Math.abs(transaction.amount);
-
-  if (existingUsage) {
-    await prisma.benefitUsage.update({
-      where: { id: existingUsage.id },
-      data: {
-        usedAmount: { increment: amountToAdd },
-        remainingAmount: existingUsage.maxAmount
-          ? { decrement: amountToAdd }
-          : undefined,
-      },
+    // Find existing usage to update or create new
+    const existingUsage = await tx.query.benefitUsage.findFirst({
+      where: and(
+        eq(schema.benefitUsage.cardBenefitId, benefit.id),
+        eq(schema.benefitUsage.plaidAccountId, transaction.plaidAccountId),
+        lte(schema.benefitUsage.periodStart, date),
+        gte(schema.benefitUsage.periodEnd, date),
+      ),
     });
-  } else {
-    const maxAmount = benefit.maxAmount || 0;
-    const remainingAmount =
-      maxAmount > 0 ? Math.max(0, maxAmount - amountToAdd) : null;
 
-    await prisma.benefitUsage.create({
-      data: {
-        cardBenefitId: benefit.id,
-        plaidAccountId: transaction.plaidAccountId,
-        periodStart,
-        periodEnd,
-        usedAmount: amountToAdd,
-        // @ts-expect-error - benefit.maxAmount type is compatible but not properly typed
-        maxAmount: benefit.maxAmount,
-        // @ts-expect-error - remainingAmount calculation is correct but type not inferred
-        remainingAmount: remainingAmount,
-      },
-    });
-  }
+    const amountToAdd = Math.abs(transaction.amount);
 
-  return txExtended;
+    if (existingUsage) {
+      await tx.update(schema.benefitUsage)
+        .set({
+          usedAmount: sql`${schema.benefitUsage.usedAmount} + ${amountToAdd}`,
+          remainingAmount: benefit.maxAmount
+            ? sql`${schema.benefitUsage.remainingAmount} - ${amountToAdd}`
+            : schema.benefitUsage.remainingAmount,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.benefitUsage.id, existingUsage.id));
+    } else {
+      const maxAmount = benefit.maxAmount || 0;
+      const remainingAmount =
+        maxAmount > 0 ? Math.max(0, maxAmount - amountToAdd) : 0;
+
+      await tx.insert(schema.benefitUsage)
+        .values({
+          cardBenefitId: benefit.id,
+          plaidAccountId: transaction.plaidAccountId,
+          periodStart,
+          periodEnd,
+          usedAmount: amountToAdd,
+          maxAmount: maxAmount,
+          remainingAmount: remainingAmount,
+        });
+    }
+
+    return txExtended;
+  });
 }
 
 /**
@@ -410,17 +407,13 @@ export async function getBenefitUsageSummary(
   periodStart: Date,
   periodEnd: Date,
 ) {
-  const usage = await prisma.benefitUsage.findFirst({
-    where: {
-      cardBenefitId,
-      periodStart: {
-        lte: periodStart,
-      },
-      periodEnd: {
-        gte: periodEnd,
-      },
-    },
-    include: {
+  const usage = await db.query.benefitUsage.findFirst({
+    where: and(
+      eq(schema.benefitUsage.cardBenefitId, cardBenefitId),
+      lte(schema.benefitUsage.periodStart, periodStart),
+      gte(schema.benefitUsage.periodEnd, periodEnd),
+    ),
+    with: {
       cardBenefit: true,
     },
   });
@@ -435,82 +428,97 @@ export async function scanAndMatchBenefits(
   userId: string,
   specificAccountIds?: string[],
 ) {
-  // Get user profile to ensure valid user
-  const userProfile = await prisma.userProfile.findUnique({
-    where: { clerkId: userId },
+  // Get user profile to ensure valid user (supabaseId)
+  const userProfile = await db.query.userProfiles.findFirst({
+    where: eq(schema.userProfiles.supabaseId, userId),
   });
 
   if (!userProfile) return { matched: 0, checked: 0 };
 
   // Get accounts to check
-  const whereClause: PlaidAccountWhereClause = {
-    extended: {
-      cardProductId: { not: null },
-    },
-  };
-
+  let linkedAccounts;
   if (specificAccountIds && specificAccountIds.length > 0) {
-    whereClause.accountId = { in: specificAccountIds };
-  } else {
-    whereClause.plaidItem = { userId: userProfile.id };
-  }
-
-  const linkedAccounts = await prisma.plaidAccount.findMany({
-    where: whereClause,
-    select: {
-      id: true,
-      accountId: true,
-      name: true,
-      extended: {
-        include: {
-          cardProduct: {
-            include: {
-              benefits: true,
+    linkedAccounts = await db.query.plaidAccounts.findMany({
+      where: and(
+        inArray(schema.plaidAccounts.accountId, specificAccountIds),
+        sql`${schema.accountExtended.cardProductId} IS NOT NULL`
+      ),
+      with: {
+        extended: {
+          with: {
+            cardProduct: {
+              with: {
+                benefits: true,
+              },
             },
           },
         },
-      },
-    },
-  });
+      }
+    });
+  } else {
+    // Filter by joining with plaidItems to get userId
+    const results = await db.select()
+      .from(schema.plaidAccounts)
+      .innerJoin(schema.plaidItems, eq(schema.plaidAccounts.plaidItemId, schema.plaidItems.id))
+      .leftJoin(schema.accountExtended, eq(schema.plaidAccounts.id, schema.accountExtended.plaidAccountId))
+      .where(and(
+        eq(schema.plaidItems.userId, userProfile.id),
+        sql`${schema.accountExtended.cardProductId} IS NOT NULL`
+      ));
+
+    // We need to fetch the relations for these accounts.
+    // It's easier to just use the IDs we found.
+    const accountIds = results.map(r => r.plaid_accounts.id);
+    if (accountIds.length === 0) return { matched: 0, checked: 0 };
+
+    linkedAccounts = await db.query.plaidAccounts.findMany({
+      where: inArray(schema.plaidAccounts.id, accountIds),
+      with: {
+        extended: {
+          with: {
+            cardProduct: {
+              with: {
+                benefits: true,
+              },
+            },
+          },
+        },
+      }
+    });
+  }
 
   if (linkedAccounts.length === 0) return { matched: 0, checked: 0 };
 
   const accountMap = new Map<string, string>();
-  linkedAccounts.forEach((a) => accountMap.set(a.accountId, a.id));
+  linkedAccounts.forEach((a: any) => accountMap.set(a.accountId, a.id));
 
-  const accountIds = linkedAccounts.map((a) => a.accountId);
+  const accountIds = linkedAccounts.map((a: any) => a.accountId);
 
   // Find unmatched transactions
   // 1. No extended record
-  const unmatchedTransactions = await prisma.plaidTransaction.findMany({
-    where: {
-      accountId: { in: accountIds },
-      extended: null,
-    },
-    orderBy: { date: "desc" },
-    take: 500,
-  });
-
   // 2. Extended record but no match
-  const extendedButUnmatched = await prisma.plaidTransaction.findMany({
-    where: {
-      accountId: { in: accountIds },
-      extended: {
-        matchedBenefitId: null,
-      },
-    },
-    orderBy: { date: "desc" },
-    take: 500,
-  });
+  // We want transactions where transaction_extended is null OR transaction_extended.matched_benefit_id is null
+  const allUnmatchedTransactions = await db.select()
+    .from(schema.plaidTransactions)
+    .leftJoin(schema.transactionExtended, eq(schema.plaidTransactions.id, schema.transactionExtended.plaidTransactionId))
+    .where(and(
+      inArray(schema.plaidTransactions.accountId, accountIds),
+      or(
+        isNull(schema.transactionExtended.plaidTransactionId),
+        isNull(schema.transactionExtended.matchedBenefitId)
+      )
+    ))
+    .orderBy(schema.plaidTransactions.date)
+    .limit(1000);
 
-  const allUnmatched = [...unmatchedTransactions, ...extendedButUnmatched];
   let matchCount = 0;
 
   console.log(
-    `🔄 Auto-Scanning ${allUnmatched.length} transactions for benefits...`,
+    `🔄 Auto-Scanning ${allUnmatchedTransactions.length} transactions for benefits...`,
   );
 
-  for (const transaction of allUnmatched) {
+  for (const row of allUnmatchedTransactions) {
+    const transaction = row.plaid_transactions;
     try {
       const matches = await matchTransactionToBenefits({
         id: transaction.id,
@@ -518,7 +526,7 @@ export async function scanAndMatchBenefits(
         merchantName: transaction.merchantName,
         originalDescription: transaction.originalDescription,
         category: transaction.category?.[0] || null,
-        amount: transaction.amount,
+        amount: Number(transaction.amount),
         date: transaction.date,
         plaidAccountId: transaction.accountId,
       });
@@ -532,7 +540,7 @@ export async function scanAndMatchBenefits(
             {
               id: transaction.id,
               date: transaction.date,
-              amount: transaction.amount,
+              amount: Number(transaction.amount),
               plaidAccountId: internalAccountId,
             },
             {
@@ -549,21 +557,24 @@ export async function scanAndMatchBenefits(
         }
       } else {
         // Mark as checked
-        await prisma.transactionExtended.upsert({
-          where: { plaidTransactionId: transaction.id },
-          create: {
+        await db.insert(schema.transactionExtended)
+          .values({
             plaidTransactionId: transaction.id,
             notes: "Checked - no benefit match",
-          },
-          update: {
-            notes: "Checked - no benefit match",
-          },
-        });
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: schema.transactionExtended.plaidTransactionId,
+            set: {
+              notes: "Checked - no benefit match",
+              updatedAt: new Date(),
+            },
+          });
       }
     } catch (error) {
       console.error(`Error matching transaction ${transaction.id}:`, error);
     }
   }
 
-  return { matched: matchCount, checked: allUnmatched.length };
+  return { matched: matchCount, checked: allUnmatchedTransactions.length };
 }

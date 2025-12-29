@@ -3,12 +3,13 @@
  * Copy benefits from one card to another
  *
  * @module app/api/admin/card-catalog/[cardId]/copy-benefits
- * @implements BR-031 - Admin Role Required
+ * @implements BR-101 - Admin Catalog Operations
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin";
+import { db, schema, eq, and } from "@/db";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -20,10 +21,8 @@ export async function POST(
   const limited = await rateLimit(request, RATE_LIMITS.write);
   if (limited) return new Response("Too many requests", { status: 429 });
 
-  const { userId } = await auth();
-  if (!userId) return Errors.unauthorized();
-
   try {
+    await requireAdmin();
     const { sourceCardId } = await request.json();
 
     if (!sourceCardId) {
@@ -35,12 +34,12 @@ export async function POST(
 
     const { cardId } = await params;
 
-    // Get source card benefits
-    const sourceBenefits = await prisma.cardBenefit.findMany({
-      where: {
-        cardProductId: sourceCardId,
-        active: true,
-      },
+    // Get source card benefits using Drizzle
+    const sourceBenefits = await db.query.cardBenefits.findMany({
+      where: and(
+        eq(schema.cardBenefits.cardProductId, sourceCardId),
+        eq(schema.cardBenefits.active, true)
+      ),
     });
 
     if (sourceBenefits.length === 0) {
@@ -50,33 +49,39 @@ export async function POST(
       );
     }
 
-    // Copy benefits to target card
-    const createdBenefits = await Promise.all(
-      sourceBenefits.map((benefit) =>
-        prisma.cardBenefit.create({
-          data: {
+    // Copy benefits to target card in a transaction
+    const results = await db.transaction(async (tx) => {
+      const inserted = [];
+      for (const benefit of sourceBenefits) {
+        const [newBenefit] = await tx.insert(schema.cardBenefits)
+          .values({
             cardProductId: cardId,
             benefitName: benefit.benefitName,
-            type: benefit.type,
+            type: benefit.type as any,
             description: benefit.description,
-            timing: benefit.timing,
+            timing: benefit.timing as any,
             maxAmount: benefit.maxAmount,
             keywords: benefit.keywords,
             isApproved: benefit.isApproved,
             active: benefit.active,
-          },
-        }),
-      ),
-    );
+            updatedAt: new Date(),
+          })
+          .returning();
+        inserted.push(newBenefit);
+      }
+      return inserted;
+    });
 
     return NextResponse.json(
       {
-        message: `Copied ${createdBenefits.length} benefits`,
-        count: createdBenefits.length,
+        message: `Copied ${results.length} benefits`,
+        count: results.length,
       },
       { status: 200 },
     );
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') return Errors.unauthorized();
+    if (error.message.includes('Forbidden')) return Errors.forbidden();
     logger.error("Error copying benefits", error);
     return Errors.internal();
   }

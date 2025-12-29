@@ -3,11 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/app/providers/theme-provider";
 import { PostHogProvider } from "@/app/providers/posthog";
-import { ClerkProvider } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
+import { AuthProvider } from "@/app/providers/auth-provider";
 import { Toaster } from "sonner";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { SkipLink } from "@/components/shared/skip-link";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
@@ -31,40 +28,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-        variables: { colorPrimary: "#6366f1" },
-      }}
-      // Performance: Reduce client-side redirects
-      signInFallbackRedirectUrl="/dashboard"
-      signUpFallbackRedirectUrl="/dashboard"
-    >
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          {/* Preconnect to improve performance */}
-          <link
-            rel="preconnect"
-            href="https://sought-spider-1.clerk.accounts.dev"
-          />
-          <link rel="preconnect" href="https://us-assets.i.posthog.com" />
-          <link
-            rel="dns-prefetch"
-            href="https://sought-spider-1.clerk.accounts.dev"
-          />
-        </head>
-        <body className={`${font.className} antialiased`}>
-          <SkipLink href="#main-content">Skip to main content</SkipLink>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to improve performance */}
+        <link rel="preconnect" href="https://us-assets.i.posthog.com" />
+      </head>
+      <body className={`${font.className} antialiased`}>
+        <SkipLink href="#main-content">Skip to main content</SkipLink>
+        <AuthProvider>
           <PostHogProvider>
             <ThemeProvider defaultTheme="dark" storageKey="ui-theme">
               {children}
               <Toaster />
-              <Analytics />
-              <SpeedInsights />
             </ThemeProvider>
           </PostHogProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }

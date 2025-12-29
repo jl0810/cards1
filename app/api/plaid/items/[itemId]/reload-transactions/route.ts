@@ -9,30 +9,29 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { plaidClient } from '@/lib/plaid';
-import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
+import { db, schema, eq, and, sql, count } from '@/db';
 import { PLAID_SYNC_CONFIG } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { Errors } from '@/lib/api-errors';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export interface PlaidTransaction {
-  transaction_id: string;
-  account_id: string;
-  amount: number;
-  date: string;
-  name: string;
-  merchant_name?: string | null;
-  category?: string[] | null;
-  pending: boolean;
-  original_description?: string | null;
-  payment_channel?: string | null;
-  transaction_code?: string | null;
-  personal_finance_category?: {
-    primary?: string | null;
-    detailed?: string | null;
-  } | null;
+    transaction_id: string;
+    account_id: string;
+    amount: number;
+    date: string;
+    name: string;
+    merchant_name?: string | null;
+    category?: string[] | null;
+    pending: boolean;
+    original_description?: string | null;
+    payment_channel?: string | null;
+    transaction_code?: string | null;
+    personal_finance_category?: {
+        primary?: string | null;
+        detailed?: string | null;
+    } | null;
 }
 
 import { scanAndMatchBenefits } from '@/lib/benefit-matcher';
@@ -54,6 +53,8 @@ export const dynamic = 'force-dynamic';
  * @param {string} params.itemId - ID of PlaidItem to reload
  * @returns {Promise<NextResponse>} Reload statistics
  */
+import { plaidClient } from '@/lib/plaid';
+
 export async function POST(
     req: Request,
     { params }: { params: Promise<{ itemId: string }> }
@@ -66,9 +67,10 @@ export async function POST(
 
     try {
         const { itemId } = await params;
-        const { userId } = await auth();
+        const session = await auth();
+        const user = session?.user;
 
-        if (!userId) {
+        if (!user?.id) {
             return Errors.unauthorized();
         }
 
@@ -82,8 +84,8 @@ export async function POST(
         }
 
         // Get user profile
-        const userProfile = await prisma.userProfile.findUnique({
-            where: { clerkId: userId },
+        const userProfile = await db.query.userProfiles.findFirst({
+            where: eq(schema.userProfiles.supabaseId, user.id),
         });
 
         if (!userProfile) {
@@ -91,23 +93,23 @@ export async function POST(
         }
 
         // Get PlaidItem and verify ownership
-        const item = await prisma.plaidItem.findFirst({
-            where: {
-                id: itemId,
-                userId: userProfile.id,
-            },
-            include: {
-                _count: {
-                    select: { transactions: true },
-                },
-            },
+        const item = await db.query.plaidItems.findFirst({
+            where: and(
+                eq(schema.plaidItems.id, itemId),
+                eq(schema.plaidItems.userId, userProfile.id),
+            ),
         });
 
         if (!item) {
             return NextResponse.json({ error: 'Bank account not found' }, { status: 404 });
         }
 
-        const existingTransactionCount = item._count.transactions;
+        // Get transaction count separately
+        const [countResult] = await db.select({ count: count() })
+            .from(schema.plaidTransactions)
+            .where(eq(schema.plaidTransactions.plaidItemId, item.id));
+
+        const existingTransactionCount = Number(countResult.count);
 
         logger.info('Starting full transaction reload', {
             userId: userProfile.id,
@@ -116,11 +118,11 @@ export async function POST(
         });
 
         // Get access token from Vault
-        const vaultResult = await prisma.$queryRaw<Array<{ decrypted_secret: string }>>`
+        const vaultResult = await db.execute(sql`
             SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${item.accessTokenId}::uuid;
-        `;
+        `);
 
-        const accessToken = vaultResult[0]?.decrypted_secret;
+        const accessToken = (vaultResult as any)[0]?.decrypted_secret;
 
         if (!accessToken) {
             return NextResponse.json(
@@ -130,20 +132,19 @@ export async function POST(
         }
 
         // STEP 1: Delete all existing transactions and reset cursor in a transaction
-        await prisma.$transaction(async (tx) => {
+        await db.transaction(async (tx) => {
             // Delete all transactions (cascades to TransactionExtended and BenefitUsage)
-            await tx.plaidTransaction.deleteMany({
-                where: { plaidItemId: item.id },
-            });
+            await tx.delete(schema.plaidTransactions)
+                .where(eq(schema.plaidTransactions.plaidItemId, item.id));
 
             // Reset cursor and lastSyncedAt
-            await tx.plaidItem.update({
-                where: { id: item.id },
-                data: {
+            await tx.update(schema.plaidItems)
+                .set({
                     nextCursor: null,
                     lastSyncedAt: null,
-                },
-            });
+                    updatedAt: new Date(),
+                })
+                .where(eq(schema.plaidItems.id, item.id));
 
             logger.info('Deleted existing transactions and reset cursor', {
                 itemId,
@@ -165,7 +166,7 @@ export async function POST(
                 });
 
                 const data = response.data;
-                allTransactions = allTransactions.concat(data.added);
+                allTransactions = allTransactions.concat(data.added as any);
                 hasMore = data.has_more;
                 nextCursor = data.next_cursor;
                 iterations++;
@@ -187,14 +188,14 @@ export async function POST(
         }
 
         // STEP 3: Insert all transactions in a single database transaction
-        await prisma.$transaction(async (tx) => {
+        await db.transaction(async (tx) => {
             // Get all accounts for this item
-            const accounts = await tx.plaidAccount.findMany({
-                where: { plaidItemId: item.id },
-                select: { accountId: true },
+            const accounts = await tx.query.plaidAccounts.findMany({
+                where: eq(schema.plaidAccounts.plaidItemId, item.id),
+                columns: { accountId: true },
             });
 
-            const accountIds = new Set(accounts.map((a) => a.accountId));
+            const accountIds = new Set(accounts.map((a: any) => a.accountId));
 
             // Filter transactions that belong to this item's accounts
             const relevantTransactions = allTransactions.filter((t) =>
@@ -203,36 +204,34 @@ export async function POST(
 
             // Insert transactions
             for (const transaction of relevantTransactions) {
-                await tx.plaidTransaction.create({
-                    data: {
-                        plaidItemId: item.id,
-                        transactionId: transaction.transaction_id,
-                        accountId: transaction.account_id,
-                        amount: transaction.amount,
-                        date: new Date(transaction.date),
-                        name: transaction.name,
-                        merchantName: transaction.merchant_name,
-                        category: transaction.category || [],
-                        pending: transaction.pending,
-                        originalDescription: transaction.original_description,
-                        paymentChannel: transaction.payment_channel,
-                        transactionCode: transaction.transaction_code,
-                        personalFinanceCategoryPrimary:
-                            transaction.personal_finance_category?.primary,
-                        personalFinanceCategoryDetailed:
-                            transaction.personal_finance_category?.detailed,
-                    },
+                await tx.insert(schema.plaidTransactions).values({
+                    plaidItemId: item.id,
+                    transactionId: transaction.transaction_id,
+                    accountId: transaction.account_id,
+                    amount: transaction.amount,
+                    date: new Date(transaction.date),
+                    name: transaction.name,
+                    merchantName: transaction.merchant_name || null,
+                    category: transaction.category || [],
+                    pending: transaction.pending,
+                    originalDescription: transaction.original_description || null,
+                    paymentChannel: transaction.payment_channel || null,
+                    transactionCode: transaction.transaction_code || null,
+                    personalFinanceCategoryPrimary:
+                        transaction.personal_finance_category?.primary || null,
+                    personalFinanceCategoryDetailed:
+                        transaction.personal_finance_category?.detailed || null,
                 });
             }
 
             // Update cursor
-            await tx.plaidItem.update({
-                where: { id: item.id },
-                data: {
+            await tx.update(schema.plaidItems)
+                .set({
                     nextCursor: nextCursor,
                     lastSyncedAt: new Date(),
-                },
-            });
+                    updatedAt: new Date(),
+                })
+                .where(eq(schema.plaidItems.id, item.id));
 
             logger.info('Inserted all transactions', {
                 itemId,
@@ -242,22 +241,22 @@ export async function POST(
 
         // STEP 4: Re-run benefit matching
         try {
-            await scanAndMatchBenefits(userId);
-            logger.info('Re-ran benefit matching after reload', { userId, itemId });
+            await scanAndMatchBenefits(user.id);
+            logger.info('Re-ran benefit matching after reload', { userId: user.id, itemId });
         } catch (matchError) {
             logger.error('Error in benefit matching after reload', matchError, {
-                userId,
+                userId: user.id,
                 itemId,
             });
             // Don't fail the reload if benefit matching fails
         }
 
-        // Count relevant transactions (already filtered during insert)
-        const accounts = await prisma.plaidAccount.findMany({
-            where: { plaidItemId: item.id },
-            select: { accountId: true },
+        // Count relevant transactions
+        const accounts = await db.query.plaidAccounts.findMany({
+            where: eq(schema.plaidAccounts.plaidItemId, item.id),
+            columns: { accountId: true },
         });
-        const accountIds = new Set(accounts.map((a) => a.accountId));
+        const accountIds = new Set(accounts.map((a: any) => a.accountId));
         const newTransactionCount = allTransactions.filter((t) =>
             accountIds.has(t.account_id)
         ).length;

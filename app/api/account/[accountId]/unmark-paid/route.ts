@@ -8,9 +8,10 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { z as _z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { plaidAccounts, accountExtended } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -32,16 +33,15 @@ export async function POST(
   }
 
   try {
-    const { userId } = await auth();
-    const { accountId } = await params;
-    if (!userId) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return Errors.unauthorized();
     }
+    const { accountId } = await params;
 
     // Verify account exists
-    const account = await prisma.plaidAccount.findUnique({
-      where: { id: accountId },
-      include: { extended: true },
+    const account = await db.query.plaidAccounts.findFirst({
+      where: (table, { eq }) => eq(table.id, accountId),
     });
 
     if (!account) {
@@ -49,20 +49,24 @@ export async function POST(
     }
 
     // Clear the payment info and reset status in the extended record
-    const updatedExtended = await prisma.accountExtended.upsert({
-      where: { plaidAccountId: accountId },
-      create: {
+    const [updatedExtended] = await db.insert(accountExtended)
+      .values({
         plaidAccountId: accountId,
         paymentMarkedPaidDate: null,
         paymentMarkedPaidAmount: null,
         paymentCycleStatus: "STATEMENT_GENERATED",
-      },
-      update: {
-        paymentMarkedPaidDate: null,
-        paymentMarkedPaidAmount: null,
-        paymentCycleStatus: "STATEMENT_GENERATED",
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: accountExtended.plaidAccountId,
+        set: {
+          paymentMarkedPaidDate: null,
+          paymentMarkedPaidAmount: null,
+          paymentCycleStatus: "STATEMENT_GENERATED",
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
     return NextResponse.json({
       success: true,

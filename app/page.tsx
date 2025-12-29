@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering since MarketingHeader uses useSession
+export const dynamic = 'force-dynamic';
+
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { VelocityBackground } from "@/components/shared/velocity-background";
 import { Button } from "@/components/ui/button";

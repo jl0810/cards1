@@ -1,81 +1,64 @@
 "use client";
 
-import { useAuth, useUser } from "@clerk/nextjs";
-import { env } from "@/env";
+import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
-
-const REQUIRED_PLAN_SLUG = env.NEXT_PUBLIC_CLERK_REQUIRED_PLAN;
+import { ShieldCheck, AlertTriangle, Clock, CreditCard } from "lucide-react";
 
 export function BillingStatus() {
-  const { has, isLoaded } = useAuth();
-  const { user } = useUser();
+  const { user, loading } = useAuth();
 
-  if (!isLoaded) {
+  if (loading) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center">
-          <div className="animate-pulse flex space-x-4">
-            <div className="rounded-full bg-gray-300 h-5 w-5"></div>
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-300 rounded w-1/2"></div>
-            </div>
+      <div className="glass-card border border-white/5 rounded-2xl p-6 mb-8 bg-white/5 animate-pulse">
+        <div className="flex items-center space-x-4">
+          <div className="rounded-full bg-gray-700 h-10 w-10"></div>
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+            <div className="h-3 bg-gray-700 rounded w-1/2"></div>
           </div>
         </div>
       </div>
     );
   }
 
-  // ✅ Clerk Billing is the source of truth: rely on plan access only
-  const hasActiveSubscription = has({ plan: REQUIRED_PLAN_SLUG });
+  // For now, default to free plan since we're migrating auth
+  const userPlan = 'free';
+  const subscriptionStatus = 'none';
+  const trialEndsAt = null;
 
-  if (hasActiveSubscription) {
-    const isTrial = user?.publicMetadata?.subscriptionStatus === 'trialing';
-    const trialEndsAt = user?.publicMetadata?.trialEndsAt as string;
-    const trialDaysLeft = trialEndsAt ? Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+  const isActive = false;
+  const isTrial = false;
+  const trialDaysLeft = 0;
 
+  if (isActive) {
     return (
-      <div className={`${isTrial ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'} border rounded-lg p-4 mb-6`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              {isTrial ? (
-                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              )}
+      <div className={`glass-card border ${isTrial ? 'border-blue-500/20 bg-blue-500/5' : 'border-emerald-500/20 bg-emerald-500/5'} rounded-2xl p-6 mb-8 backdrop-blur-md transition-all hover:border-white/10`}>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start">
+            <div className={`p-2 rounded-xl ${isTrial ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+              {isTrial ? <Clock className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
             </div>
-            <div className="ml-3">
-              <h3 className={`text-sm font-medium ${isTrial ? 'text-blue-800' : 'text-green-800'}`}>
-                {isTrial ? `Free Trial Active${trialDaysLeft > 0 ? ` (${trialDaysLeft} days left)` : ''}` : 'Subscription Active'}
+            <div className="ml-4">
+              <h3 className={`text-lg font-bold ${isTrial ? 'text-blue-100' : 'text-emerald-100'}`}>
+                {isTrial ? `Free Trial Active${trialDaysLeft > 0 ? ` (${trialDaysLeft} days left)` : ''}` : `${userPlan.toUpperCase()} Plan Active`}
               </h3>
-              <p className={`text-sm ${isTrial ? 'text-blue-700' : 'text-green-700'} mt-1`}>
-                {isTrial 
-                  ? `Your free trial is active. Upgrade anytime to continue access.`
-                  : 'Your subscription is active and all features are available.'
+              <p className="text-slate-400 text-sm mt-1 max-w-md">
+                {isTrial
+                  ? `You are currently in your trial period. Upgrade anytime to maintain uninterrupted access to all features.`
+                  : 'Your subscription is active. You have full access to all premium dashboard features and real-time syncing.'
                 }
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
             {isTrial && (
-              <Link
-                href="/pricing"
-                className="text-sm text-blue-800 hover:text-blue-900 font-medium"
-              >
-                Upgrade Now →
-              </Link>
+              <Button asChild variant="link" className="text-blue-400 hover:text-blue-300">
+                <Link href="/pricing">Upgrade Now</Link>
+              </Button>
             )}
-            <Link
-              href="/billing"
-              className={`text-sm ${isTrial ? 'text-blue-800 hover:text-blue-900' : 'text-green-800 hover:text-green-900'} font-medium`}
-            >
-              Manage →
-            </Link>
+            <Button asChild variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-full">
+              <Link href="/billing">Manage Billing</Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -83,30 +66,28 @@ export function BillingStatus() {
   }
 
   return (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
+    <div className="glass-card border border-yellow-500/20 bg-yellow-500/5 rounded-2xl p-6 mb-8 backdrop-blur-md">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start">
+          <div className="p-2 rounded-xl bg-yellow-500/10 text-yellow-500">
+            <AlertTriangle className="h-6 w-6" />
           </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-yellow-800">
-              No Active Subscription
+          <div className="ml-4">
+            <h3 className="text-lg font-bold text-yellow-100">
+              Free Access
             </h3>
-            <p className="text-sm text-yellow-700 mt-1">
-              Subscribe to access all dashboard features and premium content.
+            <p className="text-slate-400 text-sm mt-1 max-w-md">
+              You are currently on the free tier. Subscribe to a premium plan to unlock bank connections, points optimization, and advanced analytics.
             </p>
           </div>
         </div>
-        <Link
-          href="/pricing"
-          className="bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors"
-        >
-          Choose Plan →
-        </Link>
+        <Button asChild className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-full shadow-lg shadow-yellow-500/20 px-8">
+          <Link href="/pricing">Upgrade Plan</Link>
+        </Button>
       </div>
     </div>
   );
 }
+
+// Internal Button component since I'm using Shadcn later or just import from UI
+import { Button } from "@/components/ui/button";

@@ -61,7 +61,7 @@ function calculateMatchScore(
     str
       .toLowerCase()
       .replace(/[®©™]/g, "") // Remove trademark symbols
-      .replace(/[\/\-_]/g, " ") // Replace separators with spaces
+      .replace(/[-_]/g, " ") // Replace separators with spaces
       .replace(/\s+/g, " ") // Collapse multiple spaces
       .trim();
 
@@ -319,7 +319,7 @@ export function CardProductMatcher({
 
   useEffect(() => {
     if (isOpen) {
-      fetchProducts();
+      void fetchProducts();
       setIsExpanded(true); // Always expand when opening
     }
   }, [isOpen]);
@@ -336,10 +336,10 @@ export function CardProductMatcher({
 
       const res = await fetch(url);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as CardProduct[];
         setProducts(data);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to load card products");
     } finally {
       setLoading(false);
@@ -419,7 +419,7 @@ export function CardProductMatcher({
 
     try {
       await linkPromise;
-    } catch (error) {
+    } catch (_error) {
       // Error already handled by toast.promise
     } finally {
       setSaving(false);

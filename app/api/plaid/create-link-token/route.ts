@@ -6,9 +6,9 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { plaidClient } from "@/lib/plaid";
-import { prisma } from "@/lib/prisma";
+import { db, schema, eq } from "@/db";
 import { CountryCode, Products } from "plaid";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
@@ -32,37 +32,36 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { userId } = await auth();
-    const user = await currentUser();
+    const session = await auth();
+    const user = session?.user;
 
-    if (!userId || !user) {
+    if (!user?.id) {
       return Errors.unauthorized();
     }
 
     // Ensure user profile exists
-    let userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    let userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
 
     if (!userProfile) {
       try {
-        userProfile = await prisma.userProfile.create({
-          data: {
-            clerkId: userId,
-            name: user.firstName || "",
-            avatar: user.imageUrl,
-          },
-        });
+        const [newProfile] = await db.insert(schema.userProfiles).values({
+          supabaseId: user.id,
+          name: user.name || "",
+          avatar: user.image || "",
+        }).returning();
+        userProfile = newProfile;
       } catch (e) {
         logger.error("Error creating profile in link token route", e, {
-          userId,
+          userId: user.id,
         });
       }
     }
 
     const request = {
       user: {
-        client_user_id: userId,
+        client_user_id: user.id,
       },
       client_name: "Cards App",
       products: [Products.Transactions, Products.Liabilities],

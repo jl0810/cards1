@@ -5,9 +5,8 @@
  * @module app/api/plaid/items
  */
 
-import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { db, schema, eq } from "@/db";
 import { Errors, successResponse } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 
@@ -26,40 +25,36 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const user = session?.user;
 
-    if (!userId) {
+    if (!user?.id) {
       return Errors.unauthorized();
     }
 
-    let userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    let userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
 
     if (!userProfile) {
-      logger.info("User profile not found, attempting to create", { userId });
+      logger.info("User profile not found, attempting to create", { userId: user.id });
       // Self-healing: Create profile if missing
-      const user = await currentUser();
-
-      if (user) {
-        try {
-          userProfile = await prisma.userProfile.create({
-            data: {
-              clerkId: userId,
-              name: user.firstName || "",
-              avatar: user.imageUrl,
-            },
-          });
-          logger.info("Created user profile", { userId });
-        } catch (createError) {
-          logger.error("Error creating user profile in API", createError, {
-            userId,
-          });
-          // If creation fails (e.g. race condition), try fetching again
-          userProfile = await prisma.userProfile.findUnique({
-            where: { clerkId: userId },
-          });
-        }
+      try {
+        const [newProfile] = await db.insert(schema.userProfiles).values({
+          supabaseId: user.id,
+          name: user.name || "",
+          avatar: user.image || "",
+        }).returning();
+        userProfile = newProfile;
+        logger.info("Created user profile", { userId: user.id });
+      } catch (createError) {
+        logger.error("Error creating user profile in API", createError, {
+          userId: user.id,
+        });
+        // If creation fails (e.g. race condition), try fetching again
+        userProfile = await db.query.userProfiles.findFirst({
+          where: eq(schema.userProfiles.supabaseId, user.id),
+        });
       }
     }
 
@@ -68,31 +63,21 @@ export async function GET(req: Request) {
     }
 
     logger.info("Fetching items for user", {
-      clerkId: userId,
+      supabaseId: user.id,
       userProfileId: userProfile.id,
       userName: userProfile.name,
     });
 
-    const items = await prisma.plaidItem.findMany({
-      where: {
-        userId: userProfile.id,
-      },
-      include: {
-        bank: {
-          select: {
-            id: true,
-            name: true,
-            logoUrl: true,
-            logoSvg: true,
-            brandColor: true,
-          },
-        },
+    const items = await db.query.plaidItems.findMany({
+      where: eq(schema.plaidItems.userId, userProfile.id),
+      with: {
+        bank: true,
         accounts: {
-          include: {
+          with: {
             extended: {
-              include: {
+              with: {
                 cardProduct: {
-                  include: {
+                  with: {
                     benefits: true,
                   },
                 },
@@ -100,12 +85,7 @@ export async function GET(req: Request) {
             },
           },
         },
-        familyMember: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        familyMember: true,
       },
     });
 
@@ -115,11 +95,11 @@ export async function GET(req: Request) {
       firstItemAccounts: items[0]?.accounts?.length,
       sampleItem: items[0]
         ? {
-            id: items[0].id,
-            institutionName: items[0].institutionName,
-            accountsCount: items[0].accounts?.length || 0,
-            accountIds: items[0].accounts?.map((a) => a.id) || [],
-          }
+          id: items[0].id,
+          institutionName: items[0].institutionName,
+          accountsCount: items[0].accounts?.length || 0,
+          accountIds: items[0].accounts?.map((a: any) => a.id) || [],
+        }
         : null,
     });
 

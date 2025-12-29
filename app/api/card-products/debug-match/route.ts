@@ -1,25 +1,26 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db, schema, eq, ilike, and } from "@/db";
 
 // Debug endpoint to test card matching algorithm
 export async function POST(req: Request) {
-    const { userId } = await auth();
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await auth();
+    const user = session?.user;
+    if (!user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { accountName, institutionName, issuer } = await req.json();
 
-    console.log('🎯 [Match Debug] Input:', { accountName, institutionName, issuer });
+    console.log("🎯 [Match Debug] Input:", { accountName, institutionName, issuer });
 
-    // Fetch products
-    const products = await prisma.cardProduct.findMany({
-        where: {
-            active: true,
-            ...(issuer ? { issuer: { contains: issuer, mode: 'insensitive' } } : {})
-        },
-        select: {
+    // Fetch products using Drizzle
+    const products = await db.query.cardProducts.findMany({
+        where: and(
+            eq(schema.cardProducts.active, true),
+            issuer ? ilike(schema.cardProducts.issuer, `%${issuer}%`) : undefined
+        ),
+        columns: {
             id: true,
             issuer: true,
             productName: true
@@ -28,21 +29,16 @@ export async function POST(req: Request) {
 
     console.log(`📦 [Match Debug] Fetched ${products.length} products`);
 
-    // Calculate scores (duplicate the client-side logic here)
+    // Calculate scores
     const normalize = (str: string) =>
         str.toLowerCase()
-            .replace(/[®©™]/g, '')
-            .replace(/[\/\-_]/g, ' ')
-            .replace(/\s+/g, ' ')
+            .replace(/[®©™]/g, "")
+            .replace(/[-_]/g, " ")
+            .replace(/\s+/g, " ")
             .trim();
 
-    const normalizedAccountName = normalize(accountName);
-    const normalizedInstitution = institutionName ? normalize(institutionName) : "";
-
-    console.log('🔤 [Match Debug] Normalized:', {
-        accountName: normalizedAccountName,
-        institution: normalizedInstitution
-    });
+    const normalizedAccountName = normalize(accountName as string);
+    const normalizedInstitution = institutionName ? normalize(institutionName as string) : "";
 
     const results = products.map(product => {
         const normalizedProductName = normalize(product.productName);
@@ -56,14 +52,14 @@ export async function POST(req: Request) {
             if (issuer === institution) return true;
 
             const bankVariants: Record<string, string[]> = {
-                'citi': ['citibank', 'citi', 'citigroup'],
-                'amex': ['american express', 'amex', 'americanexpress'],
-                'bofa': ['bank of america', 'bofa', 'bankofamerica'],
-                'chase': ['chase', 'jpmorgan chase', 'jp morgan'],
-                'wells': ['wells fargo', 'wellsfargo', 'wells'],
-                'capital one': ['capitalone', 'capital one'],
-                'discover': ['discover', 'discover bank'],
-                'barclays': ['barclays', 'barclaycard']
+                "citi": ["citibank", "citi", "citigroup"],
+                "amex": ["american express", "amex", "americanexpress"],
+                "bofa": ["bank of america", "bofa", "bankofamerica"],
+                "chase": ["chase", "jpmorgan chase", "jp morgan"],
+                "wells": ["wells fargo", "wellsfargo", "wells"],
+                "capital one": ["capitalone", "capital one"],
+                "discover": ["discover", "discover bank"],
+                "barclays": ["barclays", "barclaycard"]
             };
 
             for (const variants of Object.values(bankVariants)) {
@@ -80,7 +76,7 @@ export async function POST(req: Request) {
 
         if (normalizedInstitution && isIssuerMatch(normalizedIssuer, normalizedInstitution)) {
             score += 50;
-            reasons.push('Issuer match');
+            reasons.push("Issuer match");
         }
 
         // Word matching
@@ -107,7 +103,7 @@ export async function POST(req: Request) {
         // Substring matching
         if (normalizedAccountName.includes(normalizedProductName)) {
             score += 20;
-            reasons.push('Exact substring');
+            reasons.push("Exact substring");
         }
 
         // Keywords
@@ -130,11 +126,6 @@ export async function POST(req: Request) {
             }
         };
     }).sort((a, b) => b.score - a.score);
-
-    console.log('🏆 [Match Debug] Top 5 matches:');
-    results.slice(0, 5).forEach((r, i) => {
-        console.log(`   ${i + 1}. ${r.product} - Score: ${r.score} - ${r.reasons.join(', ')}`);
-    });
 
     return NextResponse.json({
         input: {

@@ -3,7 +3,7 @@
 import * as React from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 import { Bell, CreditCard, Home, Menu, Zap, Settings, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Bell className="h-5 w-5" />
               <span className="sr-only">Toggle notifications</span>
             </Button>
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
           </div>
         </header>
 

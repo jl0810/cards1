@@ -35,7 +35,7 @@ export function ActivityView({ activeUser = "all" }: { activeUser?: string }) {
     try {
       const res = await fetch("/api/plaid/transactions");
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as Transaction[];
         setTransactions(data);
       }
     } catch (error) {
@@ -46,7 +46,7 @@ export function ActivityView({ activeUser = "all" }: { activeUser?: string }) {
   };
 
   useEffect(() => {
-    fetchTransactions();
+    void fetchTransactions();
   }, []);
 
   const handleSync = async () => {

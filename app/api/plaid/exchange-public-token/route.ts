@@ -7,9 +7,9 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { plaidClient } from "@/lib/plaid";
-import { prisma } from "@/lib/prisma";
+import { db, schema, eq, and, inArray, sql, not } from "@/db";
 import {
   assertFamilyMemberOwnership,
   ensurePrimaryFamilyMember,
@@ -66,15 +66,15 @@ export async function POST(req: NextRequest) {
     return new Response("Too many requests", { status: 429 });
   }
 
-  let userId: string | null = null;
+  let user = null;
   let institutionId: string | undefined;
   let linkSessionId: string | undefined;
 
   try {
-    const authResult = await auth();
-    userId = authResult.userId;
+    const session = await auth();
+    user = session?.user;
 
-    if (!userId) {
+    if (!user?.id) {
       return Errors.unauthorized();
     }
 
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     const bodyValidation = await validateBody(PlaidExchangeTokenSchema, req);
     if (!bodyValidation.success) {
       logger.error("Token exchange validation failed", {
-        userId,
+        userId: user.id,
         error: "Body validation failed - check request payload",
       });
       return bodyValidation.error;
@@ -93,8 +93,8 @@ export async function POST(req: NextRequest) {
     linkSessionId = metadataTyped?.link_session_id;
 
     // 2. Get UserProfile
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
 
     if (!userProfile) {
@@ -124,26 +124,24 @@ export async function POST(req: NextRequest) {
     // 1. Check for Duplicate Accounts BEFORE exchange
     // Check if any of the new accounts already exist for this family member
     // Unique constraint: familyMemberId + mask + officialName
-    let duplicateAccounts: Array<{
-      mask: string | null;
-      subtype: string | null;
-      plaidItem: { id: string; institutionId: string | null; status: string };
-    }> = [];
+    let duplicateAccounts: any[] = [];
 
     if (newAccounts.length > 0) {
-      duplicateAccounts = await prisma.plaidAccount.findMany({
-        where: {
-          familyMemberId: familyMember.id,
-          OR: newAccounts
-            .map((acc: z.infer<typeof PlaidAccountSchema>) => ({
-              mask: acc.mask || "", // Handle optional mask
-            }))
-            .filter((a) => a.mask !== ""), // Filter out empty masks
-        },
-        include: {
-          plaidItem: true,
-        },
-      });
+      const masks = newAccounts
+        .map((acc: any) => acc.mask)
+        .filter((m: any) => m != null && m !== "");
+
+      if (masks.length > 0) {
+        duplicateAccounts = await db.query.plaidAccounts.findMany({
+          where: and(
+            eq(schema.plaidAccounts.familyMemberId, familyMember.id),
+            inArray(schema.plaidAccounts.mask, masks)
+          ),
+          with: {
+            plaidItem: true,
+          },
+        });
+      }
     }
 
     if (duplicateAccounts.length > 0) {
@@ -162,8 +160,6 @@ export async function POST(req: NextRequest) {
             status: existingItem.status,
           },
         );
-        // We do NOT return here. We proceed to create the new item.
-        // We will handle the transfer AFTER creating the new item.
       } else {
         logger.info(
           "Duplicate account detected (active), skipping token exchange",
@@ -174,29 +170,30 @@ export async function POST(req: NextRequest) {
           },
         );
 
-        // AUTO-CLEANUP: If we found an active duplicate, check if there are any "zombie" items
-        // (disconnected items with 0 accounts) for this institution and clean them up.
-        // This prevents user confusion where they see a "Disabled" item but can't link because of an "Active" one.
+        // AUTO-CLEANUP
         if (institutionId) {
-          const zombies = await prisma.plaidItem.findMany({
-            where: {
-              userId: userProfile.id,
-              institutionId: institutionId,
-              status: { in: ["disconnected", "error"] },
-              accounts: { none: {} },
+          const zombies = await db.query.plaidItems.findMany({
+            where: and(
+              eq(schema.plaidItems.userId, userProfile.id),
+              eq(schema.plaidItems.institutionId, institutionId),
+              inArray(schema.plaidItems.status, ["disconnected", "error"])
+            ),
+            with: {
+              accounts: true,
             },
-            select: { id: true },
           });
 
-          if (zombies.length > 0) {
+          const trulyZombies = zombies.filter((z: any) => z.accounts.length === 0);
+
+          if (trulyZombies.length > 0) {
             logger.info("Cleaning up zombie items", {
-              count: zombies.length,
-              ids: zombies.map((z) => z.id),
+              count: trulyZombies.length,
+              ids: trulyZombies.map((z: any) => z.id),
             });
-            await prisma.plaidItem.updateMany({
-              where: { id: { in: zombies.map((z) => z.id) } },
-              data: { status: "inactive" },
-            });
+            await db
+              .update(schema.plaidItems)
+              .set({ status: "inactive", updatedAt: new Date() })
+              .where(inArray(schema.plaidItems.id, trulyZombies.map((z: any) => z.id)));
           }
         }
 
@@ -298,28 +295,24 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Save to Vault and DB atomically with rollback
-    // BUG FIX: Wrap in try-catch to prevent orphaned Vault secrets
     let secretId: string | null = null;
-    let plaidItem;
+    let plaidItem: any;
 
     try {
-      // Step 1: Create Vault secret
-      const vaultResult = await prisma.$queryRaw<{ id: string }[]>`
-                SELECT vault.create_secret(${accessToken}, ${itemId}, 'Plaid Access Token') as id;
-            `;
+      // Step 1: Create Vault secret using raw SQL
+      const vaultResult = await db.execute(sql`
+        SELECT vault.create_secret(${accessToken}, ${itemId}, 'Plaid Access Token') as id;
+      `);
 
-      secretId = vaultResult[0]?.id;
+      secretId = (vaultResult as any)[0]?.id;
 
       if (!secretId) {
         throw new Error("Failed to store access token in vault");
       }
 
-      // Step 2: Create PlaidItem (if this fails, we rollback Vault)
-      // We always create new accounts for new items. Adoption happens later.
-
-      // Check if item with this Plaid Item ID already exists
-      const existingPlaidItem = await prisma.plaidItem.findUnique({
-        where: { itemId: itemId },
+      // Step 2: Create PlaidItem
+      const existingPlaidItem = await db.query.plaidItems.findFirst({
+        where: eq(schema.plaidItems.itemId, itemId),
       });
 
       if (existingPlaidItem) {
@@ -331,109 +324,95 @@ export async function POST(req: NextRequest) {
           },
         );
 
-        plaidItem = await prisma.plaidItem.update({
-          where: { id: existingPlaidItem.id },
-          data: {
+        [plaidItem] = await db.update(schema.plaidItems)
+          .set({
             accessTokenId: secretId,
             status: "active",
             institutionId,
             institutionName,
-            // We don't update accounts here, they are already attached
-          },
-        });
+            updatedAt: new Date()
+          })
+          .where(eq(schema.plaidItems.id, existingPlaidItem.id))
+          .returning();
       } else {
-        plaidItem = await prisma.plaidItem.create({
-          data: {
+        [plaidItem] = await db.insert(schema.plaidItems)
+          .values({
             userId: userProfile.id,
             familyMemberId: familyMember.id,
             itemId: itemId,
             accessTokenId: secretId,
             institutionId: institutionId,
             institutionName: institutionName,
-            accounts: {
-              create: accounts.map((acc: unknown) => {
-                const account = acc as {
-                  account_id: string;
-                  name: string;
-                  official_name: string;
-                  mask: string;
-                  type: string;
-                  subtype: string[];
-                  balances: {
-                    current: number;
-                    available: number;
-                    limit?: number;
-                    iso_currency_code?: string;
-                  };
-                };
-                const creditLiability = liabilitiesData[account.account_id] as
-                  | z.infer<typeof PlaidCreditLiabilitySchema>
-                  | undefined;
-                // Find purchase APR or take the first one
-                const apr =
-                  creditLiability?.aprs?.find(
-                    (a: { apr_type: string; apr_percentage: number }) =>
-                      a.apr_type === "purchase_apr",
-                  )?.apr_percentage ||
-                  creditLiability?.aprs?.[0]?.apr_percentage;
+          })
+          .returning();
 
-                return {
-                  accountId: account.account_id,
-                  name: account.name,
-                  officialName: account.official_name,
-                  status: "active",
-                  mask: account.mask,
-                  type: account.type,
-                  subtype: account.subtype?.[0] || null,
-                  currentBalance: account.balances.current,
-                  availableBalance: account.balances.available,
-                  limit: account.balances.limit,
-                  isoCurrencyCode: account.balances.iso_currency_code,
-                  familyMember: {
-                    connect: { id: familyMember.id },
-                  },
-                  // Liability fields
-                  apr: apr,
-                  minPaymentAmount: creditLiability?.minimum_payment_amount,
-                  lastStatementBalance: creditLiability?.last_statement_balance,
-                  nextPaymentDueDate: creditLiability?.next_payment_due_date
-                    ? new Date(creditLiability.next_payment_due_date)
-                    : null,
-                  lastStatementIssueDate:
-                    creditLiability?.last_statement_issue_date
-                      ? new Date(creditLiability.last_statement_issue_date)
-                      : null,
-                  lastPaymentAmount: creditLiability?.last_payment_amount,
-                  lastPaymentDate: creditLiability?.last_payment_date
-                    ? new Date(creditLiability.last_payment_date)
-                    : null,
-                };
-              }),
-            },
-          },
+        // Step 2b: Create accounts (since Drizzle doesn't do nested create)
+        const accountsToInsert = accounts.map((acc: any) => {
+          const creditLiability = liabilitiesData[acc.account_id] as
+            | z.infer<typeof PlaidCreditLiabilitySchema>
+            | undefined;
+
+          const apr =
+            creditLiability?.aprs?.find(
+              (a: { apr_type: string; apr_percentage: number }) =>
+                a.apr_type === "purchase_apr",
+            )?.apr_percentage ||
+            creditLiability?.aprs?.[0]?.apr_percentage;
+
+          return {
+            plaidItemId: plaidItem.id,
+            accountId: acc.account_id,
+            name: acc.name,
+            officialName: acc.official_name,
+            status: "active",
+            mask: acc.mask,
+            type: acc.type,
+            subtype: acc.subtype?.[0] || null,
+            currentBalance: acc.balances.current,
+            availableBalance: acc.balances.available,
+            limit: acc.balances.limit,
+            isoCurrencyCode: acc.balances.iso_currency_code,
+            familyMemberId: familyMember.id,
+            apr: apr != null ? Number(apr) : null,
+            minPaymentAmount: creditLiability?.minimum_payment_amount != null ? Number(creditLiability.minimum_payment_amount) : null,
+            lastStatementBalance: creditLiability?.last_statement_balance != null ? Number(creditLiability.last_statement_balance) : null,
+            nextPaymentDueDate: creditLiability?.next_payment_due_date
+              ? new Date(creditLiability.next_payment_due_date)
+              : null,
+            lastStatementIssueDate:
+              creditLiability?.last_statement_issue_date
+                ? new Date(creditLiability.last_statement_issue_date)
+                : null,
+            lastPaymentAmount: creditLiability?.last_payment_amount != null ? Number(creditLiability.last_payment_amount) : null,
+            lastPaymentDate: creditLiability?.last_payment_date
+              ? new Date(creditLiability.last_payment_date)
+              : null,
+          };
         });
+
+        if (accountsToInsert.length > 0) {
+          await db.insert(schema.plaidAccounts).values(accountsToInsert);
+        }
       }
 
       // Step 3: Adopt Settings from Inactive Accounts (Smart Fix)
-      // If we just created a new item (not updated existing), check for inactive accounts to adopt
       if (!existingPlaidItem) {
-        const newAccounts = await prisma.plaidAccount.findMany({
-          where: { plaidItemId: plaidItem.id },
+        const newAccountsList = await db.query.plaidAccounts.findMany({
+          where: eq(schema.plaidAccounts.plaidItemId, plaidItem.id),
         });
 
-        for (const newAcc of newAccounts) {
+        for (const newAcc of newAccountsList) {
           if (!newAcc.mask) continue;
 
           // Find an inactive account with same mask & family member
-          const oldAcc = await prisma.plaidAccount.findFirst({
-            where: {
-              mask: newAcc.mask,
-              familyMemberId: newAcc.familyMemberId,
-              status: "inactive",
-              // Ensure it's not the one we just created
-              id: { not: newAcc.id },
-            },
-            include: { extended: true },
+          const oldAcc = await db.query.plaidAccounts.findFirst({
+            where: and(
+              eq(schema.plaidAccounts.mask, newAcc.mask),
+              eq(schema.plaidAccounts.familyMemberId, newAcc.familyMemberId),
+              eq(schema.plaidAccounts.status, "inactive"),
+              not(eq(schema.plaidAccounts.id, newAcc.id))
+            ),
+            with: { extended: true },
           });
 
           if (oldAcc && oldAcc.extended) {
@@ -442,17 +421,15 @@ export async function POST(req: NextRequest) {
               to: newAcc.id,
             });
 
-            // Move Extended Data (Nicknames, Notes, Payment Status)
-            await prisma.accountExtended.update({
-              where: { id: oldAcc.extended.id },
-              data: { plaidAccountId: newAcc.id },
-            });
+            // Move Extended Data
+            await db.update(schema.accountExtended)
+              .set({ plaidAccountId: newAcc.id, updatedAt: new Date() })
+              .where(eq(schema.accountExtended.id, oldAcc.extended.id));
 
-            // Mark old account as replaced to prevent double adoption
-            await prisma.plaidAccount.update({
-              where: { id: oldAcc.id },
-              data: { status: "replaced" },
-            });
+            // Mark old account as replaced
+            await db.update(schema.plaidAccounts)
+              .set({ status: "replaced", updatedAt: new Date() })
+              .where(eq(schema.plaidAccounts.id, oldAcc.id));
           }
         }
       }
@@ -481,14 +458,13 @@ export async function POST(req: NextRequest) {
         });
 
         // Find the existing account that was created by the other request
-        const existingAccount = await prisma.plaidAccount.findFirst({
-          where: {
-            familyMemberId: familyMember.id,
-            mask: {
-              in: accounts.map((a: unknown) => (a as { mask: string }).mask),
-            },
-          },
-          include: {
+        const masks = accounts.map((a: any) => a.mask).filter((m: any) => m != null && m !== "");
+        const existingAccount = await db.query.plaidAccounts.findFirst({
+          where: and(
+            eq(schema.plaidAccounts.familyMemberId, familyMember.id),
+            inArray(schema.plaidAccounts.mask, masks)
+          ),
+          with: {
             plaidItem: true,
           },
         });
@@ -542,7 +518,7 @@ export async function POST(req: NextRequest) {
 
     logger.error("Error exchanging public token", {
       error,
-      userId,
+      userId: user?.id,
       institutionId,
       plaidRequestId: plaidError?.response?.data?.request_id,
       plaidErrorCode: plaidError?.response?.data?.error_code,

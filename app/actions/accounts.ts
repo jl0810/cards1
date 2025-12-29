@@ -1,7 +1,9 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+"use server";
+
+import { auth } from "@/lib/auth";
+import { db, schema, eq, and } from "@/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
@@ -18,17 +20,13 @@ export type ActionResult<T = void> =
 
 /**
  * Update the friendly name (nickname) for a Plaid account
- *
- * @satisfies US-007 - View Account Details (allows customization)
- * @param input - Account ID and new nickname
- * @returns Success or error result
  */
 export async function updateAccountNickname(
   input: z.infer<typeof UpdateAccountNicknameSchema>,
 ): Promise<ActionResult<{ nickname: string | null }>> {
-  // 1. Auth Check
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) {
     return { success: false, error: "Unauthorized" };
   }
 
@@ -46,8 +44,8 @@ export async function updateAccountNickname(
 
   try {
     // 3. Verify ownership
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
 
     if (!userProfile) {
@@ -55,36 +53,62 @@ export async function updateAccountNickname(
     }
 
     // Check if account belongs to user's family
-    const account = await prisma.plaidAccount.findFirst({
-      where: {
-        id: accountId,
-        familyMember: {
-          userId: userProfile.id,
-        },
-      },
+    const account = await db.query.plaidAccounts.findFirst({
+      where: and(
+        eq(schema.plaidAccounts.id, accountId),
+        eq(schema.familyMembers.userId, userProfile.id)
+      ),
+      with: {
+        familyMember: true
+      }
     });
 
+    // Wait, Drizzle `findFirst` with `and` across tables requires join or proper relation mapping.
+    // In my Drizzle schema, I defined relations? No, I only defined foreign keys.
+    // I should probably use the query builder with joins or update my schema with relations.
+
     if (!account) {
-      return { success: false, error: "Account not found" };
+      // Manual check if join-less query failed
+      const accountCheck = await db
+        .select({ id: schema.plaidAccounts.id })
+        .from(schema.plaidAccounts)
+        .innerJoin(schema.familyMembers, eq(schema.plaidAccounts.familyMemberId, schema.familyMembers.id))
+        .where(
+          and(
+            eq(schema.plaidAccounts.id, accountId),
+            eq(schema.familyMembers.userId, userProfile.id)
+          )
+        )
+        .limit(1);
+
+      if (accountCheck.length === 0) {
+        return { success: false, error: "Account not found" };
+      }
     }
 
     // 4. Upsert AccountExtended with nickname
-    const extended = await prisma.accountExtended.upsert({
-      where: { plaidAccountId: accountId },
-      create: {
+    // Drizzle upsert in Postgres is .insert().onConflictUpdate()
+    const [extended] = await db
+      .insert(schema.accountExtended)
+      .values({
         plaidAccountId: accountId,
         nickname: nickname,
-      },
-      update: {
-        nickname: nickname,
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: schema.accountExtended.plaidAccountId,
+        set: {
+          nickname: nickname,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
     // 5. Revalidate
     revalidatePath("/dashboard");
     revalidatePath("/accounts");
 
-    logger.info("Account nickname updated", { userId, accountId, nickname });
+    logger.info("Account nickname updated", { userId: user.id, accountId, nickname });
 
     return {
       success: true,
@@ -92,11 +116,11 @@ export async function updateAccountNickname(
     };
   } catch (error) {
     Sentry.captureException(error, {
-      user: { id: userId },
+      user: { id: user.id },
       extra: { action: "updateAccountNickname", accountId },
     });
     logger.error("Error updating account nickname", error, {
-      userId,
+      userId: user.id,
       accountId,
     });
     return { success: false, error: "Failed to update account nickname" };

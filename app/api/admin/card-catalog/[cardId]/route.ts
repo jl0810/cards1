@@ -7,10 +7,12 @@
  * @satisfies US-019 - Card Catalog Management
  */
 
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/db';
+import { cardProducts } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { requireAdmin } from '@/lib/admin';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
@@ -38,11 +40,11 @@ export async function GET(
         await requireAdmin();
         const { cardId } = await params;
 
-        const card = await prisma.cardProduct.findUnique({
-            where: { id: cardId },
-            include: {
+        const card = await db.query.cardProducts.findFirst({
+            where: (table, { eq }) => eq(table.id, cardId),
+            with: {
                 benefits: {
-                    orderBy: { benefitName: 'asc' }
+                    orderBy: (benefits, { asc }) => [asc(benefits.benefitName)]
                 }
             }
         });
@@ -86,18 +88,19 @@ export async function PATCH(
         const data = validation.data;
 
         // Update Card Product Only (not benefits)
-        const updatedCard = await prisma.cardProduct.update({
-            where: { id: cardId },
-            data: {
+        const [updatedCard] = await db.update(cardProducts)
+            .set({
                 productName: data.productName,
                 issuer: data.issuer,
                 cardType: data.cardType,
-                annualFee: data.annualFee,
+                annualFee: typeof data.annualFee === 'string' ? parseFloat(data.annualFee) : data.annualFee,
                 signupBonus: data.signupBonus,
                 imageUrl: data.imageUrl,
-                active: data.active
-            }
-        });
+                active: data.active,
+                updatedAt: new Date(),
+            })
+            .where(eq(cardProducts.id, cardId))
+            .returning();
 
         // Note: Benefits are NOT updated here - they should be managed individually
         // This prevents accidentally approving draft benefits when saving card details

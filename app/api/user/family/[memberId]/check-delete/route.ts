@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db, schema, eq, and } from "@/db";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // Check if a family member can be deleted
 export async function GET(
@@ -11,24 +11,23 @@ export async function GET(
 ) {
     try {
         const { memberId } = await params;
-        const { userId } = await auth();
-        if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+        const session = await auth();
+        const user = session?.user;
+        if (!user?.id) return new NextResponse("Unauthorized", { status: 401 });
 
-        const userProfile = await prisma.userProfile.findUnique({
-            where: { clerkId: userId },
+        const userProfile = await db.query.userProfiles.findFirst({
+            where: eq(schema.userProfiles.supabaseId, user.id),
         });
         if (!userProfile) return new NextResponse("User not found", { status: 404 });
 
-        // Verify ownership
-        const member = await prisma.familyMember.findFirst({
-            where: {
-                id: memberId,
-                userId: userProfile.id
-            },
-            include: {
-                _count: {
-                    select: { plaidItems: true }
-                }
+        // Verify ownership and check plaidItems using Drizzle
+        const member = await db.query.familyMembers.findFirst({
+            where: and(
+                eq(schema.familyMembers.id, memberId),
+                eq(schema.familyMembers.userId, userProfile.id)
+            ),
+            with: {
+                plaidItems: true
             }
         });
 
@@ -40,9 +39,9 @@ export async function GET(
         }
 
         // PROTECTION 2: Cannot delete member with linked items
-        if (member._count.plaidItems > 0) {
+        if (member.plaidItems.length > 0) {
             return new NextResponse(
-                `Cannot delete ${member.name} because they have ${member._count.plaidItems} active bank connection(s). Please reassign or remove the bank connections first.`,
+                `Cannot delete ${member.name} because they have ${member.plaidItems.length} active bank connection(s). Please reassign or remove the bank connections first.`,
                 { status: 400 }
             );
         }
@@ -51,7 +50,7 @@ export async function GET(
         return new NextResponse("OK", { status: 200 });
 
     } catch (error) {
-        console.error('Error checking delete eligibility:', error);
+        console.error("Error checking delete eligibility:", error);
         return new NextResponse("Internal Server Error", { status: 500 });
     }
 }

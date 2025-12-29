@@ -4,11 +4,11 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig = {
   transpilePackages: ["lucide-react"],
   serverExternalPackages: [
-    "@prisma/client",
-    "@prisma/adapter-pg",
-    "prisma",
     "pg",
   ],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@mantine/core", "framer-motion"],
+  },
 
   // Production optimizations
   productionBrowserSourceMaps: false,
@@ -23,14 +23,9 @@ const nextConfig = {
     removeConsole:
       process.env.NODE_ENV === "production"
         ? {
-            exclude: ["error", "warn"],
-          }
+          exclude: ["error", "warn"],
+        }
         : false,
-  },
-
-  // Performance: Optimize bundles
-  experimental: {
-    optimizePackageImports: ["lucide-react", "@mantine/core", "framer-motion"],
   },
 
   // Optimize images
@@ -46,7 +41,7 @@ const nextConfig = {
     ],
   },
 
-  // Note: Security headers are handled in middleware.ts (needed for Clerk auth)
+  // Note: Security headers are handled in middleware.ts for proper auth security
 };
 
 const sentryWebpackPluginOptions = {

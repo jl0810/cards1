@@ -5,10 +5,6 @@ import { ErrorBoundary as SentryErrorBoundary } from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { logger } from "@/lib/logger";
-import type { ReactErrorInfoSchema } from "@/lib/validations";
-import type { z } from "zod";
-
-type ReactErrorInfo = z.infer<typeof ReactErrorInfoSchema>;
 
 export function ErrorBoundary({
   children,
@@ -33,8 +29,8 @@ export function ErrorBoundary({
               <Button onClick={resetError} className="w-full">
                 Try again
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => window.location.href = '/'}
                 className="w-full"
               >

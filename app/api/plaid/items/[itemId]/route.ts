@@ -8,8 +8,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
+import { db, schema, eq, and } from '@/db';
 import { AssignPlaidItemSchema, safeValidateSchema } from '@/lib/validations';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
@@ -29,13 +29,14 @@ export async function PATCH(
     }
 
     try {
-        const { userId } = await auth();
-        if (!userId) {
+        const session = await auth();
+        const user = session?.user;
+        if (!user?.id) {
             return Errors.unauthorized();
         }
 
         const body = await req.json();
-        
+
         // Validate request body using Zod
         const validation = safeValidateSchema(AssignPlaidItemSchema, body);
         if (!validation.success) {
@@ -44,8 +45,8 @@ export async function PATCH(
 
         const { familyMemberId } = validation.data;
 
-        const userProfile = await prisma.userProfile.findUnique({
-            where: { clerkId: userId },
+        const userProfile = await db.query.userProfiles.findFirst({
+            where: eq(schema.userProfiles.supabaseId, user.id),
         });
 
         if (!userProfile) {
@@ -55,8 +56,8 @@ export async function PATCH(
         const { itemId } = await params;
 
         // Verify the item belongs to the user
-        const item = await prisma.plaidItem.findUnique({
-            where: { id: itemId },
+        const item = await db.query.plaidItems.findFirst({
+            where: eq(schema.plaidItems.id, itemId),
         });
 
         if (!item || item.userId !== userProfile.id) {
@@ -64,8 +65,8 @@ export async function PATCH(
         }
 
         // Verify the family member belongs to the user
-        const familyMember = await prisma.familyMember.findUnique({
-            where: { id: familyMemberId },
+        const familyMember = await db.query.familyMembers.findFirst({
+            where: eq(schema.familyMembers.id, familyMemberId),
         });
 
         if (!familyMember || familyMember.userId !== userProfile.id) {
@@ -74,18 +75,17 @@ export async function PATCH(
 
         // Update the item and all its accounts
         // We use a transaction to ensure consistency
-        const updatedItem = await prisma.$transaction(async (tx) => {
+        const updatedItem = await db.transaction(async (tx) => {
             // Update item
-            const updated = await tx.plaidItem.update({
-                where: { id: itemId },
-                data: { familyMemberId },
-            });
+            const [updated] = await tx.update(schema.plaidItems)
+                .set({ familyMemberId })
+                .where(eq(schema.plaidItems.id, itemId))
+                .returning();
 
             // Update all accounts associated with this item
-            await tx.plaidAccount.updateMany({
-                where: { plaidItemId: itemId },
-                data: { familyMemberId },
-            });
+            await tx.update(schema.plaidAccounts)
+                .set({ familyMemberId })
+                .where(eq(schema.plaidAccounts.plaidItemId, itemId));
 
             return updated;
         });

@@ -6,40 +6,32 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth';
 import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
-import { API_MESSAGES } from '@/lib/constants';
 import { CreateFamilyMemberSchema, safeValidateSchema } from '@/lib/validations';
 import {
-  getFamilyMembers,
-  createFamilyMember,
-  UserNotFoundError,
+    getFamilyMembers,
+    createFamilyMember,
+    UserNotFoundError,
 } from '@/lib/family-operations';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Get all family members for authenticated user
- * 
- * @route GET /api/user/family
- * @implements BR-003 - Family Member Ownership
- * @satisfies US-003 - Add Family Members (view capability)
- * @tested __tests__/api/user/family.test.ts
- * 
- * @returns {Promise<NextResponse>} Array of family members
  */
 export async function GET(req: Request) {
     try {
-        const { userId } = await auth();
+        const session = await auth();
+        const user = session?.user;
 
-        if (!userId) {
+        if (!user?.id) {
             return Errors.unauthorized();
         }
 
-        // Pure business logic call - easily testable separately
-        const familyMembers = await getFamilyMembers(userId);
+        const familyMembers = await getFamilyMembers(user.id);
 
         return NextResponse.json(familyMembers);
     } catch (error) {
@@ -53,15 +45,6 @@ export async function GET(req: Request) {
 
 /**
  * Create a new family member
- * 
- * @route POST /api/user/family
- * @implements BR-003 - Family Member Ownership
- * @implements BR-004 - Family Member Name Requirements
- * @satisfies US-003 - Add Family Members
- * @tested __tests__/api/user/family.test.ts
- * 
- * @param {Request} req - Contains family member data (name, email, avatar, role)
- * @returns {Promise<NextResponse>} Created family member object
  */
 export async function POST(req: Request) {
     // Rate limit: 20 creates per minute
@@ -71,9 +54,10 @@ export async function POST(req: Request) {
     }
 
     try {
-        const { userId } = await auth();
+        const session = await auth();
+        const user = session?.user;
 
-        if (!userId) {
+        if (!user?.id) {
             return Errors.unauthorized();
         }
 
@@ -86,8 +70,7 @@ export async function POST(req: Request) {
 
         const { name, email, avatar, role } = validationResult.data;
 
-        // Pure business logic call - easily testable separately
-        const familyMember = await createFamilyMember(userId, {
+        const familyMember = await createFamilyMember(user.id, {
             name,
             email: email ?? undefined,
             avatar: avatar ?? undefined,
@@ -95,7 +78,7 @@ export async function POST(req: Request) {
         });
 
         logger.info(`Family member created: ${familyMember.id}`, {
-            userId,
+            userId: user.id,
             memberName: name,
         });
 

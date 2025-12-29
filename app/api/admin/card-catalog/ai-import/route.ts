@@ -8,19 +8,20 @@
 
 import { withAdmin } from "@/lib/admin";
 // import type { BenefitMatchCriteria } from "@/lib/benefit-matcher"; // Unused
-import type {
-  BenefitRuleConfigSchema as _BenefitRuleConfigSchema,
-  PrismaJsonSchema as _PrismaJsonSchema,
-} from "@/lib/validations";
 import { logger } from "@/lib/logger";
 import type { LogMetadata } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { cardProducts, cardBenefits } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import type { z } from "zod";
+import {
+  safeValidateSchema,
+} from "@/lib/validations";
 
-type _BenefitRuleConfig = z.infer<typeof _BenefitRuleConfigSchema>;
-type _PrismaJson = z.infer<typeof _PrismaJsonSchema>;
+type _BenefitRuleConfig = any;
+type _PrismaJson = any;
 
 interface CardProductData {
   issuer: string;
@@ -293,24 +294,24 @@ export async function POST(req: Request) {
         try {
           // Upsert Product (Update existing, Create new)
           // We use upsert to ensure we don't create duplicates if the name matches
-          const product = await prisma.cardProduct.upsert({
-            where: {
-              issuer_productName: {
-                issuer: productData.issuer,
-                productName: productData.product_name,
-              },
-            },
-            create: {
+          // Upsert Product (Update existing, Create new)
+          const [product] = await db.insert(cardProducts)
+            .values({
               issuer: productData.issuer,
               productName: productData.product_name,
               cardType: productData.card_type || null,
               signupBonus: productData.signup_bonus || null,
-            },
-            update: {
-              cardType: productData.card_type || null,
-              signupBonus: productData.signup_bonus || null,
-            },
-          });
+              updatedAt: new Date(),
+            })
+            .onConflictDoUpdate({
+              target: [cardProducts.issuer, cardProducts.productName],
+              set: {
+                cardType: productData.card_type || null,
+                signupBonus: productData.signup_bonus || null,
+                updatedAt: new Date(),
+              },
+            })
+            .returning();
 
           // Import benefits (Clean Sync: Delete old, Add new)
           if (
@@ -318,15 +319,14 @@ export async function POST(req: Request) {
             Array.isArray(productData.cash_benefits)
           ) {
             // 1. Delete existing benefits for this card to avoid duplicates/zombies
-            await prisma.cardBenefit.deleteMany({
-              where: { cardProductId: product.id },
-            });
+            await db.delete(cardBenefits)
+              .where(eq(cardBenefits.cardProductId, product.id));
 
             // 2. Insert new benefits
             for (const benefitData of productData.cash_benefits) {
               if (benefitData.benefit) {
-                await prisma.cardBenefit.create({
-                  data: {
+                await db.insert(cardBenefits)
+                  .values({
                     cardProductId: product.id,
                     benefitName: benefitData.benefit,
                     description: benefitData.description || benefitData.benefit,
@@ -335,12 +335,12 @@ export async function POST(req: Request) {
                     maxAmount: benefitData.max_amount,
                     keywords: benefitData.keywords || [],
                     ruleConfig: benefitData.rule_config
-                      ? JSON.parse(JSON.stringify(benefitData.rule_config))
-                      : null, // Deep clone for Prisma JSON
+                      ? benefitData.rule_config
+                      : null,
                     isApproved: false, // MARK AS DRAFT (Requires Admin Review)
                     changeNotes: "AI-generated benefit - pending review",
-                  },
-                });
+                    updatedAt: new Date(),
+                  });
               }
             }
           }

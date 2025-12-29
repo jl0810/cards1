@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from '@clerk/nextjs';
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from 'react';
 
 interface UserPreferences {
@@ -44,36 +44,42 @@ const defaultPreferences: UserPreferences = {
 };
 
 export function useUserPreferences() {
-  const { user, isLoaded } = useUser();
-  const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
+  const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
   const [error, setError] = useState<string | null>(null);
 
-  // Load preferences from Supabase
+  const user = session?.user;
+
+  // Load user and preferences
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (status === "loading") return;
 
-    async function loadPreferences() {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/user/preferences');
-        
-        if (!response.ok) {
-          throw new Error('Failed to load preferences');
-        }
-        
-        const data = await response.json();
-        setPreferences({ ...defaultPreferences, ...data });
-      } catch (err) {
-        console.error('Error loading preferences:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
+    if (user) {
+      loadPreferences();
+    } else {
+      setLoading(false);
     }
+  }, [user, status]);
 
-    loadPreferences();
-  }, [user, isLoaded]);
+  async function loadPreferences() {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/user/preferences');
+
+      if (!response.ok) {
+        throw new Error('Failed to load preferences');
+      }
+
+      const data = await response.json();
+      setPreferences({ ...defaultPreferences, ...data });
+    } catch (err) {
+      console.error('Error loading preferences:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // Update preferences
   const updatePreferences = async (newPreferences: Partial<UserPreferences>) => {
@@ -81,7 +87,7 @@ export function useUserPreferences() {
 
     try {
       const updatedPreferences = { ...preferences, ...newPreferences };
-      
+
       const response = await fetch('/api/user/preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -115,7 +121,7 @@ export function useUserPreferences() {
     updatePreferences,
     updatePreference,
     resetPreferences,
-    loading,
+    loading: loading || status === "loading",
     error,
   };
 }

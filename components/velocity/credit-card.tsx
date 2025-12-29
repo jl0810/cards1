@@ -38,7 +38,7 @@ interface Account {
   type: string;
   color: string;
   paymentCycleStatus?: string;
-  liabilities: {
+  liabilities?: {
     apr: string;
     aprType: string;
     aprBalanceSubjectToApr: string;
@@ -169,20 +169,20 @@ export function CreditCard({
   const safeBrand =
     brandResult && typeof brandResult === "object"
       ? {
-          logoSvg:
-            typeof (brandResult as { logoSvg?: unknown }).logoSvg === "string"
-              ? (brandResult as { logoSvg?: string }).logoSvg
-              : null,
-          logoUrl:
-            typeof (brandResult as { logoUrl?: unknown }).logoUrl === "string"
-              ? (brandResult as { logoUrl?: string }).logoUrl
-              : null,
-          brandColor:
-            typeof (brandResult as { brandColor?: unknown }).brandColor ===
+        logoSvg:
+          typeof (brandResult as { logoSvg?: unknown }).logoSvg === "string"
+            ? (brandResult as { logoSvg?: string }).logoSvg
+            : null,
+        logoUrl:
+          typeof (brandResult as { logoUrl?: unknown }).logoUrl === "string"
+            ? (brandResult as { logoUrl?: string }).logoUrl
+            : null,
+        brandColor:
+          typeof (brandResult as { brandColor?: unknown }).brandColor ===
             "string"
-              ? (brandResult as { brandColor?: string }).brandColor
-              : null,
-        }
+            ? (brandResult as { brandColor?: string }).brandColor
+            : null,
+      }
       : null;
 
   // Sync optimistic status with server data
@@ -208,8 +208,8 @@ export function CreditCard({
     acc.bank.includes(key),
   )
     ? BANK_COLORS[
-        Object.keys(BANK_COLORS).find((key) => acc.bank.includes(key)) as string
-      ]
+    Object.keys(BANK_COLORS).find((key) => acc.bank.includes(key)) as string
+    ]
     : null;
   const brandColor = safeBrand?.brandColor || knownColor || null;
 
@@ -268,7 +268,7 @@ export function CreditCard({
       } else {
         // Handle MARKING AS PAID
         const amount = Number(
-          acc.liabilities.last_statement_balance?.replace(/[^0-9.]+/g, "") || 0,
+          acc.liabilities?.last_statement_balance?.replace(/[^0-9.]+/g, "") || 0,
         );
 
         const res = await fetch(`/api/account/${acc.id}/mark-paid`, {
@@ -367,25 +367,22 @@ export function CreditCard({
             {showActionButton && (
               <button
                 onClick={handleTogglePaidStatus}
-                className={`mt-1.5 group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${
-                  isPaid
+                className={`mt-1.5 group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${isPaid
                     ? "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Green when marked as paid (done)
                     : "bg-red-500/20 hover:bg-red-500/30 border border-red-500/40" // Red when unpaid (action needed)
-                }`}
+                  }`}
               >
                 <div
-                  className={`w-3 h-3 rounded-full flex items-center justify-center shadow-lg transition-transform ${
-                    isPaid
+                  className={`w-3 h-3 rounded-full flex items-center justify-center shadow-lg transition-transform ${isPaid
                       ? "bg-emerald-500" // Green when marked as paid (done)
                       : "bg-red-500 group-hover:scale-110" // Red when unpaid (action needed)
-                  }`}
+                    }`}
                 >
                   <CheckCircle className="w-1.5 h-1.5 text-white" />
                 </div>
                 <span
-                  className={`text-[8px] font-bold uppercase tracking-wider ${
-                    isPaid ? "text-emerald-300" : "text-red-300"
-                  }`}
+                  className={`text-[8px] font-bold uppercase tracking-wider ${isPaid ? "text-emerald-300" : "text-red-300"
+                    }`}
                 >
                   {isPaid ? "Mark Unpaid" : "Mark Paid"}
                 </span>
@@ -426,9 +423,8 @@ export function CreditCard({
       >
         {/* --- FRONT OF CARD --- */}
         <div
-          className={`absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden shadow-2xl ${
-            isFlipped ? "pointer-events-none" : "pointer-events-auto"
-          }`}
+          className={`absolute inset-0 w-full h-full backface-hidden rounded-2xl overflow-hidden shadow-2xl ${isFlipped ? "pointer-events-none" : "pointer-events-auto"
+            }`}
           style={{ zIndex: isFlipped ? 0 : 1 }}
         >
           {/* Base Background - Dark Premium Feel */}
@@ -477,11 +473,10 @@ export function CreditCard({
                       alt={acc.bank}
                       height={32}
                       width={140}
-                      className={`h-full w-auto max-w-[140px] object-contain ${
-                        safeBrand.logoUrl.includes("simpleicons.org")
+                      className={`h-full w-auto max-w-[140px] object-contain ${safeBrand.logoUrl.includes("simpleicons.org")
                           ? "opacity-90"
                           : "brightness-0 invert opacity-80"
-                      }`}
+                        }`}
                     />
                   </div>
                 ) : (
@@ -533,14 +528,14 @@ export function CreditCard({
                   {balanceViewMode === "statement"
                     ? acc.liabilities?.last_statement_balance
                       ? `$${Number(
-                          acc.liabilities.last_statement_balance,
-                        ).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                        })}`
+                        acc.liabilities.last_statement_balance,
+                      ).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}`
                       : acc.liabilities?.last_statement || "$0.00"
                     : `$${acc.balance.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      })}`}
+                      minimumFractionDigits: 2,
+                    })}`}
                 </h3>
               </div>
 
@@ -586,20 +581,18 @@ export function CreditCard({
                 <button
                   onClick={handleTogglePaidStatus}
                   disabled={isToggling}
-                  className={`group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${
-                    isToggling
+                  className={`group flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full transition-all duration-200 shadow-lg ${isToggling
                       ? "opacity-50 cursor-not-allowed"
                       : isPaid
                         ? "bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40" // Green when marked as paid (done)
                         : "bg-red-500/20 hover:bg-red-500/30 border border-red-500/40" // Red when unpaid (action needed)
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`w-4 h-4 rounded-full flex items-center justify-center shadow-lg transition-transform ${
-                      isPaid
+                    className={`w-4 h-4 rounded-full flex items-center justify-center shadow-lg transition-transform ${isPaid
                         ? "bg-emerald-500" // Green when marked as paid (done)
                         : "bg-red-500 group-hover:scale-110" // Red when unpaid (action needed)
-                    }`}
+                      }`}
                   >
                     {isToggling ? (
                       <div className="w-2 h-2 border border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -608,9 +601,8 @@ export function CreditCard({
                     )}
                   </div>
                   <span
-                    className={`text-[10px] font-bold uppercase tracking-wider ${
-                      isPaid ? "text-emerald-300" : "text-red-300"
-                    }`}
+                    className={`text-[10px] font-bold uppercase tracking-wider ${isPaid ? "text-emerald-300" : "text-red-300"
+                      }`}
                   >
                     {isPaid ? "Mark as Unpaid" : "Mark Paid"}
                   </span>
@@ -636,7 +628,7 @@ export function CreditCard({
                 Due Date
               </p>
               <p className="text-xs font-mono font-bold text-white">
-                {acc.liabilities.next_due_date || "N/A"}
+                {acc.liabilities?.next_due_date || "N/A"}
               </p>
             </div>
           </div>
@@ -647,19 +639,19 @@ export function CreditCard({
             <div className="grid grid-cols-2 gap-2.5">
               <LiabilityStat
                 label="Statement Bal"
-                value={acc.liabilities.last_statement}
+                value={acc.liabilities?.last_statement || "N/A"}
               />
               <LiabilityStat
                 label="Min Payment"
-                value={acc.liabilities.min_due}
+                value={acc.liabilities?.min_due || "N/A"}
               />
               <LiabilityStat
                 label="Last Payment"
-                value={acc.liabilities.last_payment_amount}
+                value={acc.liabilities?.last_payment_amount || "N/A"}
               />
               <LiabilityStat
                 label="Payment Date"
-                value={acc.liabilities.last_payment_date}
+                value={acc.liabilities?.last_payment_date || "N/A"}
                 accent
               />
             </div>

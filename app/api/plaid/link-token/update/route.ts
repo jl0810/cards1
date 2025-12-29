@@ -6,8 +6,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { db, schema, eq, and, sql } from "@/db";
 import { plaidClient } from "@/lib/plaid";
 import { logger } from "@/lib/logger";
 import { Errors } from "@/lib/api-errors";
@@ -39,36 +39,35 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { userId } = await auth();
-    if (!userId) return Errors.unauthorized();
+    const session = await auth();
+    const user = session?.user;
+    if (!user?.id) return Errors.unauthorized();
 
     const { itemId } = await req.json();
     if (!itemId) return Errors.badRequest("itemId is required");
 
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
     if (!userProfile) return Errors.notFound("User profile");
 
     // Get the PlaidItem (verify ownership)
-    const plaidItem = await prisma.plaidItem.findFirst({
-      where: {
-        id: itemId,
-        userId: userProfile.id,
-      },
+    const plaidItem = await db.query.plaidItems.findFirst({
+      where: and(
+        eq(schema.plaidItems.id, itemId),
+        eq(schema.plaidItems.userId, userProfile.id),
+      ),
     });
 
     if (!plaidItem) return Errors.notFound("Plaid item");
 
     // Get access token from Vault
     const secretId = plaidItem.accessTokenId;
-    const vaultResult = await prisma.$queryRaw<
-      Array<{ decrypted_secret: string }>
-    >`
+    const vaultResult = await db.execute(sql`
             SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
-        `;
+        `);
 
-    const accessToken = vaultResult[0]?.decrypted_secret;
+    const accessToken = (vaultResult as any)[0]?.decrypted_secret;
     if (!accessToken) {
       logger.error("Access token not found in Vault", {
         itemId,
@@ -80,7 +79,7 @@ export async function POST(req: Request) {
     // Create link token in UPDATE mode
     // KEY: Pass existing access_token to enable update mode
     const response = await plaidClient.linkTokenCreate({
-      user: { client_user_id: userProfile.id },
+      user: { client_user_id: user.id },
       client_name: process.env.NEXT_PUBLIC_APP_NAME || "Card Tracker",
       access_token: accessToken, // This enables update mode!
       products: [Products.Transactions, Products.Liabilities], // Request Liabilities upgrade

@@ -3,34 +3,25 @@
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Zap, Menu, X, CreditCard } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Zap, Menu, X, CreditCard, LogOut, User as UserIcon, LayoutDashboard } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Use Next.js Link and forward the ref
-const LinkComponent = React.forwardRef<
-  HTMLAnchorElement,
-  React.ComponentPropsWithoutRef<typeof Link>
->((props, ref) => <Link ref={ref} {...props} />);
-LinkComponent.displayName = "LinkComponent";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function MarketingHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Prevent hydration mismatch by only rendering auth UI after mount
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const { user, loading, isAuthenticated, signOut } = useAuth();
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -45,23 +36,23 @@ export function MarketingHeader() {
       <div className="container flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo and Desktop Nav */}
         <div className="flex items-center gap-6">
-          <LinkComponent href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
               <CreditCard className="text-white w-5 h-5" />
             </div>
             <span className="font-bold text-lg text-white tracking-tight">
               CardsGoneCrazy
             </span>
-          </LinkComponent>
+          </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             {navLinks.map((link) => (
-              <LinkComponent
+              <Link
                 key={link.href}
                 href={link.href}
                 className="font-medium text-gray-300 transition-colors hover:text-white"
               >
                 {link.label}
-              </LinkComponent>
+              </Link>
             ))}
           </nav>
         </div>
@@ -82,38 +73,75 @@ export function MarketingHeader() {
         {/* Desktop Auth & Theme */}
         <div className="hidden md:flex items-center justify-end gap-3">
           <ThemeToggle />
-          {isMounted && (
+          {!loading && (
             <>
-              <SignedOut>
-                <SignInButton mode="modal">
+              {!isAuthenticated ? (
+                <>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-gray-300 hover:text-white hover:bg-white/10"
+                    asChild
                   >
-                    Sign In
+                    <Link href="/login">Sign In</Link>
                   </Button>
-                </SignInButton>
-                <SignUpButton mode="modal">
                   <Button
                     size="sm"
                     className="bg-white text-black hover:bg-gray-200"
+                    asChild
                   >
-                    Sign Up
+                    <Link href="/register">Sign Up</Link>
                   </Button>
-                </SignUpButton>
-              </SignedOut>
-              <SignedIn>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10 bg-white/5 text-white hover:bg-white/10"
-                >
-                  <LinkComponent href="/dashboard">Dashboard</LinkComponent>
-                </Button>
-                <UserButton afterSignOutUrl="/" />
-              </SignedIn>
+                </>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                  >
+                    <Link href="/dashboard">Dashboard</Link>
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user?.image || undefined} alt={user?.name || user?.email || ""} />
+                          <AvatarFallback>{(user?.name || user?.email || "U").charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">{user?.name || "User"}</p>
+                          <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard">
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          <span>Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/settings">
+                          <UserIcon className="mr-2 h-4 w-4" />
+                          <span>Settings</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => signOut()} className="text-red-500">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -143,36 +171,43 @@ export function MarketingHeader() {
                 </Link>
               ))}
               <div className="border-t border-white/10 pt-4 flex flex-col gap-3">
-                {isMounted && (
+                {!loading && (
                   <>
-                    <SignedOut>
-                      <SignInButton mode="modal">
+                    {!isAuthenticated ? (
+                      <>
                         <Button
                           variant="ghost"
                           className="w-full justify-start text-gray-300 hover:text-white hover:bg-white/10"
+                          asChild
                         >
-                          Sign In
+                          <Link href="/login">Sign In</Link>
                         </Button>
-                      </SignInButton>
-                      <SignUpButton mode="modal">
-                        <Button className="w-full bg-white text-black hover:bg-gray-200">
-                          Sign Up
+                        <Button
+                          className="w-full bg-white text-black hover:bg-gray-200"
+                          asChild
+                        >
+                          <Link href="/register">Sign Up</Link>
                         </Button>
-                      </SignUpButton>
-                    </SignedOut>
-                    <SignedIn>
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="w-full justify-start border-white/10 bg-white/5 text-white hover:bg-white/10"
-                      >
-                        <Link href="/dashboard">Dashboard</Link>
-                      </Button>
-                      <div className="flex items-center justify-between text-gray-300">
-                        <span className="font-medium">Account</span>
-                        <UserButton afterSignOutUrl="/" />
-                      </div>
-                    </SignedIn>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="w-full justify-start border-white/10 bg-white/5 text-white hover:bg-white/10"
+                        >
+                          <Link href="/dashboard">Dashboard</Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-red-500 hover:text-red-400 hover:bg-white/10"
+                          onClick={() => signOut()}
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Sign Out
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
                 <div className="flex items-center justify-between text-gray-300">

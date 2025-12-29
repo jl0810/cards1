@@ -7,10 +7,12 @@
  * @satisfies US-019 - Card Catalog Management
  */
 
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/db';
+import { cardBenefits } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { requireAdmin } from '@/lib/admin';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
@@ -51,18 +53,19 @@ export async function PATCH(
 
         const data = validation.data;
 
-        const updatedBenefit = await prisma.cardBenefit.update({
-            where: { id: benefitId },
-            data: {
+        const [updatedBenefit] = await db.update(cardBenefits)
+            .set({
                 benefitName: data.benefitName,
                 type: data.type,
                 description: data.description,
                 timing: data.timing,
                 maxAmount: data.maxAmount,
                 keywords: data.keywords,
-                isApproved: data.isApproved
-            }
-        });
+                isApproved: data.isApproved,
+                updatedAt: new Date(),
+            })
+            .where(eq(cardBenefits.id, benefitId))
+            .returning();
 
         return NextResponse.json({ success: true, benefit: updatedBenefit });
 
@@ -89,9 +92,8 @@ export async function DELETE(
         await requireAdmin();
         const { benefitId } = await params;
 
-        await prisma.cardBenefit.delete({
-            where: { id: benefitId }
-        });
+        await db.delete(cardBenefits)
+            .where(eq(cardBenefits.id, benefitId));
 
         return NextResponse.json({ success: true });
 

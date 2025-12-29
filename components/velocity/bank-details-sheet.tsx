@@ -9,8 +9,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/utils";
-import { CreditCard, RefreshCw, Link as LinkIcon } from "lucide-react";
+import { CreditCard } from "lucide-react";
 import { PlaidLinkUpdate } from "@/components/shared/plaid-link-update";
 import { FamilyMemberSelector } from "./family-member-selector";
 import { BankLogo } from "./bank-logo";

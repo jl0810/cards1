@@ -8,7 +8,9 @@
 
 import { NextResponse } from "next/server";
 import { withAdmin } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/db";
+import { cardProducts, cardBenefits } from "@/db/schema";
+import { eq, and, asc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
@@ -42,8 +44,8 @@ export async function POST(
     }
 
     // Get the card details first
-    const card = await prisma.cardProduct.findUnique({
-      where: { id: cardId },
+    const card = await db.query.cardProducts.findFirst({
+      where: (table, { eq }) => eq(table.id, cardId),
     });
 
     if (!card) {
@@ -108,9 +110,9 @@ export async function POST(
       }
 
       // Get existing benefits for this card
-      const existingBenefits = await prisma.cardBenefit.findMany({
-        where: { cardProductId: cardId },
-        orderBy: { benefitName: "asc" },
+      const existingBenefits = await db.query.cardBenefits.findMany({
+        where: (table, { eq }) => eq(table.cardProductId, cardId),
+        orderBy: (table, { asc }) => [asc(table.benefitName)],
       });
 
       logger.info("[AI Import] Found existing benefits", {
@@ -319,9 +321,8 @@ export async function POST(
                   : "";
                 const changeNote = `🔄 CHANGES DETECTED:\n${changes.join("\n")}${aiReasoning}\n\n⚠️ This benefit requires re-approval due to the changes above.`;
 
-                await prisma.cardBenefit.update({
-                  where: { id: existingBenefit.id },
-                  data: {
+                await db.update(cardBenefits)
+                  .set({
                     description: benefitData.description || benefitData.benefit,
                     type: benefitData.type || "STATEMENT_CREDIT",
                     timing: benefitData.timing || "Annually",
@@ -329,22 +330,22 @@ export async function POST(
                     keywords: benefitData.keywords || [],
                     isApproved: false, // Mark as draft due to changes
                     changeNotes: changeNote, // Store in separate field
-                  },
-                });
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(cardBenefits.id, existingBenefit.id));
                 draftCount++;
               } else {
                 // No meaningful changes, keep approval status
-                await prisma.cardBenefit.update({
-                  where: { id: existingBenefit.id },
-                  data: {
+                await db.update(cardBenefits)
+                  .set({
                     description: benefitData.description || benefitData.benefit,
                     type: benefitData.type || "STATEMENT_CREDIT",
                     timing: benefitData.timing || "Annually",
-                    maxAmount: benefitData.max_amount,
+                    maxAmount: benefitData.max_amount !== null ? benefitData.max_amount : null,
                     keywords: benefitData.keywords || [],
-                    // Keep existing isApproved status
-                  },
-                });
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(cardBenefits.id, existingBenefit.id));
                 updatedCount++;
               }
 
@@ -356,8 +357,8 @@ export async function POST(
                 ? `🤖 AI Reasoning: ${benefitData.ai_reasoning}`
                 : "";
 
-              await prisma.cardBenefit.create({
-                data: {
+              await db.insert(cardBenefits)
+                .values({
                   cardProductId: cardId,
                   benefitName: benefitData.benefit,
                   description: benefitData.description || benefitData.benefit,
@@ -367,8 +368,8 @@ export async function POST(
                   keywords: benefitData.keywords || [],
                   isApproved: false, // New benefits are always draft
                   changeNotes: aiReasoning || null, // Store AI reasoning in separate field
-                },
-              });
+                  updatedAt: new Date(),
+                });
               importedCount++;
             }
           }
@@ -385,9 +386,8 @@ export async function POST(
       // Remove benefits that no longer exist (were not in AI response)
       for (const [_name, benefit] of existingBenefitsMap) {
         try {
-          await prisma.cardBenefit.delete({
-            where: { id: benefit.id },
-          });
+          await db.delete(cardBenefits)
+            .where(eq(cardBenefits.id, benefit.id));
           removedCount++;
         } catch (error: unknown) {
           const errorMessage =

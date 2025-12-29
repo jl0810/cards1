@@ -41,7 +41,7 @@ interface ProductDrawerProps {
 
 type Tab = 'details' | 'benefits' | 'raw';
 
-export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, onAIImport }: ProductDrawerProps) {
+export function ProductDrawer({ isOpen, onClose, cardId, onSuccess: _onSuccess, onDelete, onAIImport }: ProductDrawerProps) {
     const [loading, setLoading] = useState(false);
     const [card, setCard] = useState<CardProduct | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('details');
@@ -50,8 +50,8 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
 
     useEffect(() => {
         if (isOpen && cardId) {
-            fetchCardDetails();
-            fetchAllCards();
+            void fetchCardDetails();
+            void fetchAllCards();
         } else {
             setCard(null);
             setActiveTab('details');
@@ -63,7 +63,7 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
         try {
             const res = await fetch('/api/admin/card-catalog');
             if (!res.ok) throw new Error('Failed to fetch cards');
-            const data = await res.json();
+            const data = await res.json() as { products: CardProduct[] };
             setAllCards(data.products || []);
         } catch (error) {
             console.error(error);
@@ -87,7 +87,7 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
                 if (!res.ok) throw new Error('Failed to copy benefits');
 
                 toast.success(`Copied ${sourceCard.benefits.length} benefits!`);
-                fetchCardDetails(); // Refresh
+                void fetchCardDetails(); // Refresh
                 setShowCopyDropdown(false);
             } catch (error) {
                 console.error(error);
@@ -102,7 +102,7 @@ export function ProductDrawer({ isOpen, onClose, cardId, onSuccess, onDelete, on
         try {
             const res = await fetch(`/api/admin/card-catalog/${cardId}`);
             if (!res.ok) throw new Error('Failed to fetch card');
-            const data = await res.json();
+            const data = await res.json() as CardProduct;
             setCard(data);
         } catch (error) {
             console.error(error);

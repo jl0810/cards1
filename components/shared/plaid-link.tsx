@@ -26,8 +26,9 @@ export default function PlaidLink() {
     const [shouldOpen, setShouldOpen] = useState(false);
     const router = useRouter();
 
-    const onSuccess = useCallback(async (public_token: string, metadata: PlaidMetadata) => {
-        try {
+    const onSuccess = useCallback((public_token: string, metadata: PlaidMetadata) => {
+        void (async () => {
+            try {
             const response = await fetch('/api/plaid/exchange-public-token', {
                 method: 'POST',
                 headers: {
@@ -56,6 +57,7 @@ export default function PlaidLink() {
             console.error(error);
             toast.error('Failed to link bank account');
         }
+        })();
     }, [router]);
 
     const config: Parameters<typeof usePlaidLink>[0] = {
@@ -86,7 +88,7 @@ export default function PlaidLink() {
                 setLoading(false);
                 return;
             }
-            const data = await response.json();
+            const data = await response.json() as { link_token: string };
             setToken(data.link_token);
             setShouldOpen(true);
         } catch (error) {

@@ -9,7 +9,7 @@
  * @tested None (needs tests)
  */
 
-import { prisma } from './prisma';
+import { db, schema, eq, and } from '@/db';
 
 interface ProfileLike {
   id: string;
@@ -19,16 +19,18 @@ interface ProfileLike {
 
 /**
  * Ensures primary family member exists for user profile
- * 
- * @implements BR-010 - Family Member Assignment
  */
 export async function ensurePrimaryFamilyMember(userProfile: ProfileLike) {
-  let member = await prisma.familyMember.findFirst({
-    where: {
-      userId: userProfile.id,
-      isPrimary: true,
-    },
-  });
+  let [member] = await db
+    .select()
+    .from(schema.familyMembers)
+    .where(
+      and(
+        eq(schema.familyMembers.userId, userProfile.id),
+        eq(schema.familyMembers.isPrimary, true)
+      )
+    )
+    .limit(1);
 
   const desiredName = userProfile.name || 'Primary Member';
   const updates: Record<string, string | null> = {};
@@ -42,38 +44,48 @@ export async function ensurePrimaryFamilyMember(userProfile: ProfileLike) {
     }
 
     if (Object.keys(updates).length > 0) {
-      member = await prisma.familyMember.update({
-        where: { id: member.id },
-        data: updates,
-      });
+      const [updatedMember] = await db
+        .update(schema.familyMembers)
+        .set({
+          ...updates,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.familyMembers.id, member.id))
+        .returning();
+      member = updatedMember;
     }
 
     return member;
   }
 
-  return prisma.familyMember.create({
-    data: {
+  const [newMember] = await db
+    .insert(schema.familyMembers)
+    .values({
       userId: userProfile.id,
       name: desiredName,
       avatar: userProfile.avatar,
       role: 'Owner',
       isPrimary: true,
-    },
-  });
+    })
+    .returning();
+
+  return newMember;
 }
 
 /**
  * Verifies family member belongs to user
- * 
- * @implements BR-003 - Family Member Ownership
  */
 export async function assertFamilyMemberOwnership(userProfileId: string, familyMemberId: string) {
-  const member = await prisma.familyMember.findFirst({
-    where: {
-      id: familyMemberId,
-      userId: userProfileId,
-    },
-  });
+  const [member] = await db
+    .select()
+    .from(schema.familyMembers)
+    .where(
+      and(
+        eq(schema.familyMembers.id, familyMemberId),
+        eq(schema.familyMembers.userId, userProfileId)
+      )
+    )
+    .limit(1);
 
   if (!member) {
     throw new Error('Family member not found for this user');

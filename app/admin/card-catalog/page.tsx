@@ -12,6 +12,9 @@ import { ProductRow } from "@/components/admin/product-row";
 import { AppHeader } from "@/components/layout/app-header";
 import { NavDock } from "@/components/layout/nav-dock";
 
+// Force dynamic rendering to avoid SSG issues with useSession
+export const dynamic = 'force-dynamic';
+
 interface CardBenefit {
   id: string;
   benefitName: string;

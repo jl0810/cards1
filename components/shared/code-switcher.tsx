@@ -1,60 +1,52 @@
 "use client";
 
-import { useOrganization, useSession, useUser } from "@clerk/nextjs";
-import clsx from "clsx";
+import { useAuth } from "@/hooks/use-auth";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import theme from "@/lib/theme";
 
-const TYPES = ["user", "session", "organization"];
+const TYPES = ["session user", "profile"];
 
 export function CodeSwitcher() {
   const [selectedType, setSelectedType] = useState(TYPES[0]);
-  const { user } = useUser();
-  const { session } = useSession();
-  const { organization } = useOrganization();
+  const { user, loading } = useAuth();
 
-  const selectedCode = JSON.stringify(
-    {
-      user,
-      session,
-      organization,
-    }[selectedType],
-    null,
-    2
-  );
+  if (loading || !user) return null;
 
-  const typesToShow = organization
-    ? TYPES
-    : TYPES.filter((type) => type !== "organization");
+  const getSelectedCode = () => {
+    switch (selectedType) {
+      case "session user": return JSON.stringify(user, null, 2);
+      case "profile": return "// User profile data from database\n{\n  \"plan\": \"free\",\n  \"role\": \"user\"\n}";
+      default: return "";
+    }
+  };
+
+  const selectedCode = getSelectedCode();
 
   return (
-    <div className={clsx(organization ? "h-218.5" : "h-166.5")}>
-      <div className="w-full bg-[#F7F7F8] rounded-md p-0.75 flex gap-1.5">
-        {typesToShow.map((type) => (
+    <div className="h-full flex flex-col gap-4">
+      <div className="w-full bg-white/5 rounded-2xl p-1.5 flex gap-1.5 border border-white/5 backdrop-blur-md">
+        {TYPES.map((type) => (
           <button
-            className={clsx(
-              "capitalize rounded-sm h-7 text-[0.8125rem] flex-1 hover:text-black font-medium",
-              selectedType === type
-                ? "bg-white shadow-xs text-black"
-                : "text-[#5E5F6E]"
-            )}
             key={type}
+            className={cn(
+              "capitalize rounded-xl h-9 text-[0.8125rem] flex-1 transition-all font-bold tracking-tight",
+              selectedType === type
+                ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            )}
             onClick={() => setSelectedType(type)}
           >
-            {type}
+            {type.replace("_", " ")}
           </button>
         ))}
       </div>
-      <div className="relative h-[calc(100%-42px)]">
-        <div className="mask h-full">
-          {/* @ts-expect-error - SyntaxHighlighter types are incompatible with Next.js */}
-          <SyntaxHighlighter language="javascript" style={theme}>
+      <div className="relative flex-1 overflow-hidden min-h-[400px] border border-white/10 rounded-2xl bg-black/40 backdrop-blur-xl">
+        <div className="h-full overflow-auto p-4 custom-scrollbar">
+          <pre className="text-[12px] font-mono text-indigo-300 whitespace-pre-wrap">
             {selectedCode}
-          </SyntaxHighlighter>
+          </pre>
         </div>
-        <div className="absolute right-0 top-0 bottom-0 w-10 bg-linear-to-l from-white to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-[#EEEEF0]" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/20 to-transparent pointer-events-none" />
       </div>
     </div>
   );

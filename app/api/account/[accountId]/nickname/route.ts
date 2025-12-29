@@ -6,8 +6,10 @@
  */
 
 import { NextResponse as _NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { plaidAccounts, accountExtended } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { Errors, successResponse } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -39,8 +41,9 @@ export async function PATCH(
     return new Response("Too many requests", { status: 429 });
   }
 
-  const { userId } = await auth();
-  if (!userId) return Errors.unauthorized();
+  const session = await auth();
+  if (!session?.user?.id) return Errors.unauthorized();
+  const userId = session.user.id;
 
   const { accountId } = await params;
   const body = await req.json();
@@ -57,22 +60,41 @@ export async function PATCH(
 
   try {
     // Find the PlaidAccount first to ensure it belongs to this user
-    const account = await prisma.plaidAccount.findUnique({
-      where: { accountId: accountId },
-      include: { extended: true, plaidItem: { select: { userId: true } } },
+    // We need to join with plaidItems to check userId
+    const account = await db.query.plaidAccounts.findFirst({
+      where: (table, { eq }) => eq(table.accountId, accountId),
+      with: {
+        plaidItem: {
+          columns: {
+            userId: true
+          }
+        }
+      }
     });
+
     if (!account) return Errors.notFound("Account");
+
+    // Check if the user owns this account
+    // Note: account.plaidItem.userId is a UUID in the database, but session.user.id might be a string.
+    // We should ensure they match.
     if (account.plaidItem.userId !== userId) return Errors.forbidden();
 
     // Upsert the extended record with the new nickname
-    await prisma.accountExtended.upsert({
-      where: { plaidAccountId: account.id },
-      update: { nickname },
-      create: {
+    // Drizzle doesn't have a native upsert that works exactly like Prisma's for all cases, 
+    // but we can use onConflictDoUpdate
+    await db.insert(accountExtended)
+      .values({
         plaidAccountId: account.id,
         nickname,
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: accountExtended.plaidAccountId,
+        set: {
+          nickname,
+          updatedAt: new Date(),
+        },
+      });
 
     return successResponse({ success: true });
   } catch (e) {

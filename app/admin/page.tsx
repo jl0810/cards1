@@ -1,57 +1,36 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { UserButton } from "@clerk/nextjs";
-import { ClerkLogo } from "@/components/marketing/clerk-logo";
-import { NextLogo } from "@/components/marketing/next-logo";
+import { auth } from "@/lib/auth";
+import { getAdminInfo } from "@/lib/admin";
 import { AdminAlertPanel } from "@/components/admin/admin-alert-panel";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function AdminPage() {
-  await auth.protect();
+  const session = await auth();
+  if (!session) {
+    redirect("/login");
+  }
 
-  const user = await currentUser();
-
-  // Check admin status from user metadata (Clerk) or database
-  // For now, check if user has admin role in metadata
-  // Later you can add database checks here
-  const isAdmin = user?.publicMetadata?.role === 'admin' ||
-                  user?.privateMetadata?.role === 'admin' ||
-                  // Add your database check here
-                  false; // Replace with actual database check
+  const adminInfo = await getAdminInfo();
+  const isAdmin = !!adminInfo?.isAdmin;
 
   if (!isAdmin) {
     return (
       <>
-        <main className="max-w-300 w-full mx-auto">
-          <div className="grid grid-cols-[1fr_20.5rem] gap-10 pb-10">
+        <main className="max-w-300 w-full mx-auto p-4">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_20.5rem] gap-10 pb-10">
             <div>
-              <header className="flex items-center justify-between w-full h-16 gap-4">
+              <header className="flex items-center justify-between w-full h-16 gap-4 border-b border-gray-200">
                 <div className="flex gap-4">
-                  <div className="bg-[#F4F4F5] px-4 py-3 rounded-full inline-flex gap-4">
-                    <ClerkLogo />
-                    <div aria-hidden className="w-px h-6 bg-[#C7C7C8]" />
-                    <NextLogo />
-                  </div>
-                  <div className="flex gap-2">
-                    <Link
-                      href="/dashboard"
-                      className="flex items-center gap-2 font-medium text-[0.8125rem] rounded-full px-3 py-2 hover:bg-gray-100"
-                    >
-                      ← Dashboard
-                    </Link>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        userButtonAvatarBox: "size-8",
-                      },
-                    }}
-                  />
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 font-medium text-[0.8125rem] rounded-full px-3 py-2 hover:bg-gray-100"
+                  >
+                    ← Dashboard
+                  </Link>
                 </div>
               </header>
 
-              <div className="mt-8 text-center">
+              <div className="mt-16 text-center">
                 <div className="bg-red-50 border border-red-200 rounded-lg p-8 max-w-md mx-auto">
                   <div className="mb-4">
                     <svg className="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +53,7 @@ export default async function AdminPage() {
               </div>
             </div>
 
-            <div className="flex flex-col">
+            <div className="hidden md:flex flex-col">
               <div className="flex items-center justify-center h-16 w-full">
                 <div className="text-xs font-medium text-gray-500 bg-red-100 px-3 py-1 rounded-full">
                   ACCESS DENIED
@@ -89,33 +68,20 @@ export default async function AdminPage() {
 
   return (
     <>
-      <main className="max-w-300 w-full mx-auto">
-        <div className="grid grid-cols-[1fr_20.5rem] gap-10 pb-10">
+      <main className="max-w-300 w-full mx-auto p-4">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_20.5rem] gap-10 pb-10">
           <div>
-            <header className="flex items-center justify-between w-full h-16 gap-4">
+            <header className="flex items-center justify-between w-full h-16 gap-4 border-b border-gray-200">
               <div className="flex gap-4">
-                <div className="bg-[#F4F4F5] px-4 py-3 rounded-full inline-flex gap-4">
-                  <ClerkLogo />
-                  <div aria-hidden className="w-px h-6 bg-[#C7C7C8]" />
-                  <NextLogo />
-                </div>
-                <div className="flex gap-2">
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-2 font-medium text-[0.8125rem] rounded-full px-3 py-2 hover:bg-gray-100"
-                  >
-                    ← Dashboard
-                  </Link>
-                </div>
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 font-medium text-[0.8125rem] rounded-full px-3 py-2 hover:bg-gray-100"
+                >
+                  ← Dashboard
+                </Link>
               </div>
               <div className="flex items-center gap-2">
-                <UserButton
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: "size-8",
-                    },
-                  }}
-                />
+                <span className="text-sm font-medium">{session.user?.email}</span>
               </div>
             </header>
 
@@ -165,13 +131,13 @@ export default async function AdminPage() {
               <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <h3 className="text-lg font-medium text-blue-900 mb-2">Admin Status</h3>
                 <p className="text-blue-700 text-sm">
-                  You have full administrator privileges. Current user: <strong>{user?.firstName} {user?.lastName}</strong>
+                  You have full administrator privileges. Current user: <strong>{session.user?.email}</strong>
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col">
+          <div className="hidden md:flex flex-col">
             <div className="flex items-center justify-center h-16 w-full">
               <div className="text-xs font-medium text-green-500 bg-green-100 px-3 py-1 rounded-full">
                 ADMIN ACCESS

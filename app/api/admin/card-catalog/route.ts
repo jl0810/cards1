@@ -6,9 +6,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/db';
+import { cardProducts, cardBenefits } from '@/db/schema';
 import { withAdmin } from '@/lib/admin';
 import { CreateCardProductSchema, safeValidateSchema } from '@/lib/validations';
+import { desc, asc } from 'drizzle-orm';
 
 /**
  * Get all card products with benefits (admin only)
@@ -20,22 +22,27 @@ import { CreateCardProductSchema, safeValidateSchema } from '@/lib/validations';
  * 
  * @returns {Promise<NextResponse>} Array of card products with benefits and usage counts
  */
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
     return withAdmin(async () => {
-        const products = await prisma.cardProduct.findMany({
-            include: {
+        const rawProducts = await db.query.cardProducts.findMany({
+            with: {
                 benefits: true,
-                _count: {
-                    select: {
-                        accountExtensions: true
+                linkedAccounts: {
+                    columns: {
+                        id: true
                     }
                 }
             },
-            orderBy: [
-                { issuer: 'asc' },
-                { productName: 'asc' }
-            ]
+            orderBy: (products, { asc }) => [asc(products.issuer), asc(products.productName)]
         });
+
+        // Map Drizzle result to match expected API structure (adding _count)
+        const products = rawProducts.map(p => ({
+            ...p,
+            _count: {
+                accountExtensions: p.linkedAccounts?.length || 0
+            }
+        }));
 
         return NextResponse.json(products);
     });
@@ -53,7 +60,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     return withAdmin(async () => {
         const body = await req.json();
-        
+
         // Validate with Zod schema (BR-026)
         const validation = safeValidateSchema(CreateCardProductSchema, body);
         if (!validation.success) {
@@ -65,21 +72,22 @@ export async function POST(req: Request) {
 
         const { issuer, productName, cardType, annualFee, signupBonus, imageUrl, bankId } = validation.data;
 
-        const product = await prisma.cardProduct.create({
-            data: {
+        const [product] = await db.insert(cardProducts)
+            .values({
                 issuer,
                 productName,
                 cardType,
-                annualFee,
+                annualFee: typeof annualFee === 'string' ? parseFloat(annualFee) : annualFee,
                 signupBonus,
                 imageUrl,
                 bankId,
-            },
-            include: {
-                benefits: true
-            }
-        });
+                updatedAt: new Date(),
+            })
+            .returning();
 
-        return NextResponse.json(product, { status: 201 });
+        // Add empty benefits to match response
+        const productWithBenefits = { ...product, benefits: [] };
+
+        return NextResponse.json(productWithBenefits, { status: 201 });
     });
 }

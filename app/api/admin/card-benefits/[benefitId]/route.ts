@@ -9,7 +9,9 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/db';
+import { cardBenefits } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { withAdmin } from '@/lib/admin';
 import { Errors } from '@/lib/api-errors';
 import { logger } from '@/lib/logger';
@@ -48,18 +50,19 @@ export async function PATCH(
         const { benefitName, timing, maxAmount, keywords, active } = validation.data;
 
         try {
-            const benefit = await prisma.cardBenefit.update({
-                where: { id: benefitId },
-                data: {
+            const [benefit] = await db.update(cardBenefits)
+                .set({
                     benefitName,
                     timing,
-                    maxAmount: maxAmount !== undefined 
-                        ? (typeof maxAmount === 'string' ? parseFloat(maxAmount) : maxAmount) 
+                    maxAmount: maxAmount !== undefined
+                        ? (typeof maxAmount === 'string' ? parseFloat(maxAmount) : maxAmount)
                         : undefined,
                     keywords: Array.isArray(keywords) ? keywords : undefined,
-                    active
-                }
-            });
+                    active,
+                    updatedAt: new Date(),
+                })
+                .where(eq(cardBenefits.id, benefitId))
+                .returning();
 
             return NextResponse.json(benefit);
         } catch (error) {
@@ -86,9 +89,8 @@ export async function DELETE(
         const { benefitId } = await params;
 
         try {
-            await prisma.cardBenefit.delete({
-                where: { id: benefitId }
-            });
+            await db.delete(cardBenefits)
+                .where(eq(cardBenefits.id, benefitId));
 
             return NextResponse.json({ success: true });
         } catch (error) {

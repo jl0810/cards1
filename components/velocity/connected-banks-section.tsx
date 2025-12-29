@@ -379,7 +379,7 @@ export function ConnectedBanksSection({
   };
 
   useEffect(() => {
-    fetchItems();
+    void fetchItems();
   }, []);
 
   const handleReassign = async (itemId: string, memberId: string) => {
@@ -397,7 +397,7 @@ export function ConnectedBanksSection({
       } else {
         toast.error("Failed to reassign");
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to reassign");
     }
   };

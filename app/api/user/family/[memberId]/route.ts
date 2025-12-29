@@ -6,8 +6,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { db, schema, eq, and } from "@/db";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import {
@@ -22,15 +22,6 @@ export const dynamic = "force-dynamic";
  * Update family member details
  *
  * @route PATCH /api/user/family/[memberId]
- * @implements BR-003 - Family Member Ownership
- * @implements BR-005 - Partial Updates Allowed
- * @satisfies US-004 - Update Family Member
- * @tested __tests__/api/user/family.test.ts
- *
- * @param {Request} req - Contains partial family member data
- * @param {Object} params - Route parameters
- * @param {string} params.memberId - ID of family member to update
- * @returns {Promise<NextResponse>} Updated family member object
  */
 export async function PATCH(
   req: Request,
@@ -41,11 +32,12 @@ export async function PATCH(
 
   const { memberId } = await params;
   try {
-    const { userId } = await auth();
-    if (!userId) return Errors.unauthorized();
+    const session = await auth();
+    const user = session?.user;
+    if (!user?.id) return Errors.unauthorized();
 
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
     if (!userProfile) return Errors.notFound("User profile");
 
@@ -62,23 +54,24 @@ export async function PATCH(
     const { name, avatar, email } = validation.data;
 
     // Verify ownership
-    const member = await prisma.familyMember.findFirst({
-      where: {
-        id: memberId,
-        userId: userProfile.id,
-      },
+    const member = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(schema.familyMembers.id, memberId),
+        eq(schema.familyMembers.userId, userProfile.id)
+      ),
     });
 
     if (!member) return Errors.notFound("Family member");
 
-    const updatedMember = await prisma.familyMember.update({
-      where: { id: memberId },
-      data: {
+    const [updatedMember] = await db.update(schema.familyMembers)
+      .set({
         ...(name && { name }),
         ...(avatar !== undefined && { avatar }),
         ...(email !== undefined && { email }),
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.familyMembers.id, memberId))
+      .returning();
 
     return NextResponse.json(updatedMember);
   } catch (error) {
@@ -91,16 +84,6 @@ export async function PATCH(
  * Delete a family member
  *
  * @route DELETE /api/user/family/[memberId]
- * @implements BR-003 - Family Member Ownership
- * @implements BR-006 - Primary Member Protection
- * @implements BR-007 - Bank Connection Dependency
- * @satisfies US-005 - Delete Family Member
- * @tested __tests__/api/user/family.test.ts
- *
- * @param {Request} req - HTTP request
- * @param {Object} params - Route parameters
- * @param {string} params.memberId - ID of family member to delete
- * @returns {Promise<NextResponse>} Success message or error
  */
 export async function DELETE(
   req: Request,
@@ -111,25 +94,24 @@ export async function DELETE(
 
   const { memberId } = await params;
   try {
-    const { userId } = await auth();
-    if (!userId) return Errors.unauthorized();
+    const session = await auth();
+    const user = session?.user;
+    if (!user?.id) return Errors.unauthorized();
 
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
     if (!userProfile) return Errors.notFound("User profile");
 
-    // Verify ownership
-    const member = await prisma.familyMember.findFirst({
-      where: {
-        id: memberId,
-        userId: userProfile.id,
-      },
-      include: {
-        _count: {
-          select: { plaidItems: true },
-        },
-      },
+    // Verify ownership and check plaidItems
+    const member = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(schema.familyMembers.id, memberId),
+        eq(schema.familyMembers.userId, userProfile.id)
+      ),
+      with: {
+        plaidItems: true,
+      }
     });
 
     if (!member) return Errors.notFound("Family member");
@@ -140,16 +122,13 @@ export async function DELETE(
     }
 
     // PROTECTION 2: Cannot delete member with linked items
-    // We check this explicitly to give a better error message than the DB constraint
-    if (member._count.plaidItems > 0) {
+    if (member.plaidItems.length > 0) {
       return Errors.badRequest(
-        `Cannot delete ${member.name} because they have ${member._count.plaidItems} active bank connection(s). Please reassign or remove the bank connections first.`,
+        `Cannot delete ${member.name} because they have ${member.plaidItems.length} active bank connection(s). Please reassign or remove the bank connections first.`,
       );
     }
 
-    await prisma.familyMember.delete({
-      where: { id: memberId },
-    });
+    await db.delete(schema.familyMembers).where(eq(schema.familyMembers.id, memberId));
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

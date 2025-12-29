@@ -7,10 +7,10 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { plaidClient } from "@/lib/plaid";
 import type { AccountBase, CreditCardLiability } from "plaid";
-import { prisma } from "@/lib/prisma";
+import { db, schema, eq, sql } from "@/db";
 import { revalidatePath } from "next/cache";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { scanAndMatchBenefits } from "@/lib/benefit-matcher";
@@ -88,9 +88,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const user = session?.user;
 
-    if (!userId) {
+    if (!user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -103,8 +104,8 @@ export async function POST(req: NextRequest) {
     const { itemId, cursor } = bodyValidation.data;
 
     // 1. Get PlaidItem to find the secret ID
-    const item = await prisma.plaidItem.findUnique({
-      where: { id: itemId },
+    const item = await db.query.plaidItems.findFirst({
+      where: eq(schema.plaidItems.id, itemId),
     });
 
     if (!item) {
@@ -114,13 +115,11 @@ export async function POST(req: NextRequest) {
     // 2. Retrieve Access Token from Vault
     // We use a raw query to select from the vault.decrypted_secrets view
     const secretId = item.accessTokenId;
-    const vaultResult = await prisma.$queryRaw<
-      Array<{ decrypted_secret: string }>
-    >`
+    const vaultResult = await db.execute(sql`
       SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
-    `;
+    `);
 
-    const accessToken = vaultResult[0]?.decrypted_secret;
+    const accessToken = (vaultResult as any)[0]?.decrypted_secret;
 
     if (!accessToken) {
       return new NextResponse("Failed to retrieve access token", {
@@ -145,8 +144,8 @@ export async function POST(req: NextRequest) {
         });
 
         const data = response.data;
-        added = added.concat(data.added);
-        modified = modified.concat(data.modified);
+        added = added.concat(data.added as any);
+        modified = modified.concat(data.modified as any);
         removed = removed.concat(data.removed.map((r) => r.transaction_id));
         hasMore = data.has_more;
         nextCursor = data.next_cursor;
@@ -161,10 +160,9 @@ export async function POST(req: NextRequest) {
           logger.error("Item not found (revoked), marking as disconnected", {
             itemId,
           });
-          await prisma.plaidItem.update({
-            where: { id: itemId },
-            data: { status: "disconnected" },
-          });
+          await db.update(schema.plaidItems)
+            .set({ status: "disconnected", updatedAt: new Date() })
+            .where(eq(schema.plaidItems.id, itemId));
           hasMore = false; // Stop syncing
           break; // Exit loop
         }
@@ -172,10 +170,9 @@ export async function POST(req: NextRequest) {
         // Handle re-auth errors
         if (plaidError?.error_code === "ITEM_LOGIN_REQUIRED") {
           logger.warn("Item requires re-login", { itemId });
-          await prisma.plaidItem.update({
-            where: { id: itemId },
-            data: { status: "needs_reauth" }, // Or 'error' depending on your schema/UI
-          });
+          await db.update(schema.plaidItems)
+            .set({ status: "needs_reauth", updatedAt: new Date() })
+            .where(eq(schema.plaidItems.id, itemId));
           hasMore = false;
           break;
         }
@@ -222,203 +219,151 @@ export async function POST(req: NextRequest) {
     }
 
     // Wrap ALL database operations in a transaction for atomicity
-    await prisma.$transaction(
-      async (tx) => {
-        // 0. BUG FIX #4: Update balances AND create missing accounts (Self-Healing)
-        // We do this BEFORE transactions to ensure foreign key constraints are met
-        for (const account of accountsData) {
-          const liability = liabilitiesMap.get(account.account_id);
+    await db.transaction(async (tx) => {
+      // 0. Update balances AND create missing accounts (Self-Healing)
+      for (const account of accountsData) {
+        const liability = liabilitiesMap.get(account.account_id);
+        const apr = liability?.aprs?.find(
+          (a) => String(a.apr_type) === "purchase_apr",
+        )?.apr_percentage;
 
-          await tx.plaidAccount
-            .upsert({
-              where: { accountId: account.account_id },
-              update: {
-                currentBalance: account.balances.current || 0,
-                availableBalance: account.balances.available || 0,
-                limit: account.balances.limit || null,
-                name: account.name,
-                officialName: account.official_name || account.name,
-                mask: account.mask || null,
-                type: account.type,
-                subtype: account.subtype || null,
-                isoCurrencyCode: account.balances.iso_currency_code || "USD",
-                // Liability data
-                lastStatementBalance: liability?.last_statement_balance,
-                lastStatementIssueDate: liability?.last_statement_issue_date
-                  ? new Date(liability.last_statement_issue_date)
-                  : null,
-                minPaymentAmount: liability?.minimum_payment_amount,
-                nextPaymentDueDate: liability?.next_payment_due_date
-                  ? new Date(liability.next_payment_due_date)
-                  : null,
-                lastPaymentAmount: liability?.last_payment_amount,
-                lastPaymentDate: liability?.last_payment_date
-                  ? new Date(liability.last_payment_date)
-                  : null,
-                apr: liability?.aprs.find(
-                  (apr) => String(apr.apr_type) === "purchase_apr",
-                )?.apr_percentage,
-              },
-              create: {
-                accountId: account.account_id,
-                plaidItemId: itemId,
-                familyMemberId: item.familyMemberId, // Use the item's family member
-                name: account.name,
-                officialName: account.official_name || account.name,
-                mask: account.mask || null,
-                type: account.type,
-                subtype: account.subtype || null,
-                currentBalance: account.balances.current || 0,
-                availableBalance: account.balances.available || 0,
-                limit: account.balances.limit || null,
-                isoCurrencyCode: account.balances.iso_currency_code || "USD",
-                // Liability data
-                lastStatementBalance: liability?.last_statement_balance,
-                lastStatementIssueDate: liability?.last_statement_issue_date
-                  ? new Date(liability.last_statement_issue_date)
-                  : null,
-                minPaymentAmount: liability?.minimum_payment_amount,
-                nextPaymentDueDate: liability?.next_payment_due_date
-                  ? new Date(liability.next_payment_due_date)
-                  : null,
-                lastPaymentAmount: liability?.last_payment_amount,
-                lastPaymentDate: liability?.last_payment_date
-                  ? new Date(liability.last_payment_date)
-                  : null,
-                apr: liability?.aprs.find(
-                  (apr) => String(apr.apr_type) === "purchase_apr",
-                )?.apr_percentage,
-              },
-            })
-            .catch((e) => {
-              logger.error("Failed to upsert account", e, {
-                accountId: account.account_id,
-                itemId,
-              });
-            });
-        }
+        await tx.insert(schema.plaidAccounts)
+          .values({
+            accountId: account.account_id,
+            plaidItemId: itemId,
+            familyMemberId: item.familyMemberId,
+            name: account.name,
+            officialName: account.official_name || account.name,
+            mask: account.mask || null,
+            type: account.type,
+            subtype: (account.subtype as any) || null,
+            currentBalance: account.balances.current || 0,
+            availableBalance: account.balances.available || 0,
+            limit: account.balances.limit || null,
+            isoCurrencyCode: account.balances.iso_currency_code || "USD",
+            lastStatementBalance: liability?.last_statement_balance || null,
+            lastStatementIssueDate: liability?.last_statement_issue_date
+              ? new Date(liability.last_statement_issue_date)
+              : null,
+            minPaymentAmount: liability?.minimum_payment_amount || null,
+            nextPaymentDueDate: liability?.next_payment_due_date
+              ? new Date(liability.next_payment_due_date)
+              : null,
+            lastPaymentAmount: liability?.last_payment_amount || null,
+            lastPaymentDate: liability?.last_payment_date
+              ? new Date(liability.last_payment_date)
+              : null,
+            apr: apr || null,
+            status: "active",
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: schema.plaidAccounts.accountId,
+            set: {
+              currentBalance: account.balances.current || 0,
+              availableBalance: account.balances.available || 0,
+              limit: account.balances.limit || null,
+              name: account.name,
+              officialName: account.official_name || account.name,
+              mask: account.mask || null,
+              type: account.type,
+              subtype: (account.subtype as any) || null,
+              isoCurrencyCode: account.balances.iso_currency_code || "USD",
+              lastStatementBalance: liability?.last_statement_balance || null,
+              lastStatementIssueDate: liability?.last_statement_issue_date
+                ? new Date(liability.last_statement_issue_date)
+                : null,
+              minPaymentAmount: liability?.minimum_payment_amount || null,
+              nextPaymentDueDate: liability?.next_payment_due_date
+                ? new Date(liability.next_payment_due_date)
+                : null,
+              lastPaymentAmount: liability?.last_payment_amount || null,
+              lastPaymentDate: liability?.last_payment_date
+                ? new Date(liability.last_payment_date)
+                : null,
+              apr: apr || null,
+              updatedAt: new Date(),
+            },
+          });
+      }
 
-        // 1. Handle Added Transactions
-        for (const txn of added) {
-          // Upsert transaction to avoid duplicates if sync runs multiple times
-          await tx.plaidTransaction
-            .upsert({
-              where: { transactionId: txn.transaction_id },
-              update: {
-                amount: txn.amount,
-                date: new Date(txn.date),
-                name: txn.name,
-                merchantName: txn.merchant_name,
-                category: txn.category || [],
-                pending: txn.pending,
-                originalDescription: txn.original_description,
-                paymentChannel: txn.payment_channel,
-                transactionCode: txn.transaction_code,
-                personalFinanceCategoryPrimary:
-                  txn.personal_finance_category?.primary,
-                personalFinanceCategoryDetailed:
-                  txn.personal_finance_category?.detailed,
-              },
-              create: {
-                transactionId: txn.transaction_id,
-                plaidItem: { connect: { id: itemId } },
-                // We connect to the account if it exists, but if it doesn't, this might fail
-                // However, we are fixing accounts below. Ideally we should fix accounts FIRST.
-                // But transaction creation requires accountId.
-                // So we should move account upsert to BEFORE transaction processing.
-                account: { connect: { accountId: txn.account_id } },
-                amount: txn.amount,
-                date: new Date(txn.date),
-                name: txn.name,
-                merchantName: txn.merchant_name,
-                category: txn.category || [],
-                pending: txn.pending,
-                originalDescription: txn.original_description,
-                paymentChannel: txn.payment_channel,
-                transactionCode: txn.transaction_code,
-                personalFinanceCategoryPrimary:
-                  txn.personal_finance_category?.primary,
-                personalFinanceCategoryDetailed:
-                  txn.personal_finance_category?.detailed,
-              },
-            })
-            .catch((e) => {
-              logger.warn("Failed to upsert transaction", {
-                id: txn.transaction_id,
-                accountId: txn.account_id,
-                error: e.message,
-              });
-            });
-        }
+      // 1. Handle Added Transactions
+      for (const txn of added) {
+        await tx.insert(schema.plaidTransactions)
+          .values({
+            transactionId: txn.transaction_id,
+            plaidItemId: itemId,
+            accountId: txn.account_id,
+            amount: txn.amount, // doublePrecision in schema, number in PlaidTransaction
+            date: new Date(txn.date),
+            name: txn.name,
+            merchantName: txn.merchant_name || null,
+            category: txn.category || [],
+            pending: txn.pending,
+            originalDescription: txn.original_description || null,
+            paymentChannel: txn.payment_channel || null,
+            transactionCode: txn.transaction_code || null,
+            personalFinanceCategoryPrimary: txn.personal_finance_category?.primary || null,
+            personalFinanceCategoryDetailed: txn.personal_finance_category?.detailed || null,
+          })
+          .onConflictDoUpdate({
+            target: schema.plaidTransactions.transactionId,
+            set: {
+              amount: txn.amount,
+              date: new Date(txn.date),
+              name: txn.name,
+              merchantName: txn.merchant_name || null,
+              category: txn.category || [],
+              pending: txn.pending,
+              originalDescription: txn.original_description || null,
+              paymentChannel: txn.payment_channel || null,
+              transactionCode: txn.transaction_code || null,
+              personalFinanceCategoryPrimary: txn.personal_finance_category?.primary || null,
+              personalFinanceCategoryDetailed: txn.personal_finance_category?.detailed || null,
+              updatedAt: new Date(),
+            },
+          });
+      }
 
-        // 2. Handle Modified Transactions
-        for (const txn of modified) {
-          await tx.plaidTransaction
-            .update({
-              where: { transactionId: txn.transaction_id },
-              data: {
-                amount: txn.amount,
-                date: new Date(txn.date),
-                name: txn.name,
-                merchantName: txn.merchant_name,
-                category: txn.category || [],
-                pending: txn.pending,
-              },
-            })
-            .catch((e) => {
-              // BUG FIX: Log as ERROR not debug - this is a data integrity issue
-              logger.error(
-                "Transaction not found for update - data integrity issue",
-                e,
-                {
-                  transactionId: txn.transaction_id,
-                  itemId,
-                },
-              );
-            });
-        }
+      // 2. Handle Modified Transactions
+      for (const txn of modified) {
+        await tx.update(schema.plaidTransactions)
+          .set({
+            amount: txn.amount,
+            date: new Date(txn.date),
+            name: txn.name,
+            merchantName: txn.merchant_name || null,
+            category: txn.category || [],
+            pending: txn.pending,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.plaidTransactions.transactionId, txn.transaction_id));
+      }
 
-        // 3. Handle Removed Transactions
-        for (const txn of removed) {
-          await tx.plaidTransaction
-            .delete({
-              where: { transactionId: txn },
-            })
-            .catch((_e) => {
-              // BUG FIX: Log as WARNING not debug - transaction may have been manually deleted
-              logger.warn("Transaction not found for deletion", {
-                transactionId: txn,
-                itemId,
-              });
-            });
-        }
+      // 3. Handle Removed Transactions
+      for (const txnId of removed) {
+        await tx.delete(schema.plaidTransactions)
+          .where(eq(schema.plaidTransactions.transactionId, txnId));
+      }
 
-        // 5. Update Cursor on PlaidItem
-        await tx.plaidItem.update({
-          where: { id: itemId },
-          data: {
-            nextCursor: nextCursor,
-            lastSyncedAt: new Date(),
-          },
-        });
-      },
-      {
-        timeout: PLAID_SYNC_CONFIG.DB_TIMEOUT_MS, // Increase timeout for large batches
-      },
-    );
+      // 5. Update Cursor on PlaidItem
+      await tx.update(schema.plaidItems)
+        .set({
+          nextCursor: nextCursor,
+          lastSyncedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.plaidItems.id, itemId));
+    });
 
     // --- MATCH BENEFITS (Async, don't block response) ---
-    // Automatically scan and match benefits for the user (handles both new and old transactions)
-    if (userId) {
+    if (user) {
       void (async () => {
         try {
-          // We can scope this to the specific item's accounts if we want,
-          // but scanning all user accounts is safer to ensure nothing is missed.
-          // Since we have cursor tracking, it's efficient.
-          await scanAndMatchBenefits(userId);
+          await scanAndMatchBenefits(user.id as string);
         } catch (matchError) {
           logger.error("Error in auto-scan benefit matching", matchError, {
-            userId,
+            userId: user.id,
           });
         }
       })();

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import type { SuccessResponse } from "./validations";
 
 /**
  * Standardized API error handling
@@ -9,6 +8,12 @@ import type { SuccessResponse } from "./validations";
  * @satisfies US-016 - Error Handling
  * @tested __tests__/lib/api-errors.test.ts
  */
+
+type SuccessResponse<T> = {
+  success: true;
+  data: T;
+};
+
 export class ApiError extends Error {
   constructor(
     public message: string,

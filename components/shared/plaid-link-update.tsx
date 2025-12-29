@@ -68,11 +68,11 @@ export function PlaidLinkUpdate({
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error || "Failed to create link token");
       }
 
-      const data = await response.json();
+      const data = await response.json() as { link_token: string };
       setLinkToken(data.link_token);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
@@ -91,29 +91,31 @@ export function PlaidLinkUpdate({
 
   // Fetch link token on mount
   useEffect(() => {
-    fetchLinkToken();
+    void fetchLinkToken();
   }, [fetchLinkToken]);
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
-    onSuccess: async (public_token, metadata) => {
+    onSuccess: (public_token, metadata) => {
       if (status === "disconnected") {
-        try {
-          const res = await fetch("/api/plaid/exchange-public-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ public_token, metadata }),
-          });
-          if (!res.ok) throw new Error("Failed to exchange token");
+        void (async () => {
+          try {
+            const res = await fetch("/api/plaid/exchange-public-token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ public_token, metadata }),
+            });
+            if (!res.ok) throw new Error("Failed to exchange token");
 
-          toast.success(`${institutionName} re-linked successfully!`, {
-            description: "Your account history has been restored.",
-          });
-        } catch (e) {
-          logger.error("Failed to exchange token during re-link", e);
-          toast.error("Failed to complete re-link");
-          return;
-        }
+            toast.success(`${institutionName} re-linked successfully!`, {
+              description: "Your account history has been restored.",
+            });
+          } catch (e) {
+            logger.error("Failed to exchange token during re-link", e);
+            toast.error("Failed to complete re-link");
+            return;
+          }
+        })();
       } else {
         logger.info("Item successfully updated via Link", {
           itemId,
@@ -124,7 +126,7 @@ export function PlaidLinkUpdate({
         });
         
         // BR-035: Refresh item status after successful update
-        refreshItemStatus(itemId);
+        void refreshItemStatus(itemId);
       }
       onSuccess();
     },
@@ -136,7 +138,7 @@ export function PlaidLinkUpdate({
           metadata,
         });
         toast.error("Connection update failed", {
-          description: err.error_message || "Please try again.",
+          description: "Please try again or contact support.",
         });
       } else {
         logger.info("Link update mode exited without completion", {
@@ -152,7 +154,7 @@ export function PlaidLinkUpdate({
       open();
     } else if (error) {
       // Retry fetching link token
-      fetchLinkToken();
+      void fetchLinkToken();
     }
   };
 

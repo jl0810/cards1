@@ -9,7 +9,7 @@
  * @satisfies US-012 - Manual Benefit Matching
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { scanAndMatchBenefits } from "@/lib/benefit-matcher";
 import { logger } from "@/lib/logger";
@@ -41,22 +41,22 @@ interface MatchResult {
  * @satisfies US-012 - Manual Benefit Matching
  */
 export async function matchBenefits(): Promise<ActionResult<MatchResult>> {
-  // 1. Auth Check
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) {
     return { success: false, error: "Unauthorized" };
   }
 
   try {
-    // 2. Execute matching
-    const result = await scanAndMatchBenefits(userId);
+    // 2. Execute matching (passing Supabase user ID)
+    const result = await scanAndMatchBenefits(user.id);
 
     // 3. Revalidate affected pages
     revalidatePath("/dashboard");
     revalidatePath("/benefits");
 
     logger.info("Benefit matching completed", {
-      userId,
+      userId: user.id,
       matched: result.matched,
       checked: result.checked,
     });
@@ -71,10 +71,10 @@ export async function matchBenefits(): Promise<ActionResult<MatchResult>> {
     };
   } catch (error) {
     Sentry.captureException(error, {
-      user: { id: userId },
+      user: { id: user.id },
       extra: { action: "matchBenefits" },
     });
-    logger.error("Error in benefit matching", error, { userId });
+    logger.error("Error in benefit matching", error, { userId: user.id });
     return { success: false, error: "Failed to match benefits" };
   }
 }

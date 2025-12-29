@@ -191,7 +191,7 @@ export default function PricingPage() {
                 >
                   <a
                     href={
-                      plan.cta === "Contact Sales" ? "/contact" : "/sign-up"
+                      plan.cta === "Contact Sales" ? "/contact" : "/register"
                     }
                   >
                     {plan.cta}

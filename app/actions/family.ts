@@ -15,10 +15,10 @@
  * @satisfies US-030 - Manage Family Member Names
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { db, schema, eq, and, sql } from "@/db";
 import { logger } from "@/lib/logger";
 import * as Sentry from "@sentry/nextjs";
 import {
@@ -71,9 +71,9 @@ type ActionResult<T = unknown> =
 export async function addFamilyMember(
   input: z.infer<typeof CreateFamilyMemberSchema>,
 ): Promise<ActionResult<{ id: string; name: string }>> {
-  // 1. Auth Check
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) {
     return { success: false, error: "Unauthorized" };
   }
 
@@ -91,7 +91,7 @@ export async function addFamilyMember(
 
   try {
     // 3. Create family member using existing business logic
-    const familyMember = await createFamilyMember(userId, {
+    const familyMember = await createFamilyMember(user.id, {
       name,
       email: email ?? undefined,
       avatar: avatar ?? undefined,
@@ -103,7 +103,7 @@ export async function addFamilyMember(
     revalidatePath("/settings");
 
     logger.info("Family member created", {
-      userId,
+      userId: user.id,
       memberId: familyMember.id,
       memberName: name,
     });
@@ -117,10 +117,10 @@ export async function addFamilyMember(
       return { success: false, error: "User profile not found" };
     }
     Sentry.captureException(error, {
-      user: { id: userId },
+      user: { id: user.id },
       extra: { action: "addFamilyMember", name },
     });
-    logger.error("Error creating family member", error, { userId, name });
+    logger.error("Error creating family member", error, { userId: user.id, name });
     return { success: false, error: "Failed to create family member" };
   }
 }
@@ -135,9 +135,9 @@ export async function addFamilyMember(
 export async function updateFamilyMember(
   input: z.infer<typeof UpdateFamilyMemberSchema>,
 ): Promise<ActionResult<{ id: string; name: string }>> {
-  // 1. Auth Check
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) {
     return { success: false, error: "Unauthorized" };
   }
 
@@ -155,19 +155,19 @@ export async function updateFamilyMember(
 
   try {
     // 3. Verify ownership
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
 
     if (!userProfile) {
       return { success: false, error: "User profile not found" };
     }
 
-    const member = await prisma.familyMember.findFirst({
-      where: {
-        id: memberId,
-        userId: userProfile.id,
-      },
+    const member = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(schema.familyMembers.id, memberId),
+        eq(schema.familyMembers.userId, userProfile.id)
+      ),
     });
 
     if (!member) {
@@ -175,20 +175,21 @@ export async function updateFamilyMember(
     }
 
     // 4. Update
-    const updatedMember = await prisma.familyMember.update({
-      where: { id: memberId },
-      data: {
+    const [updatedMember] = await db.update(schema.familyMembers)
+      .set({
         ...(name && { name }),
         ...(email !== undefined && { email }),
         ...(avatar !== undefined && { avatar }),
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.familyMembers.id, memberId))
+      .returning();
 
     // 5. Revalidate
     revalidatePath("/dashboard");
     revalidatePath("/settings");
 
-    logger.info("Family member updated", { userId, memberId });
+    logger.info("Family member updated", { userId: user.id, memberId });
 
     return {
       success: true,
@@ -196,10 +197,10 @@ export async function updateFamilyMember(
     };
   } catch (error) {
     Sentry.captureException(error, {
-      user: { id: userId },
+      user: { id: user.id },
       extra: { action: "updateFamilyMember", memberId },
     });
-    logger.error("Error updating family member", error, { userId, memberId });
+    logger.error("Error updating family member", error, { userId: user.id, memberId });
     return { success: false, error: "Failed to update family member" };
   }
 }
@@ -215,9 +216,9 @@ export async function updateFamilyMember(
 export async function deleteFamilyMember(
   input: z.infer<typeof DeleteFamilyMemberSchema>,
 ): Promise<ActionResult<{ deleted: true }>> {
-  // 1. Auth Check
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) {
     return { success: false, error: "Unauthorized" };
   }
 
@@ -235,23 +236,21 @@ export async function deleteFamilyMember(
 
   try {
     // 3. Verify ownership
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
 
     if (!userProfile) {
       return { success: false, error: "User profile not found" };
     }
 
-    const member = await prisma.familyMember.findFirst({
-      where: {
-        id: memberId,
-        userId: userProfile.id,
-      },
-      include: {
-        _count: {
-          select: { plaidItems: true },
-        },
+    const member = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(schema.familyMembers.id, memberId),
+        eq(schema.familyMembers.userId, userProfile.id)
+      ),
+      with: {
+        plaidItems: true,
       },
     });
 
@@ -267,23 +266,21 @@ export async function deleteFamilyMember(
       };
     }
 
-    if (member._count.plaidItems > 0) {
+    if (member.plaidItems.length > 0) {
       return {
         success: false,
-        error: `Cannot delete ${member.name} because they have ${member._count.plaidItems} active bank connection(s). Please reassign or remove the bank connections first.`,
+        error: `Cannot delete ${member.name} because they have ${member.plaidItems.length} active bank connection(s). Please reassign or remove the bank connections first.`,
       };
     }
 
     // 5. Delete
-    await prisma.familyMember.delete({
-      where: { id: memberId },
-    });
+    await db.delete(schema.familyMembers).where(eq(schema.familyMembers.id, memberId));
 
     // 6. Revalidate
     revalidatePath("/dashboard");
     revalidatePath("/settings");
 
-    logger.info("Family member deleted", { userId, memberId });
+    logger.info("Family member deleted", { userId: user.id, memberId });
 
     return {
       success: true,
@@ -291,10 +288,10 @@ export async function deleteFamilyMember(
     };
   } catch (error) {
     Sentry.captureException(error, {
-      user: { id: userId },
+      user: { id: user.id },
       extra: { action: "deleteFamilyMember", memberId },
     });
-    logger.error("Error deleting family member", error, { userId, memberId });
+    logger.error("Error deleting family member", error, { userId: user.id, memberId });
     return { success: false, error: "Failed to delete family member" };
   }
 }
@@ -306,13 +303,14 @@ export async function deleteFamilyMember(
 export async function listFamilyMembers(): Promise<
   ActionResult<Array<{ id: string; name: string; isPrimary: boolean }>>
 > {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) {
     return { success: false, error: "Unauthorized" };
   }
 
   try {
-    const members = await getFamilyMembers(userId);
+    const members = await getFamilyMembers(user.id);
     return {
       success: true,
       data: members.map((m) => ({
@@ -325,7 +323,7 @@ export async function listFamilyMembers(): Promise<
     if (error instanceof UserNotFoundError) {
       return { success: false, error: "User profile not found" };
     }
-    logger.error("Error fetching family members", error, { userId });
+    logger.error("Error fetching family members", error, { userId: user.id });
     return { success: false, error: "Failed to fetch family members" };
   }
 }

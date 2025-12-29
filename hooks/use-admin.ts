@@ -1,35 +1,36 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "./use-auth";
 
 /**
  * Client-side hook to check if user is admin
  */
 export function useIsAdmin() {
-    const { user } = useUser();
+    const { user } = useAuth();
 
     if (!user) return false;
 
-    const role = user.publicMetadata?.role as string | undefined;
-    return role === 'admin';
+    // For now, use email-based check to match server-side requireAdmin
+    const role = (user as any).role || "user";
+    return role === "admin" || user.email === "jefflawson@gmail.com";
 }
 
 /**
  * Client-side hook to get admin info
  */
 export function useAdminInfo() {
-    const { user } = useUser();
+    const { user } = useAuth();
 
     if (!user) {
         return { isAdmin: false, role: null, userId: null };
     }
 
-    const role = user.publicMetadata?.role as string | undefined;
-    const isAdmin = role === 'admin';
+    const role = (user as any).role || "user";
+    const isAdmin = role === "admin" || user.email === "jefflawson@gmail.com";
 
     return {
         isAdmin,
-        role: role || 'user',
+        role,
         userId: user.id
     };
 }

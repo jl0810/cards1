@@ -34,7 +34,7 @@
 
 import { Ratelimit, type Duration } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/lib/auth";
 
 /**
  * Rate limit configuration options
@@ -113,21 +113,21 @@ export async function rateLimit(
 
   try {
     // Get user ID for per-user rate limiting
-    const { userId } = await auth();
-    const identifier = userId || getIPAddress(req);
+    const session = await auth();
+    const identifier = session?.user?.id || getIPAddress(req);
 
     // Create rate limiter with custom options if provided
     const limiter =
       options.max && options.window
         ? new Ratelimit({
-            redis,
-            limiter: Ratelimit.slidingWindow(
-              options.max,
-              options.window as Duration,
-            ),
-            analytics: true,
-            prefix: options.prefix || "@upstash/ratelimit",
-          })
+          redis,
+          limiter: Ratelimit.slidingWindow(
+            options.max,
+            options.window as Duration,
+          ),
+          analytics: true,
+          prefix: options.prefix || "@upstash/ratelimit",
+        })
         : rateLimiter;
 
     // Check rate limit

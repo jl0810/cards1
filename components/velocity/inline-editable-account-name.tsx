@@ -75,7 +75,7 @@ export function InlineEditableAccountName({
           autoFocus
           className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleSave();
+            if (e.key === "Enter") void handleSave();
             if (e.key === "Escape") handleCancel();
           }}
         />

@@ -5,39 +5,33 @@
  * @module app/api/benefits/match
  */
 
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { scanAndMatchBenefits } from '@/lib/benefit-matcher';
-import { Errors } from '@/lib/api-errors';
-import { logger } from '@/lib/logger';
-import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { scanAndMatchBenefits } from "@/lib/benefit-matcher";
+import { Errors } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Matches all unmatched transactions to card benefits
  * Uses cursor-based tracking to avoid re-processing
  * 
  * @route POST /api/benefits/match
- * @implements BR-024 - Cursor-Based Tracking
- * @satisfies US-012 - Manual Benefit Matching
- * @tested __tests__/api/benefits/match.test.ts
- * 
- * @returns {Promise<NextResponse>} Match statistics (matched count, scanned count)
  */
 export async function POST(req: Request) {
-    // Rate limit: 20 writes per minute
     const limited = await rateLimit(req, RATE_LIMITS.write);
     if (limited) {
-        return new Response('Too many requests', { status: 429 });
+        return new Response("Too many requests", { status: 429 });
     }
 
-    const { userId } = await auth();
-
-    if (!userId) {
+    const session = await auth();
+    const user = session?.user;
+    if (!user?.id) {
         return Errors.unauthorized();
     }
 
     try {
-        const result = await scanAndMatchBenefits(userId);
+        const result = await scanAndMatchBenefits(user.id);
 
         return NextResponse.json({
             success: true,
@@ -45,7 +39,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error) {
-        logger.error('Error in benefit matching', error, { userId });
-        return Errors.internal('Failed to match benefits');
+        logger.error("Error in benefit matching", error, { userId: user.id });
+        return Errors.internal("Failed to match benefits");
     }
 }

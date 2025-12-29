@@ -238,10 +238,10 @@ export function BankAccountsView({
   };
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, []);
 
-  const formatCurrency = (
+  const _formatCurrency = (
     amount: number | null,
     currency: string | null = "USD",
   ) => {
@@ -303,7 +303,7 @@ export function BankAccountsView({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredItems.map((item) => {
-            const totalBalance = item.accounts.reduce(
+            const _totalBalance = item.accounts.reduce(
               (sum, acc) => sum + (acc.currentBalance || 0),
               0,
             );
@@ -466,7 +466,7 @@ export function BankAccountsView({
               ? unwrapped.find((item) => item.id === selectedItem.id)
               : null;
             if (updated) {
-              setSelectedItem(updated);
+              setSelectedItem(updated as PlaidItem);
             }
           }
         }}

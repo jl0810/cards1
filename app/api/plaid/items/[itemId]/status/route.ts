@@ -6,27 +6,10 @@
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
-import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
-import { env } from "@/env";
+import { auth } from "@/lib/auth";
+import { db, schema, eq, and, sql } from "@/db";
+import { plaidClient } from "@/lib/plaid";
 import { logger } from "@/lib/logger";
-
-export const dynamic = "force-dynamic";
-
-const configuration = new Configuration({
-  basePath:
-    PlaidEnvironments[env.PLAID_ENV as keyof typeof PlaidEnvironments] ||
-    PlaidEnvironments.production,
-  baseOptions: {
-    headers: {
-      "PLAID-CLIENT-ID": env.PLAID_CLIENT_ID,
-      "PLAID-SECRET": env.PLAID_SECRET,
-    },
-  },
-});
-
-const plaidClient = new PlaidApi(configuration);
 
 /**
  * Get current item status from Plaid
@@ -41,41 +24,41 @@ const plaidClient = new PlaidApi(configuration);
  * @param {string} params.itemId - ID of Plaid item to check
  * @returns {Promise<NextResponse>} Status object with health indicators
  */
+export const dynamic = "force-dynamic";
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ itemId: string }> },
 ) {
   try {
     const { itemId } = await params;
-    const { userId } = await auth();
-    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+    const session = await auth();
+    const user = session?.user;
+    if (!user?.id) return new NextResponse("Unauthorized", { status: 401 });
 
-    const userProfile = await prisma.userProfile.findUnique({
-      where: { clerkId: userId },
+    const userProfile = await db.query.userProfiles.findFirst({
+      where: eq(schema.userProfiles.supabaseId, user.id),
     });
     if (!userProfile)
       return new NextResponse("User not found", { status: 404 });
 
     // Get the PlaidItem
-    const plaidItem = await prisma.plaidItem.findFirst({
-      where: {
-        id: itemId,
-        userId: userProfile.id,
-      },
+    const plaidItem = await db.query.plaidItems.findFirst({
+      where: and(
+        eq(schema.plaidItems.id, itemId),
+        eq(schema.plaidItems.userId, userProfile.id),
+      ),
     });
 
     if (!plaidItem) return new NextResponse("Item not found", { status: 404 });
 
     // Get access token from Supabase Vault
-    // Use Prisma $queryRaw to query vault.decrypted_secrets view
     const secretId = plaidItem.accessTokenId;
-    const vaultResult = await prisma.$queryRaw<
-      Array<{ decrypted_secret: string }>
-    >`
+    const vaultResult = await db.execute(sql`
             SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
-        `;
+        `);
 
-    const accessToken = vaultResult[0]?.decrypted_secret;
+    const accessToken = (vaultResult as any)[0]?.decrypted_secret;
     if (!accessToken) {
       return new NextResponse("Access token not found", { status: 404 });
     }
@@ -98,13 +81,13 @@ export async function GET(
     }
 
     // Update status in database
-    await prisma.plaidItem.update({
-      where: { id: itemId },
-      data: {
+    await db.update(schema.plaidItems)
+      .set({
         status,
         lastSyncedAt: new Date(),
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.plaidItems.id, itemId));
 
     return NextResponse.json({
       status,
@@ -130,13 +113,13 @@ export async function GET(
       }
 
       if (shouldUpdate) {
-        await prisma.plaidItem.update({
-          where: { id: (await params).itemId },
-          data: {
+        await db.update(schema.plaidItems)
+          .set({
             status: newStatus,
             lastSyncedAt: new Date(),
-          },
-        });
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.plaidItems.id, (await params).itemId));
 
         return NextResponse.json({
           status: newStatus,

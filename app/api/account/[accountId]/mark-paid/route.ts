@@ -3,17 +3,16 @@
  * Allows users to mark credit card payments as made
  *
  * @module app/api/account/[accountId]/mark-paid
- * @implements BR-017 - Payment Tracking
- * @satisfies US-010 - Track Payments
+ * @implements BR-102 - Payment Tracking
  */
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { db, schema, eq } from "@/db";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { z } from "zod";
 
 const markPaidSchema = z.object({
   amount: z.number().optional(),
@@ -24,22 +23,21 @@ const markPaidSchema = z.object({
  * Mark an account payment as paid
  *
  * @route POST /api/account/[accountId]/mark-paid
- * @tested None (needs test)
  */
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ accountId: string }> },
 ) {
-  // Rate limit: 20 writes per minute
   const limited = await rateLimit(req, RATE_LIMITS.write);
   if (limited) {
     return new Response("Too many requests", { status: 429 });
   }
 
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const user = session?.user;
     const { accountId } = await params;
-    if (!userId) {
+    if (!user?.id) {
       return Errors.unauthorized();
     }
 
@@ -56,31 +54,34 @@ export async function POST(
     const { amount, date } = result.data;
     const paidDate = date ? new Date(date) : new Date();
 
-    // Verify account exists
-    const account = await prisma.plaidAccount.findUnique({
-      where: { id: accountId },
-      include: { extended: true },
+    // Verify account exists using Drizzle
+    const account = await db.query.plaidAccounts.findFirst({
+      where: eq(schema.plaidAccounts.id, accountId),
     });
 
     if (!account) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
 
-    // Upsert the extended record with payment info and status
-    const updatedExtended = await prisma.accountExtended.upsert({
-      where: { plaidAccountId: accountId },
-      create: {
+    // Upsert the extended record using Drizzle
+    const [updatedExtended] = await db.insert(schema.accountExtended)
+      .values({
         plaidAccountId: accountId,
         paymentMarkedPaidDate: paidDate,
         paymentMarkedPaidAmount: amount || account.lastStatementBalance || 0,
         paymentCycleStatus: "PAYMENT_SCHEDULED",
-      },
-      update: {
-        paymentMarkedPaidDate: paidDate,
-        paymentMarkedPaidAmount: amount || account.lastStatementBalance || 0,
-        paymentCycleStatus: "PAYMENT_SCHEDULED",
-      },
-    });
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: schema.accountExtended.plaidAccountId,
+        set: {
+          paymentMarkedPaidDate: paidDate,
+          paymentMarkedPaidAmount: amount || account.lastStatementBalance || 0,
+          paymentCycleStatus: "PAYMENT_SCHEDULED",
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
     return NextResponse.json({
       success: true,

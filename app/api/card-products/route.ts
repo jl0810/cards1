@@ -1,46 +1,49 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db, schema, eq, and, sql, ilike } from "@/db";
 
 // GET /api/card-products - Public endpoint for users to see available cards
 export async function GET(req: Request) {
-    const { userId } = await auth();
+    const session = await auth();
+    const user = session?.user;
 
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
-    const bankId = searchParams.get('bankId');
-    const issuer = searchParams.get('issuer'); // Fallback for when bankId not available
+    const bankId = searchParams.get("bankId");
+    const issuer = searchParams.get("issuer");
 
-    console.log('🔍 [Card Products API] Query:', { bankId, issuer, userId });
+    console.log("🔍 [Card Products API] Query:", { bankId, issuer, userId: user.id });
 
-    const products = await prisma.cardProduct.findMany({
-        where: {
-            active: true,
-            ...(bankId
-                ? { bankId } // Prefer exact FK match
-                : issuer
-                    ? { issuer: { contains: issuer.replace(/\s+(online|bank|banking|financial)/gi, '').trim(), mode: 'insensitive' } }
-                    : {}
-            )
-        },
-        include: {
+    let whereClause;
+    if (bankId) {
+        whereClause = and(eq(schema.cardProducts.active, true), eq(schema.cardProducts.bankId, bankId));
+    } else if (issuer) {
+        const cleanedIssuer = issuer.replace(/\s+(online|bank|banking|financial)/gi, "").trim();
+        whereClause = and(
+            eq(schema.cardProducts.active, true),
+            ilike(schema.cardProducts.issuer, `%${cleanedIssuer}%`)
+        );
+    } else {
+        whereClause = eq(schema.cardProducts.active, true);
+    }
+
+    const products = await db.query.cardProducts.findMany({
+        where: whereClause,
+        with: {
             benefits: {
-                where: { active: true }
+                where: eq(schema.cardBenefits.active, true)
             }
         },
         orderBy: [
-            { issuer: 'asc' },
-            { productName: 'asc' }
+            schema.cardProducts.issuer,
+            schema.cardProducts.productName
         ]
     });
 
-    console.log(`✅ [Card Products API] Found ${products.length} products ${bankId ? `for bankId "${bankId}"` : issuer ? `for issuer "${issuer}"` : 'total'}`);
-    if (products.length > 0) {
-        console.log('   Products:', products.map(p => `${p.issuer} - ${p.productName}`).join(', '));
-    }
+    console.log(`✅ [Card Products API] Found ${products.length} products ${bankId ? `for bankId "${bankId}"` : issuer ? `for issuer "${issuer}"` : "total"}`);
 
     return NextResponse.json(products);
 }
