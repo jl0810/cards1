@@ -1,6 +1,11 @@
 import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
 import { logger, createContextLogger, LogLevel } from '@/lib/logger';
 
+/**
+ * Logger Tests
+ * @covers US-017 - Structured Logging
+ */
+
 // Mock console methods
 const originalConsole = {
   log: console.log,
@@ -15,7 +20,10 @@ describe('Logger', () => {
     console.warn = jest.fn();
     console.error = jest.fn();
     // Override NODE_ENV to allow logging in tests
-    process.env.NODE_ENV = 'development';
+    Object.defineProperty(process, 'env', { 
+      value: { ...process.env, NODE_ENV: 'development' },
+      writable: true 
+    });
   });
 
   afterEach(() => {
@@ -24,7 +32,10 @@ describe('Logger', () => {
     console.warn = originalConsole.warn;
     console.error = originalConsole.error;
     // Restore NODE_ENV
-    process.env.NODE_ENV = 'test';
+    Object.defineProperty(process, 'env', { 
+      value: { ...process.env, NODE_ENV: 'test' },
+      writable: true 
+    });
   });
 
   describe('Basic Logging', () => {

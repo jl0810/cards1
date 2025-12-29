@@ -1,4 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
+
+/**
+ * Validation Tests
+ * @covers US-015 - Input Validation
+ */
+
 import {
   CreateFamilyMemberSchema,
   UpdateFamilyMemberSchema,

@@ -767,6 +767,112 @@ Each user story follows this format:
 **Code:**
 
 - `lib/webhooks/handlers/user.ts::handleUserDeleted`
-- `prisma/schema.prisma::UserProfile.deletedAt`
+- `app/api/user/delete/route.ts::DELETE`
 
-**Tests:** `__tests__/webhooks/user-deletion.test.ts`
+---
+
+### **[US-036]** Secure Content Display
+
+**As a** user  
+**I want** to see sanitized and secure content in the credit card display  
+**So that** I'm protected from XSS attacks and malicious content
+
+**Acceptance Criteria:**
+
+- All SVG content is sanitized before rendering
+- HTML content is properly escaped
+- URLs are validated and sanitized
+- No raw HTML can be injected through card data
+- Bank logos and branding are safely displayed
+
+**Business Rules:** [BR-042]  
+**Code:** 
+- `components/velocity/credit-card.tsx` (lines 1-15)
+- `lib/sanitize.ts::sanitizeSvg`, `sanitizeHtml`, `sanitizeUrl`
+
+**Tests:** `__tests__/components/velocity/credit-card.test.tsx`
+
+---
+
+### **[US-037]** Vulnerability Scanning
+
+**As a** developer/admin  
+**I want** automated security vulnerability scanning  
+**So that** security issues are identified and fixed proactively
+
+**Acceptance Criteria:**
+
+- Security audit script runs automatically
+- Scans for XSS vulnerabilities in user inputs
+- Checks for SQL injection patterns
+- Validates file upload security
+- Generates security compliance report
+- Integrates with CI/CD pipeline
+
+**Business Rules:** [BR-045]  
+**Code:** `scripts/security-audit.ts` (lines 1-15)
+
+**Tests:** None (manual verification)
+
+---
+
+### **[US-038]** Hero Section Experience
+
+**As a** visitor  
+**I want** an engaging animated hero section  
+**So that** I understand the product value proposition quickly
+
+**Acceptance Criteria:**
+
+- Smooth animations using framer-motion
+- Responsive design for all screen sizes
+- Clear call-to-action buttons
+- Loading states and accessibility
+- Performance optimized animations
+
+**Business Rules:** [BR-046, BR-047]  
+**Code:** `components/marketing/animated-hero.tsx` (lines 1-15)
+
+**Tests:** `__tests__/components/marketing/animated-hero.test.tsx`
+
+---
+
+### **[US-039]** Feature Showcase
+
+**As a** visitor  
+**I want** to see key product features in an animated grid  
+**So that** I understand what the application can do
+
+**Acceptance Criteria:**
+
+- Animated feature cards with icons
+- Hover effects and micro-interactions
+- Mobile-responsive grid layout
+- Accessibility compliant
+- Smooth transitions and loading states
+
+**Business Rules:** [BR-046, BR-047]  
+**Code:** `components/marketing/animated-features.tsx` (lines 1-15)
+
+**Tests:** `__tests__/components/marketing/animated-features.test.tsx`
+
+---
+
+### **[US-040]** Documentation Compliance
+
+**As a** developer  
+**I want** automated documentation validation  
+**So that** documentation stays synchronized with code changes
+
+**Acceptance Criteria:**
+
+- Documentation audit script validates completeness
+- Checks for missing Business Rule references
+- Validates User Story traceability
+- Ensures API documentation is up-to-date
+- Generates compliance reports
+
+**Business Rules:** [BR-048]  
+**Code:** `scripts/documentation-audit.ts`
+
+**Tests:** None (manual verification)

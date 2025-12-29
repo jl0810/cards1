@@ -54,11 +54,11 @@ export function successResponse<T>(data: T, status: number = 200) {
  * Common error responses
  */
 export const Errors = {
-  unauthorized: (message = "Unauthorized") => errorResponse(message, 401),
-  forbidden: (message = "Forbidden") => errorResponse(message, 403),
+  unauthorized: (_message = "Unauthorized") => errorResponse(_message, 401),
+  forbidden: (_message = "Forbidden") => errorResponse(_message, 403),
   notFound: (resource = "Resource") =>
     errorResponse(`${resource} not found`, 404),
-  badRequest: (message = "Bad Request") => errorResponse(message, 400),
-  internal: (message = "Internal Server Error") =>
+  badRequest: (_message = "Bad Request") => errorResponse(_message, 400),
+  internal: (_message = "Internal Server Error") =>
     errorResponse("Internal Server Error", 500),
 };

@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { z } from "zod";
+import { z as _z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";

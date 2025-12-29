@@ -1,6 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { ApiError, Errors, successResponse } from "@/lib/api-errors";
 
+/**
+ * API Errors Tests
+ * @covers US-016 - Error Handling
+ */
+
 describe("API Errors", () => {
   describe("ApiError Class", () => {
     it("should create error with message and status", () => {

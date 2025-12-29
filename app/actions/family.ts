@@ -12,6 +12,7 @@
  * @satisfies US-003 - Add Family Members
  * @satisfies US-004 - Update Family Member
  * @satisfies US-005 - Delete Family Member
+ * @satisfies US-030 - Manage Family Member Names
  */
 
 import { auth } from "@clerk/nextjs/server";

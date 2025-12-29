@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Dashboard page with auto-refresh capability
+ * 
+ * @satisfies US-014 - Refresh Data
+ */
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";

@@ -76,3 +76,28 @@ This document outlines the simplified architecture for Plaid integration, focusi
 2. **Schema:** Added `status` field to `PlaidAccount` for Soft Delete support.
 3. **API:** Implemented Adoption Logic in `exchange-public-token` to restore settings.
 4. **Logic:** Updated `disconnect` flow to mark accounts as `inactive` instead of deleting.
+5. **Security:** Removed disallowed Plaid API endpoints (`accountsGet`, `accountsBalanceGet`) and restricted to approved endpoints only (`liabilitiesGet`, `transactionsSync`).
+
+## API Endpoint Restrictions (Security Update)
+
+**As of December 2024**, the following Plaid API endpoints have been removed from the codebase for security compliance:
+
+### Removed Endpoints:
+- `/accounts/get` - No longer used for account data retrieval
+- `/accounts/balance/get` - No longer used for balance information
+
+### Approved Endpoints:
+- `/liabilities/get` - Used for credit card liability information
+- `/transactions/sync` - Used for transaction synchronization
+- `/item/get` - Used for item status checking
+- `/item/public_token/exchange` - Used for token exchange during linking
+
+### Impact:
+- Account data is now retrieved through `/transactions/sync` response
+- Balance information is included in transaction sync data
+- Credit card liabilities are fetched via dedicated `/liabilities/get` endpoint
+- Enhanced security by minimizing API surface area
+
+**Files Updated:**
+- `app/api/plaid/exchange-public-token/route.ts`
+- `app/api/plaid/sync-transactions/route.ts`

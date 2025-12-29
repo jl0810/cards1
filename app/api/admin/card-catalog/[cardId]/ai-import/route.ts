@@ -74,7 +74,7 @@ export async function POST(
       let combinedText = "";
       for (const url of urls) {
         try {
-          const response = await fetch(url);
+          const response = await fetch(url as string);
           const html = await response.text();
           // Simple HTML to text conversion
           const text = html
@@ -212,7 +212,7 @@ export async function POST(
             .replace(/```\s*$/, "");
         }
 
-        benefitsData = JSON.parse(cleanText);
+        benefitsData = JSON.parse(cleanText as string);
         logger.info(
           `[AI Import] Extracted ${benefitsData.benefits.length} benefits for ${card.productName}`,
         );
@@ -383,7 +383,7 @@ export async function POST(
       }
 
       // Remove benefits that no longer exist (were not in AI response)
-      for (const [name, benefit] of existingBenefitsMap) {
+      for (const [_name, benefit] of existingBenefitsMap) {
         try {
           await prisma.cardBenefit.delete({
             where: { id: benefit.id },

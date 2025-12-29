@@ -6,6 +6,7 @@
  * @implements BR-002 - Welcome Email
  * @satisfies US-001 - User Registration
  * @satisfies US-002 - User Profile Management
+ * @satisfies US-032 - User Account Deletion (GDPR Compliant)
  * @tested None (webhook handlers need tests)
  */
 

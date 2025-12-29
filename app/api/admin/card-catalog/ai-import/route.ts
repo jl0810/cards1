@@ -6,16 +6,21 @@
  * @implements BR-031 - Admin Role Required
  */
 
-import { NextResponse } from "next/server";
 import { withAdmin } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
-import type { BenefitRuleConfigSchema, PrismaJsonSchema } from "@/lib/validations";
+// import type { BenefitMatchCriteria } from "@/lib/benefit-matcher"; // Unused
+import type {
+  BenefitRuleConfigSchema as _BenefitRuleConfigSchema,
+  PrismaJsonSchema as _PrismaJsonSchema,
+} from "@/lib/validations";
 import { logger } from "@/lib/logger";
+import type { LogMetadata } from "@/lib/logger";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import type { z } from "zod";
 
-type BenefitRuleConfig = z.infer<typeof BenefitRuleConfigSchema>;
-type PrismaJson = z.infer<typeof PrismaJsonSchema>;
+type _BenefitRuleConfig = z.infer<typeof _BenefitRuleConfigSchema>;
+type _PrismaJson = z.infer<typeof _PrismaJsonSchema>;
 
 interface CardProductData {
   issuer: string;
@@ -52,7 +57,9 @@ export async function POST(req: Request) {
       );
     }
 
-    logger.info("[AI Import] Starting import for issuer:", issuer);
+    logger.info("[AI Import] Starting import for issuer:", {
+      issuer,
+    } as LogMetadata);
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -74,7 +81,7 @@ export async function POST(req: Request) {
       let combinedText = "";
       for (const url of urls) {
         try {
-          const response = await fetch(url);
+          const response = await fetch(url as string);
           const html = await response.text();
           // Simple HTML to text conversion
           const text = html
@@ -118,17 +125,16 @@ export async function POST(req: Request) {
             ${combinedText.substring(0, 50000)} // Send first 50k chars for identification to be safe
             `;
 
-      const idResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: identificationPrompt }] }],
-            generationConfig: { responseMimeType: "application/json" },
-          }),
-        },
-      );
+      const idUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+      const idResponse = await fetch(idUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: identificationPrompt }] }],
+          generationConfig: { responseMimeType: "application/json" },
+        }),
+      });
 
       if (!idResponse.ok) {
         const errorText = await idResponse.text();
@@ -147,11 +153,11 @@ export async function POST(req: Request) {
       let cardNames: string[] = [];
 
       try {
-        cardNames = JSON.parse(idText);
+        cardNames = JSON.parse(idText as string);
         logger.info(`[AI Import] Identified ${cardNames.length} cards`, {
           cardNames,
         });
-      } catch (e) {
+      } catch (_e) {
         logger.error("[AI Import] Failed to parse card names:", idText);
         return NextResponse.json(
           { error: "Failed to identify cards" },
@@ -242,7 +248,9 @@ export async function POST(req: Request) {
           batchData?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
 
         try {
-          const batchProducts = JSON.parse(batchText);
+          const batchProducts = JSON.parse(
+            batchText as string,
+          ) as CardProductData[];
           if (Array.isArray(batchProducts)) {
             products = [...products, ...batchProducts];
           } else {

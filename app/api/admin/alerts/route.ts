@@ -1,31 +1,31 @@
 /**
  * Admin Alerts API
  * Send system alerts to users via Novu
- * 
+ *
  * @module app/api/admin/alerts
  * @implements BR-031 - Admin Role Required
  * @satisfies US-023 - Admin Notifications
  */
 
-import type { NextRequest} from 'next/server';
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import { Novu } from '@novu/node';
-import { requireAdmin } from '@/lib/admin';
-import { Errors } from '@/lib/api-errors';
-import { logger } from '@/lib/logger';
-import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { Novu } from "@novu/node";
+import { requireAdmin } from "@/lib/admin";
+import { Errors } from "@/lib/api-errors";
+import { logger } from "@/lib/logger";
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 const novu = new Novu(process.env.NOVU_API_KEY!);
 
 const AlertSchema = z.object({
-    title: z.string().min(1).max(200),
-    message: z.string().min(1).max(2000),
-    type: z.enum(['info', 'warning', 'error', 'success']).default('info'),
-    priority: z.enum(['low', 'medium', 'high']).default('medium'),
-    targetUserId: z.string().optional(),
-    actionUrl: z.string().url().optional(),
-    actionText: z.string().max(50).optional(),
+  title: z.string().min(1).max(200),
+  message: z.string().min(1).max(2000),
+  type: z.enum(["info", "warning", "error", "success"]).default("info"),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+  targetUserId: z.string().optional(),
+  actionUrl: z.string().url().optional(),
+  actionText: z.string().max(50).optional(),
 });
 
 /**
@@ -35,23 +35,31 @@ const AlertSchema = z.object({
 export async function POST(request: NextRequest) {
   const limited = await rateLimit(request, RATE_LIMITS.write);
   if (limited) {
-    return new Response('Too many requests', { status: 429 });
+    return new Response("Too many requests", { status: 429 });
   }
 
   try {
     const admin = await requireAdmin();
-    
+
     const body = await request.json();
     const validation = AlertSchema.safeParse(body);
     if (!validation.success) {
-      return Errors.badRequest('Invalid alert data');
+      return Errors.badRequest("Invalid alert data");
     }
 
-    const { title, message, type, priority, targetUserId, actionUrl, actionText } = validation.data;
+    const {
+      title,
+      message,
+      type,
+      priority,
+      targetUserId,
+      actionUrl,
+      actionText,
+    } = validation.data;
 
     // Create the notification trigger
-    const result = await novu.trigger('admin-alert', {
-      to: targetUserId ? { subscriberId: targetUserId } : 'all-subscribers',
+    const result = await novu.trigger("admin-alert", {
+      to: targetUserId ? { subscriberId: targetUserId } : "all-subscribers",
       payload: {
         title,
         message,
@@ -60,18 +68,17 @@ export async function POST(request: NextRequest) {
         actionUrl,
         actionText,
         sentBy: admin.userId,
-        sentAt: new Date().toISOString()
-      }
+        sentAt: new Date().toISOString(),
+      },
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       notificationId: result.data?.notificationId,
-      message: 'Alert sent successfully'
+      message: "Alert sent successfully",
     });
-
   } catch (error) {
-    logger.error('Error sending admin alert:', error);
+    logger.error("Error sending admin alert:", error);
     return Errors.internal();
   }
 }
@@ -80,7 +87,7 @@ export async function POST(request: NextRequest) {
  * Get alert history
  * @route GET /api/admin/alerts
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     await requireAdmin();
 
@@ -88,11 +95,10 @@ export async function GET(request: NextRequest) {
     // This is a placeholder - you'd implement actual alert history
     return NextResponse.json({
       alerts: [],
-      message: 'Alert history feature coming soon'
+      message: "Alert history feature coming soon",
     });
-
   } catch (error) {
-    logger.error('Error fetching alerts:', error);
+    logger.error("Error fetching alerts:", error);
     return Errors.internal();
   }
 }

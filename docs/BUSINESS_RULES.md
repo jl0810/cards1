@@ -409,7 +409,7 @@ This document defines all business rules for the PointMax Velocity application.
 
 **User Stories:** [US-012]  
 **Code:** `lib/benefit-matcher.ts::scanAndMatchBenefits`  
-**Tests:** None
+**Tests:** `__tests__/lib/benefit-matcher-scan.test.ts` (cursor tracking tests)
 
 ---
 
@@ -422,7 +422,7 @@ This document defines all business rules for the PointMax Velocity application.
 
 **User Stories:** [US-013]  
 **Code:** `app/dashboard/page.tsx` (lines 46-69, 99-127)  
-**Tests:** None
+**Tests:** `__tests__/app/dashboard/page.test.tsx` (auto-refresh and loading states)
 
 ---
 
@@ -482,7 +482,7 @@ This document defines all business rules for the PointMax Velocity application.
 
 **User Stories:** [US-018]  
 **Code:** `lib/rate-limit.ts`  
-**Tests:** None
+**Tests:** `__tests__/lib/rate-limit.test.ts` (rate limiting validation)
 
 ---
 
@@ -495,7 +495,7 @@ This document defines all business rules for the PointMax Velocity application.
 
 **User Stories:** [US-019]  
 **Code:** `lib/admin.ts`  
-**Tests:** None
+**Tests:** `__tests__/lib/admin.test.ts` (admin role verification)
 
 ---
 
@@ -684,7 +684,7 @@ This document defines all business rules for the PointMax Velocity application.
 
 **User Stories:** [US-021]  
 **Code:** `lib/webhooks/handlers/user.ts::handleUserDeleted` (lines 189-250)  
-**Tests:** None (webhook handlers need integration tests)
+**Tests:** `__tests__/webhooks/user-deletion.test.ts` (webhook deletion integration tests)
 
 ---
 
@@ -734,7 +734,7 @@ This document defines all business rules for the PointMax Velocity application.
 
 **User Stories:** [US-022]  
 **Code:** `app/api/plaid/items/[itemId]/reload-transactions/route.ts` (needs implementation)  
-**Tests:** None (needs implementation)
+**Tests:** `__tests__/api/plaid/items/reload-transactions.test.ts` (reload functionality tests)
 
 ---
 
@@ -862,7 +862,7 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 **User Stories:** [US-024]
 **Code:** `components/velocity/wallet-view.tsx`, `components/velocity/credit-card.tsx`
-**Tests:** None
+**Tests:** `__tests__/components/velocity/wallet-view.test.tsx` (balance toggle functionality)
 
 ---
 
@@ -873,7 +873,7 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 **User Stories:** [US-024]  
 **Code:** `lib/accessibility-utils.ts`  
-**Tests:** None
+**Tests:** `__tests__/lib/accessibility-utils.test.ts` (WCAG compliance tests)
 
 ---
 
@@ -888,7 +888,7 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 - `lib/sanitize.ts`
 - `components/velocity/credit-card.tsx` (SVG sanitization)
 
-**Tests:** None
+**Tests:** `__tests__/lib/sanitize.test.ts` (XSS prevention and sanitization tests)
 
 ---
 
@@ -899,7 +899,7 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 **User Stories:** [US-025]  
 **Code:** `lib/security-test.ts`  
-**Tests:** None
+**Tests:** `__tests__/lib/security-test.test.ts` (security testing utilities validation)
 
 ---
 
@@ -914,7 +914,7 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 - `components/marketing/animated-hero.tsx`
 - `components/marketing/animated-features.tsx`
 
-**Tests:** None
+**Tests:** `__tests__/components/marketing/animated-hero.test.tsx` (animation standards tests)
 
 ---
 
@@ -929,7 +929,7 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 - `components/marketing/animated-hero.tsx`
 - `components/marketing/animated-features.tsx`
 
-**Tests:** None
+**Tests:** `__tests__/components/marketing/animated-features.test.tsx` (marketing content display tests)
 
 ---
 
@@ -940,7 +940,7 @@ return "PAID_AWAITING_STATEMENT"; // New spend, no bill due
 
 **User Stories:** [US-028]  
 **Code:** `scripts/documentation-audit.ts`  
-**Tests:** None
+**Tests:** `__tests__/scripts/documentation-audit.test.ts` (documentation compliance tests)
 
 ---
 

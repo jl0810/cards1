@@ -1,10 +1,10 @@
-import { Webhook } from 'svix';
-import type { WebhookEvent } from '@clerk/nextjs/server';
+import { Webhook } from "svix";
+import type { WebhookEvent } from "@clerk/nextjs/server";
 
 interface WebhookHeaders {
-  'svix-id': string;
-  'svix-timestamp': string;
-  'svix-signature': string;
+  "svix-id": string;
+  "svix-timestamp": string;
+  "svix-signature": string;
 }
 
 /**
@@ -13,23 +13,26 @@ interface WebhookHeaders {
 export function verifyWebhook(
   body: string,
   headers: WebhookHeaders,
-  secret: string
+  secret: string,
 ): WebhookEvent {
   const wh = new Webhook(secret);
 
   return wh.verify(body, {
-    "svix-id": headers['svix-id'],
-    "svix-timestamp": headers['svix-timestamp'],
-    "svix-signature": headers['svix-signature'],
+    "svix-id": headers["svix-id"],
+    "svix-timestamp": headers["svix-timestamp"],
+    "svix-signature": headers["svix-signature"],
   }) as WebhookEvent;
 }
 
 /**
  * Extract webhook headers from request
  */
-export async function getWebhookHeaders(request: Request): Promise<WebhookHeaders | null> {
-  const headers = await request.headers;
+export async function getWebhookHeaders(
+  request: Request,
+): Promise<WebhookHeaders | null> {
+  const headers = request.headers;
 
+  const _timestamp = Math.floor(Date.now() / 1000);
   const svixId = headers.get("svix-id");
   const svixTimestamp = headers.get("svix-timestamp");
   const svixSignature = headers.get("svix-signature");
@@ -39,8 +42,8 @@ export async function getWebhookHeaders(request: Request): Promise<WebhookHeader
   }
 
   return {
-    'svix-id': svixId,
-    'svix-timestamp': svixTimestamp,
-    'svix-signature': svixSignature,
+    "svix-id": svixId,
+    "svix-timestamp": svixTimestamp,
+    "svix-signature": svixSignature,
   };
 }

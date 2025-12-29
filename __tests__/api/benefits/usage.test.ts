@@ -2,6 +2,11 @@
  * @jest-environment node
  */
 
+/**
+ * Benefits Usage API Tests
+ * @covers US-011 - Benefits Usage Tracking
+ */
+
 import { GET } from '@/app/api/benefits/usage/route';
 import { prisma } from '@/lib/prisma';
 
@@ -56,7 +61,7 @@ describe('US-011: View Benefit Usage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (auth as jest.Mock).mockResolvedValue({ userId: mockUserId });
+    (auth as unknown as jest.Mock).mockResolvedValue({ userId: mockUserId });
     (prisma.userProfile.findUnique as jest.Mock).mockResolvedValue(mockUserProfile);
   });
 
@@ -505,7 +510,7 @@ describe('US-011: View Benefit Usage', () => {
 
   describe('Error Handling', () => {
     it('should return 401 if user not authenticated', async () => {
-      (auth as jest.Mock).mockResolvedValue({ userId: null });
+      (auth as unknown as jest.Mock).mockResolvedValue({ userId: null });
 
       const request = new Request('http://localhost/api/benefits/usage');
       const response = await GET(request);
