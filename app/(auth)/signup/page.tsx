@@ -11,16 +11,6 @@ export default function SignUpPage() {
             </div>
 
             <div className="relative z-10 w-full max-w-md px-4">
-                {/* Logo / Brand */}
-                <div className="text-center mb-8">
-                    <Link href="/" className="inline-block">
-                        <h1 className="text-2xl font-bold text-white">Cards Gone Crazy</h1>
-                    </Link>
-                    <p className="text-slate-400 mt-2">
-                        Create your account to get started
-                    </p>
-                </div>
-
                 {/* Auth Form */}
                 <UserAuthForm isSignUp />
 

@@ -29,7 +29,22 @@ import {
 export type Icon = LucideIcon
 
 export const Icons = {
-  logo: Command,
+  logo: ({ ...props }: LucideProps) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <rect x="3" y="6" width="12" height="15" rx="2" />
+      <path d="M9 3h12v15a2 2 0 0 1-2 2h-1" />
+      <path d="M12 9l2 2-2 2" />
+    </svg>
+  ),
   close: X,
   spinner: Loader2,
   chevronLeft: ChevronLeft,

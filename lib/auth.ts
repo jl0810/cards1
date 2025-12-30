@@ -30,6 +30,15 @@ export const authConfig: NextAuthConfig = {
             server: "smtp://localhost:25", // Dummy value - we use custom sendVerificationRequest
             from: process.env.EMAIL_FROM || "noreply@cardsgonecrazy.com",
             sendVerificationRequest: async ({ identifier: email, url }) => {
+                const isDevelopment = process.env.NODE_ENV === "development";
+
+                if (isDevelopment) {
+                    console.log("\n--- DEVELOPMENT MAGIC LINK ---");
+                    console.log(`To: ${email}`);
+                    console.log(`Link: ${url}`);
+                    console.log("------------------------------\n");
+                }
+
                 const response = await fetch("https://mail.raydoug.com/api/v1/emails", {
                     method: "POST",
                     headers: {

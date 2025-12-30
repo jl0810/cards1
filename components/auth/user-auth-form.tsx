@@ -50,15 +50,20 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
-      <div className="flex flex-col space-y-2 text-center mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {isSignUp ? "Create your account" : "Welcome back"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {isSignUp
-            ? "Step 1: Enter your details to get started"
-            : "Sign in to your existing account"}
-        </p>
+      <div className="flex flex-col space-y-6 text-center mb-8">
+        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-cyan-500/10 border border-cyan-500/20 shadow-2xl shadow-cyan-500/20 backdrop-blur-sm">
+          <Icons.logo className="h-14 w-14 text-cyan-500" />
+        </div>
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            {isSignUp ? "Create your account" : "Sign in"}
+          </h1>
+          <p className="text-sm text-slate-400">
+            {isSignUp
+              ? "Step 1: Enter your details to get started"
+              : "Enter your email to access your account"}
+          </p>
+        </div>
       </div>
 
       {emailSent ? (
