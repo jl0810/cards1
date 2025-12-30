@@ -27,6 +27,7 @@ export const authConfig: NextAuthConfig = {
             allowDangerousEmailAccountLinking: true,
         }),
         EmailProvider({
+            server: "smtp://localhost:25", // Dummy value - we use custom sendVerificationRequest
             from: process.env.EMAIL_FROM || "noreply@cardsgonecrazy.com",
             sendVerificationRequest: async ({ identifier: email, url }) => {
                 const response = await fetch("https://mail.raydoug.com/api/v1/emails", {
