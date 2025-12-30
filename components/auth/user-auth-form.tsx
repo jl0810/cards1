@@ -52,74 +52,100 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
     <div className={cn("grid gap-6", className)} {...props}>
       <div className="flex flex-col space-y-2 text-center mb-4">
         <h1 className="text-2xl font-semibold tracking-tight">
-          {isSignUp ? "Create an account" : "Welcome back"}
+          {isSignUp ? "Create your account" : "Welcome back"}
         </h1>
         <p className="text-sm text-muted-foreground">
           {isSignUp
-            ? "Enter your email below to create your account"
-            : "Sign in with your favorite provider"}
+            ? "Step 1: Enter your details to get started"
+            : "Sign in to your existing account"}
         </p>
       </div>
 
       {emailSent ? (
-        <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4 text-center">
-          <p className="text-sm font-medium text-green-400">Check your email!</p>
-          <p className="text-xs text-green-300/70 mt-1">
-            We sent a magic link to <strong>{emailSent}</strong>. Click the link to continue.
+        <div className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 p-6 text-center animate-in fade-in zoom-in duration-300">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/20 mb-4">
+            <Icons.check className="h-6 w-6 text-cyan-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-2">Check your inbox!</h3>
+          <p className="text-sm text-cyan-100/70">
+            We sent a secure magic link to:
           </p>
+          <div className="my-3 rounded bg-background/50 py-2 px-3 inline-block border border-cyan-500/30">
+            <span className="text-sm font-mono text-cyan-300">{emailSent}</span>
+          </div>
+          <p className="text-xs text-cyan-100/50 mt-4 leading-relaxed">
+            Click the link in the email to verify your identity<br />and complete your {isSignUp ? "registration" : "sign in"}.
+          </p>
+          <button
+            onClick={() => setEmailSent(null)}
+            className="mt-6 text-xs text-cyan-400 hover:underline underline-offset-4"
+          >
+            Mistake? Use a different email
+          </button>
         </div>
       ) : (
         <form onSubmit={onSubmit}>
-          <div className="grid gap-2">
+          <div className="grid gap-4">
             {error && (
-              <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-center">
+              <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-center animate-in shake duration-300">
                 <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
-            {isSignUp && (
-              <div className="grid gap-1 mb-2">
-                <label className="sr-only" htmlFor="name">
-                  Full Name
+
+            <div className="grid gap-2">
+              {isSignUp && (
+                <div className="grid gap-1 mb-2">
+                  <label className="text-xs font-medium text-slate-400 ml-1" htmlFor="name">
+                    Full Name
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    placeholder="Jeff Cards"
+                    type="text"
+                    autoCapitalize="words"
+                    autoComplete="name"
+                    disabled={isLoading || isGoogleLoading || isAppleLoading}
+                    required
+                    className="flex h-11 w-full rounded-md border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
+                  />
+                </div>
+              )}
+
+              <div className="grid gap-1">
+                <label className="text-xs font-medium text-slate-400 ml-1" htmlFor="email">
+                  Email Address
                 </label>
                 <input
-                  id="name"
-                  name="name"
-                  placeholder="John Doe"
-                  type="text"
-                  autoCapitalize="words"
-                  autoComplete="name"
-                  disabled={isLoading || isGoogleLoading || isAppleLoading}
+                  id="email"
+                  name="email"
+                  placeholder="jeff@example.com"
+                  type="email"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  autoCorrect="off"
                   required
-                  className="flex h-10 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isLoading || isGoogleLoading || isAppleLoading}
+                  className="flex h-11 w-full rounded-md border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
                 />
               </div>
-            )}
-            <div className="grid gap-1">
-              <label className="sr-only" htmlFor="email">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                placeholder="name@example.com"
-                type="email"
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect="off"
-                required
-                disabled={isLoading || isGoogleLoading || isAppleLoading}
-                className="flex h-10 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
             </div>
+
             <button
-              className={cn(buttonVariants(), "bg-cyan-600 hover:bg-cyan-700 text-white mt-2")}
+              className={cn(
+                buttonVariants(),
+                "h-11 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors shadow-lg shadow-cyan-900/20"
+              )}
               disabled={isLoading}
             >
               {isLoading && (
                 <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isSignUp ? "Create Account" : "Sign In with Email"}
+              {isSignUp ? "Continue to Verification" : "Send Magic Link"}
             </button>
+            <p className="text-[10px] text-center text-slate-500 mt-2">
+              v1.0.4 • Built with CGC Cloud Sync
+            </p>
           </div>
         </form>
       )}
