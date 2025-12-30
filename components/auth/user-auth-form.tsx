@@ -76,6 +76,24 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
                 <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
+            {isSignUp && (
+              <div className="grid gap-1 mb-2">
+                <label className="sr-only" htmlFor="name">
+                  Full Name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  placeholder="John Doe"
+                  type="text"
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  disabled={isLoading || isGoogleLoading || isAppleLoading}
+                  required
+                  className="flex h-10 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            )}
             <div className="grid gap-1">
               <label className="sr-only" htmlFor="email">
                 Email
@@ -94,13 +112,13 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
               />
             </div>
             <button
-              className={cn(buttonVariants(), "bg-cyan-500 hover:bg-cyan-600 text-white")}
+              className={cn(buttonVariants(), "bg-cyan-600 hover:bg-cyan-700 text-white mt-2")}
               disabled={isLoading}
             >
               {isLoading && (
                 <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isSignUp ? "Sign Up with Email" : "Sign In with Email"}
+              {isSignUp ? "Create Account" : "Sign In with Email"}
             </button>
           </div>
         </form>
