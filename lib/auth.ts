@@ -27,8 +27,37 @@ export const authConfig: NextAuthConfig = {
             allowDangerousEmailAccountLinking: true,
         }),
         EmailProvider({
-            server: process.env.EMAIL_SERVER,
-            from: process.env.EMAIL_FROM,
+            from: process.env.EMAIL_FROM || "noreply@cardsgonecrazy.com",
+            sendVerificationRequest: async ({ identifier: email, url }) => {
+                const response = await fetch("https://mail.raydoug.com/api/v1/emails", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${process.env.USESEND_API_KEY}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        from: process.env.EMAIL_FROM || "noreply@cardsgonecrazy.com",
+                        to: email,
+                        subject: "Sign in to CardsGoneCrazy",
+                        html: `
+                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                                <h2>Sign in to CardsGoneCrazy</h2>
+                                <p>Click the button below to sign in:</p>
+                                <a href="${url}" style="display: inline-block; padding: 12px 24px; background-color: #7C3AED; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">
+                                    Sign In
+                                </a>
+                                <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+                                <p style="color: #666; font-size: 12px; word-break: break-all;">${url}</p>
+                                <p style="color: #999; font-size: 12px; margin-top: 32px;">This link will expire in 24 hours.</p>
+                            </div>
+                        `,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to send email: ${response.statusText}`);
+                }
+            },
         }),
     ],
     pages: {
