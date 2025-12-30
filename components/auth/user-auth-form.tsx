@@ -7,14 +7,16 @@ import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Icons } from "@/components/icons"
 
-interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> { }
+interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
+  isSignUp?: boolean
+}
 
 
-export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
+export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false)
   const [isAppleLoading, setIsAppleLoading] = React.useState<boolean>(false)
-  const [emailSent, setEmailSent] = React.useState<boolean>(false)
+  const [emailSent, setEmailSent] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
   async function onSubmit(event: React.SyntheticEvent) {
@@ -39,7 +41,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
         return
       }
 
-      setEmailSent(true)
+      setEmailSent(email)
     } catch (err) {
       setIsLoading(false)
       setError("An unexpected error occurred. Please try again.")
@@ -48,11 +50,22 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
+      <div className="flex flex-col space-y-2 text-center mb-4">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {isSignUp ? "Create an account" : "Welcome back"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isSignUp
+            ? "Enter your email below to create your account"
+            : "Sign in with your favorite provider"}
+        </p>
+      </div>
+
       {emailSent ? (
         <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4 text-center">
           <p className="text-sm font-medium text-green-400">Check your email!</p>
           <p className="text-xs text-green-300/70 mt-1">
-            We sent you a magic link to sign in. Click the link in your email to continue.
+            We sent a magic link to <strong>{emailSent}</strong>. Click the link to continue.
           </p>
         </div>
       ) : (
@@ -75,18 +88,19 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 autoCapitalize="none"
                 autoComplete="email"
                 autoCorrect="off"
+                required
                 disabled={isLoading || isGoogleLoading || isAppleLoading}
-                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             <button
-              className={cn(buttonVariants())}
+              className={cn(buttonVariants(), "bg-cyan-500 hover:bg-cyan-600 text-white")}
               disabled={isLoading}
             >
               {isLoading && (
                 <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Sign In with Email
+              {isSignUp ? "Sign Up with Email" : "Sign In with Email"}
             </button>
           </div>
         </form>

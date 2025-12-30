@@ -22,7 +22,7 @@ export default function SignUpPage() {
                 </div>
 
                 {/* Auth Form */}
-                <UserAuthForm />
+                <UserAuthForm isSignUp />
 
                 {/* Footer */}
                 <p className="text-center text-sm text-slate-500 mt-6">
