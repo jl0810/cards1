@@ -1,9 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 
-// Force Node.js runtime for database access
-export const runtime = 'nodejs'
-
 export default auth((req) => {
     const isLoggedIn = !!req.auth
     const isAuthPage = req.nextUrl.pathname.startsWith("/login") ||
