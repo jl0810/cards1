@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Icons } from "@/components/icons"
+import { CSSLogo } from "@/components/shared/css-logo"
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   isSignUp?: boolean
@@ -50,18 +51,18 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
-      <div className="flex flex-col space-y-6 text-center mb-8">
-        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-cyan-500/10 border border-cyan-500/20 shadow-2xl shadow-cyan-500/20 backdrop-blur-sm">
-          <Icons.logo className="h-14 w-14 text-cyan-500" />
+      <div className="flex flex-col space-y-8 text-center mb-10">
+        <div className="mx-auto flex items-center justify-center pt-2">
+          <CSSLogo className="scale-110 sm:scale-125" />
         </div>
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            {isSignUp ? "Create your account" : "Sign in"}
+        <div className="space-y-3">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white">
+            {isSignUp ? "Create an account" : "Sign in to your account"}
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-muted-foreground">
             {isSignUp
-              ? "Step 1: Enter your details to get started"
-              : "Enter your email to access your account"}
+              ? "Join the craziness today"
+              : "Welcome back to the dashboard"}
           </p>
         </div>
       </div>

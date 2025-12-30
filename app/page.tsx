@@ -106,9 +106,9 @@ export default function Home() {
                   whileTap={{ scale: 0.95 }}
                 >
                   <ShimmerButton className="shadow-2xl">
-                    <a href="/sign-up" className="text-lg font-semibold">
+                    <Link href="/signup" className="text-lg font-semibold">
                       Start Tracking
-                    </a>
+                    </Link>
                   </ShimmerButton>
                 </motion.div>
                 <motion.div
@@ -121,7 +121,7 @@ export default function Home() {
                     size="lg"
                     className="text-lg h-14 px-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10 backdrop-blur-sm"
                   >
-                    <a href="/dashboard">View Demo</a>
+                    <Link href="/dashboard">View Demo</Link>
                   </Button>
                 </motion.div>
               </div>
@@ -247,7 +247,7 @@ export default function Home() {
                     size="lg"
                     className="text-lg h-14 px-10 rounded-full bg-white text-black hover:bg-gray-200"
                   >
-                    <a href="/sign-up">Get Started Now</a>
+                    <Link href="/signup">Get Started Now</Link>
                   </Button>
                 </motion.div>
               </div>

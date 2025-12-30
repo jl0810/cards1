@@ -90,7 +90,7 @@ export function MarketingHeader() {
                     className="bg-white text-black hover:bg-gray-200"
                     asChild
                   >
-                    <Link href="/register">Sign Up</Link>
+                    <Link href="/signup">Sign Up</Link>
                   </Button>
                 </>
               ) : (

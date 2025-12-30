@@ -31,18 +31,34 @@ export type Icon = LucideIcon
 export const Icons = {
   logo: ({ ...props }: LucideProps) => (
     <svg
-      xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      <rect x="3" y="6" width="12" height="15" rx="2" />
-      <path d="M9 3h12v15a2 2 0 0 1-2 2h-1" />
-      <path d="M12 9l2 2-2 2" />
+      {/* Back Cards (Stacked) */}
+      <rect x="7" y="2" width="14" height="18" rx="3" fill="#E2E8F0" className="opacity-40" />
+      <rect x="5" y="4" width="14" height="18" rx="3" fill="#94A3B8" className="opacity-60" />
+
+      {/* Primary Front Card */}
+      <rect x="3" y="6" width="14" height="18" rx="3" fill="currentColor" stroke="white" strokeWidth="0.5" />
+
+      {/* Card Chip */}
+      <rect x="5" y="9" width="3" height="2.5" rx="0.5" fill="white" className="opacity-80" />
+
+      {/* Card Details (Dots) */}
+      <circle cx="5.5" cy="14" r="0.4" fill="white" className="opacity-60" />
+      <circle cx="7" cy="14" r="0.4" fill="white" className="opacity-60" />
+      <circle cx="8.5" cy="14" r="0.4" fill="white" className="opacity-60" />
+      <circle cx="10" cy="14" r="0.4" fill="white" className="opacity-60" />
+
+      <circle cx="5.5" cy="16" r="0.4" fill="white" className="opacity-60" />
+      <circle cx="7" cy="16" r="0.4" fill="white" className="opacity-60" />
+      <circle cx="8.5" cy="16" r="0.4" fill="white" className="opacity-60" />
+      <circle cx="10" cy="16" r="0.4" fill="white" className="opacity-60" />
+
+      {/* Card Number 5678 tail */}
+      <path d="M11 20h3" stroke="white" strokeWidth="0.5" strokeLinecap="round" className="opacity-40" />
     </svg>
   ),
   close: X,
