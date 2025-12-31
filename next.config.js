@@ -3,9 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig = {
   transpilePackages: ["lucide-react"],
-  serverExternalPackages: [
-    "pg",
-  ],
+  serverExternalPackages: ["pg"],
   experimental: {
     optimizePackageImports: ["lucide-react", "@mantine/core", "framer-motion"],
   },
@@ -23,8 +21,8 @@ const nextConfig = {
     removeConsole:
       process.env.NODE_ENV === "production"
         ? {
-          exclude: ["error", "warn"],
-        }
+            exclude: ["error", "warn"],
+          }
         : false,
   },
 
@@ -42,6 +40,15 @@ const nextConfig = {
   },
 
   // Note: Security headers are handled in middleware.ts for proper auth security
+  async redirects() {
+    return [
+      {
+        source: "/register",
+        destination: "/signup",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 const sentryWebpackPluginOptions = {
@@ -54,7 +61,7 @@ const sentryWebpackPluginOptions = {
   project: process.env.SENTRY_PROJECT || "cards",
   sentryUrl: process.env.GLITCHTIP_URL || "https://errors.raydoug.com",
   authToken: process.env.SENTRY_AUTH_TOKEN,
-  
+
   // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
 };
