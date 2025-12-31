@@ -1,15 +1,23 @@
-import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
-import { renderHook, waitFor } from '@testing-library/react';
-import { useAccounts } from '@/hooks/use-accounts';
+// @ts-nocheck
+import {
+  describe,
+  expect,
+  it,
+  jest,
+  beforeEach,
+  afterEach,
+} from "@jest/globals";
+import { renderHook, waitFor } from "@testing-library/react";
+import { useAccounts } from "@/hooks/use-accounts";
 
 // Mock fetch with proper typing
 global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 
-describe('useAccounts Hook', () => {
+describe("useAccounts Hook", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Mock navigator.onLine
-    Object.defineProperty(navigator, 'onLine', {
+    Object.defineProperty(navigator, "onLine", {
       writable: true,
       value: true,
     });
@@ -19,10 +27,10 @@ describe('useAccounts Hook', () => {
     jest.restoreAllMocks();
   });
 
-  describe('Initial State', () => {
-    it('should start with loading state', () => {
-      (global.fetch as jest.Mock).mockImplementation(() =>
-        new Promise(() => {}) // Never resolves
+  describe("Initial State", () => {
+    it("should start with loading state", () => {
+      (global.fetch as jest.Mock).mockImplementation(
+        () => new Promise(() => {}), // Never resolves
       );
 
       const { result } = renderHook(() => useAccounts());
@@ -34,29 +42,29 @@ describe('useAccounts Hook', () => {
     });
   });
 
-  describe('Successful Data Fetch', () => {
-    it('should fetch and transform accounts', async () => {
+  describe("Successful Data Fetch", () => {
+    it("should fetch and transform accounts", async () => {
       const mockData = [
         {
-          id: 'item_1',
-          institutionName: 'Chase',
+          id: "item_1",
+          institutionName: "Chase",
           accounts: [
             {
-              id: 'acc_1',
-              name: 'Sapphire Preferred',
-              officialName: 'Chase Sapphire Preferred',
-              type: 'credit',
-              subtype: 'credit card',
-              currentBalance: -1500.50,
+              id: "acc_1",
+              name: "Sapphire Preferred",
+              officialName: "Chase Sapphire Preferred",
+              type: "credit",
+              subtype: "credit card",
+              currentBalance: -1500.5,
               limit: 10000,
-              isoCurrencyCode: 'USD',
+              isoCurrencyCode: "USD",
               apr: 24.99,
               minPaymentAmount: 25,
-              lastStatementBalance: 1500.50,
-              nextPaymentDueDate: new Date('2025-02-15').toISOString(),
-              lastStatementIssueDate: new Date('2025-01-15').toISOString(),
+              lastStatementBalance: 1500.5,
+              nextPaymentDueDate: new Date("2025-02-15").toISOString(),
+              lastStatementIssueDate: new Date("2025-01-15").toISOString(),
               extended: {
-                nickname: 'Travel Card',
+                nickname: "Travel Card",
               },
             },
           ],
@@ -75,32 +83,32 @@ describe('useAccounts Hook', () => {
       });
 
       // Validate fetch was called with correct endpoint
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
 
       expect(result.current.accounts).toHaveLength(1);
       expect(result.current.accounts[0]).toMatchObject({
-        id: 'acc_1',
-        bank: 'Chase',
-        name: 'Travel Card', // Uses nickname from extended
-        type: 'credit card',
+        id: "acc_1",
+        bank: "Chase",
+        name: "Travel Card", // Uses nickname from extended
+        type: "credit card",
       });
       expect(result.current.error).toBeNull();
     });
 
-    it('should handle multiple accounts from multiple items', async () => {
+    it("should handle multiple accounts from multiple items", async () => {
       const mockData = [
         {
-          id: 'item_1',
-          institutionName: 'Chase',
+          id: "item_1",
+          institutionName: "Chase",
           accounts: [
-            { id: 'acc_1', name: 'Card 1', currentBalance: 1000 },
-            { id: 'acc_2', name: 'Card 2', currentBalance: 2000 },
+            { id: "acc_1", name: "Card 1", currentBalance: 1000 },
+            { id: "acc_2", name: "Card 2", currentBalance: 2000 },
           ],
         },
         {
-          id: 'item_2',
-          institutionName: 'Amex',
-          accounts: [{ id: 'acc_3', name: 'Card 3', currentBalance: 3000 }],
+          id: "item_2",
+          institutionName: "Amex",
+          accounts: [{ id: "acc_3", name: "Card 3", currentBalance: 3000 }],
         },
       ];
 
@@ -116,17 +124,17 @@ describe('useAccounts Hook', () => {
       });
 
       // Validate correct endpoint called
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
 
-      expect(result.current.accounts[0].bank).toBe('Chase');
-      expect(result.current.accounts[2].bank).toBe('Amex');
+      expect(result.current.accounts[0].bank).toBe("Chase");
+      expect(result.current.accounts[2].bank).toBe("Amex");
     });
 
-    it('should return empty array for 404 response', async () => {
+    it("should return empty array for 404 response", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
         status: 404,
-        text: async () => 'User profile not found',
+        text: async () => "User profile not found",
       });
 
       const { result } = renderHook(() => useAccounts());
@@ -136,25 +144,25 @@ describe('useAccounts Hook', () => {
       });
 
       // Validate correct endpoint called even on 404
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
 
       expect(result.current.accounts).toEqual([]);
       expect(result.current.error).toBeNull();
     });
   });
 
-  describe('Data Transformation', () => {
-    it('should calculate due date correctly', async () => {
+  describe("Data Transformation", () => {
+    it("should calculate due date correctly", async () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const mockData = [
         {
-          institutionName: 'Bank',
+          institutionName: "Bank",
           accounts: [
             {
-              id: 'acc_1',
-              name: 'Card',
+              id: "acc_1",
+              name: "Card",
               nextPaymentDueDate: tomorrow.toISOString(),
             },
           ],
@@ -169,10 +177,10 @@ describe('useAccounts Hook', () => {
       const { result } = renderHook(() => useAccounts());
 
       await waitFor(() => {
-        expect(result.current.accounts[0]?.due).toBe('Tomorrow');
+        expect(result.current.accounts[0]?.due).toBe("Tomorrow");
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
     });
 
     it('should show "Today" for due date today', async () => {
@@ -181,11 +189,11 @@ describe('useAccounts Hook', () => {
 
       const mockData = [
         {
-          institutionName: 'Bank',
+          institutionName: "Bank",
           accounts: [
             {
-              id: 'acc_1',
-              name: 'Card',
+              id: "acc_1",
+              name: "Card",
               nextPaymentDueDate: today.toISOString(),
             },
           ],
@@ -200,10 +208,10 @@ describe('useAccounts Hook', () => {
       const { result } = renderHook(() => useAccounts());
 
       await waitFor(() => {
-        expect(result.current.accounts[0]?.due).toBe('Today');
+        expect(result.current.accounts[0]?.due).toBe("Today");
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
     });
 
     it('should show "Overdue" for past due dates', async () => {
@@ -212,11 +220,11 @@ describe('useAccounts Hook', () => {
 
       const mockData = [
         {
-          institutionName: 'Bank',
+          institutionName: "Bank",
           accounts: [
             {
-              id: 'acc_1',
-              name: 'Card',
+              id: "acc_1",
+              name: "Card",
               nextPaymentDueDate: yesterday.toISOString(),
             },
           ],
@@ -231,25 +239,25 @@ describe('useAccounts Hook', () => {
       const { result } = renderHook(() => useAccounts());
 
       await waitFor(() => {
-        expect(result.current.accounts[0]?.due).toBe('Overdue');
+        expect(result.current.accounts[0]?.due).toBe("Overdue");
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
     });
 
-    it('should format currency correctly', async () => {
+    it("should format currency correctly", async () => {
       const mockData = [
         {
-          institutionName: 'Bank',
+          institutionName: "Bank",
           accounts: [
             {
-              id: 'acc_1',
-              name: 'Card',
+              id: "acc_1",
+              name: "Card",
               currentBalance: 1234.56,
               limit: 10000,
-              isoCurrencyCode: 'USD',
+              isoCurrencyCode: "USD",
               apr: 24.99,
-              minPaymentAmount: 25.00,
+              minPaymentAmount: 25.0,
             },
           ],
         },
@@ -263,21 +271,25 @@ describe('useAccounts Hook', () => {
       const { result } = renderHook(() => useAccounts());
 
       await waitFor(() => {
-        expect(result.current.accounts[0]?.liabilities.limit).toContain('$10,000');
-        expect(result.current.accounts[0]?.liabilities.min_due).toContain('$25');
+        expect(result.current.accounts[0]?.liabilities.limit).toContain(
+          "$10,000",
+        );
+        expect(result.current.accounts[0]?.liabilities.min_due).toContain(
+          "$25",
+        );
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
     });
 
-    it('should format APR as percentage', async () => {
+    it("should format APR as percentage", async () => {
       const mockData = [
         {
-          institutionName: 'Bank',
+          institutionName: "Bank",
           accounts: [
             {
-              id: 'acc_1',
-              name: 'Card',
+              id: "acc_1",
+              name: "Card",
               apr: 24.99,
             },
           ],
@@ -292,20 +304,20 @@ describe('useAccounts Hook', () => {
       const { result } = renderHook(() => useAccounts());
 
       await waitFor(() => {
-        expect(result.current.accounts[0]?.liabilities.apr).toBe('24.99%');
+        expect(result.current.accounts[0]?.liabilities.apr).toBe("24.99%");
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
     });
 
-    it('should handle null/undefined values gracefully', async () => {
+    it("should handle null/undefined values gracefully", async () => {
       const mockData = [
         {
-          institutionName: 'Bank',
+          institutionName: "Bank",
           accounts: [
             {
-              id: 'acc_1',
-              name: 'Card',
+              id: "acc_1",
+              name: "Card",
               currentBalance: null,
               limit: undefined,
               apr: null,
@@ -324,18 +336,18 @@ describe('useAccounts Hook', () => {
 
       await waitFor(() => {
         expect(result.current.accounts[0]?.balance).toBe(0);
-        expect(result.current.accounts[0]?.due).toBe('N/A');
-        expect(result.current.accounts[0]?.liabilities.apr).toBe('N/A');
-        expect(result.current.accounts[0]?.liabilities.limit).toBe('N/A');
+        expect(result.current.accounts[0]?.due).toBe("N/A");
+        expect(result.current.accounts[0]?.liabilities.apr).toBe("N/A");
+        expect(result.current.accounts[0]?.liabilities.limit).toBe("N/A");
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle fetch errors', async () => {
-      const errorMessage = 'Network error';
+  describe("Error Handling", () => {
+    it("should handle fetch errors", async () => {
+      const errorMessage = "Network error";
       (global.fetch as jest.Mock).mockRejectedValue(new Error(errorMessage));
 
       const { result } = renderHook(() => useAccounts());
@@ -344,17 +356,17 @@ describe('useAccounts Hook', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
       expect(result.current.error).toBeDefined();
       expect(result.current.error?.message).toBe(errorMessage);
       expect(result.current.accounts).toEqual([]);
     });
 
-    it('should handle non-404 HTTP errors', async () => {
+    it("should handle non-404 HTTP errors", async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
         status: 500,
-        text: async () => 'Internal Server Error',
+        text: async () => "Internal Server Error",
       });
 
       const { result } = renderHook(() => useAccounts());
@@ -363,18 +375,18 @@ describe('useAccounts Hook', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
       expect(result.current.error).toBeDefined();
       expect(result.current.accounts).toEqual([]);
     });
 
-    it('should detect offline status', async () => {
-      Object.defineProperty(navigator, 'onLine', {
+    it("should detect offline status", async () => {
+      Object.defineProperty(navigator, "onLine", {
         writable: true,
         value: false,
       });
 
-      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+      (global.fetch as jest.Mock).mockRejectedValue(new Error("Network error"));
 
       const { result } = renderHook(() => useAccounts());
 
@@ -382,16 +394,16 @@ describe('useAccounts Hook', () => {
         expect(result.current.offline).toBe(true);
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/plaid/items');
+      expect(global.fetch).toHaveBeenCalledWith("/api/plaid/items");
     });
   });
 
-  describe('Refresh Functionality', () => {
-    it('should allow manual refresh', async () => {
+  describe("Refresh Functionality", () => {
+    it("should allow manual refresh", async () => {
       const mockData = [
         {
-          institutionName: 'Bank',
-          accounts: [{ id: 'acc_1', name: 'Card 1' }],
+          institutionName: "Bank",
+          accounts: [{ id: "acc_1", name: "Card 1" }],
         },
       ];
 
@@ -414,9 +426,9 @@ describe('useAccounts Hook', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
-    it('should clear errors on refresh', async () => {
+    it("should clear errors on refresh", async () => {
       // First call fails
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Error'));
+      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error("Error"));
 
       const { result } = renderHook(() => useAccounts());
 

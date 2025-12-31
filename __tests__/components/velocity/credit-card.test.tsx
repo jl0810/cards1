@@ -23,15 +23,15 @@ jest.mock("next/navigation", () => ({
 }));
 
 // Mock framer-motion to avoid animation issues in tests
-jest.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, className, onClick, ...props }: any) => (
-      <div className={className} onClick={onClick} {...props}>
-        {children}
-      </div>
-    ),
-  },
-}));
+jest.mock("framer-motion", () => {
+  const React = require("react");
+  return {
+    motion: {
+      div: ({ children, className, onClick, ...props }: any) =>
+        React.createElement("div", { className, onClick, ...props }, children),
+    },
+  };
+});
 
 describe("Credit Card Component", () => {
   const mockAccount = {

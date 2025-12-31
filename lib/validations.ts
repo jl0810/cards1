@@ -19,7 +19,10 @@ export const PlaidAccountSchema = z.object({
   name: z.string(),
   mask: z.string().nullable().optional(),
   type: z.string(),
-  subtype: z.union([z.string(), z.array(z.string())]).nullable().optional(),
+  subtype: z
+    .union([z.string(), z.array(z.string())])
+    .nullable()
+    .optional(),
   verification_status: z.string().nullable().optional(),
 });
 
@@ -73,12 +76,14 @@ export const TransactionSchema = z.object({
   pending: z.boolean(),
   accountName: z.string().optional(),
   merchantName: z.string().optional(),
-  plaidItem: z.object({
-    id: z.string(),
-    itemId: z.string(),
-    institutionName: z.string(),
-    familyMemberId: z.string(),
-  }).optional(),
+  plaidItem: z
+    .object({
+      id: z.string(),
+      itemId: z.string(),
+      institutionName: z.string(),
+      familyMemberId: z.string(),
+    })
+    .optional(),
 });
 
 export const PlaidItemSchema = z.object({
@@ -88,6 +93,11 @@ export const PlaidItemSchema = z.object({
   familyMemberId: z.string().optional(),
   bankId: z.string().optional(),
   accounts: z.array(z.any()).optional(),
+});
+
+export const SyncTransactionsSchema = z.object({
+  itemId: z.string().min(1, "Item ID is required"),
+  cursor: z.string().optional(),
 });
 
 export const AssignPlaidItemSchema = z.object({
@@ -100,32 +110,36 @@ export const AccountSchema = z.object({
   name: z.string(),
   bank: z.string(),
   bankId: z.string().optional(),
-  bankData: z.object({
-    id: z.string(),
-    name: z.string(),
-    logoUrl: z.string().nullable(),
-    logoSvg: z.string().nullable(),
-    brandColor: z.string().nullable(),
-  }).optional(),
+  bankData: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      logoUrl: z.string().nullable(),
+      logoSvg: z.string().nullable(),
+      brandColor: z.string().nullable(),
+    })
+    .optional(),
   balance: z.number(),
   userId: z.string(),
   due: z.string(),
   color: z.string(),
-  liabilities: z.object({
-    apr: z.string(),
-    aprType: z.string(),
-    aprBalanceSubjectToApr: z.string(),
-    aprInterestChargeAmount: z.string(),
-    limit: z.string(),
-    min_due: z.string(),
-    last_statement: z.string(),
-    last_statement_balance: z.string().optional(),
-    next_due_date: z.string(),
-    last_statement_date: z.string(),
-    last_payment_amount: z.string(),
-    last_payment_date: z.string(),
-    status: z.string(),
-  }).optional(),
+  liabilities: z
+    .object({
+      apr: z.string(),
+      aprType: z.string(),
+      aprBalanceSubjectToApr: z.string(),
+      aprInterestChargeAmount: z.string(),
+      limit: z.string(),
+      min_due: z.string(),
+      last_statement: z.string(),
+      last_statement_balance: z.string().optional(),
+      next_due_date: z.string(),
+      last_statement_date: z.string(),
+      last_payment_amount: z.string(),
+      last_payment_date: z.string(),
+      status: z.string(),
+    })
+    .optional(),
   lastStatementBalance: z.number().optional(),
   lastStatementIssueDate: z.string().optional(),
   currentBalance: z.number().optional(),
@@ -143,11 +157,13 @@ export const AccountSchema = z.object({
   aprType: z.string().optional(),
   aprBalanceSubjectToApr: z.union([z.string(), z.number()]).optional(),
   aprInterestChargeAmount: z.union([z.string(), z.number()]).optional(),
-  extended: z.object({
-    paymentCycleStatus: z.string().optional(),
-    paymentMarkedPaidDate: z.string().optional(),
-    nickname: z.string().optional(),
-  }).optional(),
+  extended: z
+    .object({
+      paymentCycleStatus: z.string().optional(),
+      paymentMarkedPaidDate: z.string().optional(),
+      nickname: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const UserSchema = z.object({

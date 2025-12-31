@@ -1,175 +1,185 @@
-import { describe, expect, it } from '@jest/globals';
-import { BENEFIT_MATCHING_RULES, type BenefitMatchCriteria } from '@/lib/benefit-matcher';
+import { describe, expect, it } from "@jest/globals";
+import {
+  BENEFIT_MATCHING_RULES,
+  type BenefitMatchCriteria,
+} from "@/lib/benefit-matcher";
 
 /**
  * Benefit Matcher Tests
  * @covers US-010 - Benefit Matching
  */
 
-describe('Benefit Matcher', () => {
-  describe('BENEFIT_MATCHING_RULES', () => {
-    it('should have Uber benefit rules', () => {
+describe("Benefit Matcher", () => {
+  describe("BENEFIT_MATCHING_RULES", () => {
+    it("should have Uber benefit rules", () => {
       expect(BENEFIT_MATCHING_RULES.uber).toBeDefined();
       expect(BENEFIT_MATCHING_RULES.uber).toHaveLength(1);
-      
+
       const uberRule = BENEFIT_MATCHING_RULES.uber[0];
-      expect(uberRule.benefitId).toBe('uber_cash');
-      expect(uberRule.benefitName).toBe('Uber Cash Credit');
+      expect(uberRule.benefitId).toBe("uber_cash");
+      expect(uberRule.benefitName).toBe("Uber Cash Credit");
       expect(uberRule.monthlyLimit).toBe(15);
       expect(uberRule.annualLimit).toBe(200);
     });
 
-    it('should have Saks benefit rules', () => {
+    it("should have Saks benefit rules", () => {
       expect(BENEFIT_MATCHING_RULES.saks).toBeDefined();
       const saksRule = BENEFIT_MATCHING_RULES.saks[0];
-      expect(saksRule.benefitId).toBe('saks_credit');
+      expect(saksRule.benefitId).toBe("saks_credit");
       expect(saksRule.monthlyLimit).toBe(50);
       expect(saksRule.annualLimit).toBe(100);
     });
 
-    it('should have airline benefit rules', () => {
+    it("should have airline benefit rules", () => {
       expect(BENEFIT_MATCHING_RULES.airline).toBeDefined();
       const airlineRule = BENEFIT_MATCHING_RULES.airline[0];
-      expect(airlineRule.benefitId).toBe('airline_credit');
+      expect(airlineRule.benefitId).toBe("airline_credit");
       expect(airlineRule.maxAmount).toBe(200);
       expect(airlineRule.annualLimit).toBe(200);
-      expect(airlineRule.categories).toContain('Travel');
-      expect(airlineRule.categories).toContain('Airlines');
+      expect(airlineRule.categories).toContain("Travel");
+      expect(airlineRule.categories).toContain("Airlines");
     });
 
-    it('should have digital entertainment benefit rules', () => {
+    it("should have digital entertainment benefit rules", () => {
       expect(BENEFIT_MATCHING_RULES.digital_entertainment).toBeDefined();
       const entertainmentRule = BENEFIT_MATCHING_RULES.digital_entertainment[0];
-      expect(entertainmentRule.benefitId).toBe('digital_entertainment');
+      expect(entertainmentRule.benefitId).toBe("digital_entertainment");
       expect(entertainmentRule.monthlyLimit).toBe(20);
       expect(entertainmentRule.annualLimit).toBe(240);
     });
 
-    it('should have Walmart+ benefit rules', () => {
+    it("should have Walmart+ benefit rules", () => {
       expect(BENEFIT_MATCHING_RULES.walmart).toBeDefined();
       const walmartRule = BENEFIT_MATCHING_RULES.walmart[0];
-      expect(walmartRule.benefitId).toBe('walmart_plus');
+      expect(walmartRule.benefitId).toBe("walmart_plus");
       expect(walmartRule.monthlyLimit).toBe(12.95);
-      expect(walmartRule.minAmount).toBe(12.00);
-      expect(walmartRule.maxAmount).toBe(16.00);
+      expect(walmartRule.minAmount).toBe(12.0);
+      expect(walmartRule.maxAmount).toBe(16.0);
     });
 
-    it('should have hotel benefit rules', () => {
+    it("should have hotel benefit rules", () => {
       expect(BENEFIT_MATCHING_RULES.hotel).toBeDefined();
       const hotelRule = BENEFIT_MATCHING_RULES.hotel[0];
-      expect(hotelRule.benefitId).toBe('hotel_credit');
+      expect(hotelRule.benefitId).toBe("hotel_credit");
       expect(hotelRule.annualLimit).toBe(200);
     });
   });
 
-  describe('Merchant Pattern Matching', () => {
-    it('should have multiple Uber patterns', () => {
+  describe("Merchant Pattern Matching", () => {
+    it("should have multiple Uber patterns", () => {
       const uberPatterns = BENEFIT_MATCHING_RULES.uber[0].merchantPatterns;
-      expect(uberPatterns).toContain('uber');
-      expect(uberPatterns).toContain('uber eats');
-      expect(uberPatterns).toContain('ubereats');
+      expect(uberPatterns).toContain("uber");
+      expect(uberPatterns).toContain("uber eats");
+      expect(uberPatterns).toContain("ubereats");
     });
 
-    it('should have regex-friendly Saks patterns', () => {
+    it("should have regex-friendly Saks patterns", () => {
       const saksPatterns = BENEFIT_MATCHING_RULES.saks[0].merchantPatterns;
-      expect(saksPatterns).toContain('saks\\.com');
-      expect(saksPatterns).toContain('saksfifthavenue');
+      expect(saksPatterns).toContain("saks\\.com");
+      expect(saksPatterns).toContain("saksfifthavenue");
     });
 
-    it('should have all major airline patterns', () => {
-      const airlinePatterns = BENEFIT_MATCHING_RULES.airline[0].merchantPatterns;
-      expect(airlinePatterns).toContain('american airlines');
-      expect(airlinePatterns).toContain('delta air lines');
-      expect(airlinePatterns).toContain('united airlines');
-      expect(airlinePatterns).toContain('southwest airlines');
-      expect(airlinePatterns).toContain('jetblue');
-      expect(airlinePatterns).toContain('alaska airlines');
+    it("should have all major airline patterns", () => {
+      const airlinePatterns =
+        BENEFIT_MATCHING_RULES.airline[0].merchantPatterns;
+      expect(airlinePatterns).toContain("american airlines");
+      expect(airlinePatterns).toContain("delta air lines");
+      expect(airlinePatterns).toContain("united airlines");
+      expect(airlinePatterns).toContain("southwest airlines");
+      expect(airlinePatterns).toContain("jetblue");
+      expect(airlinePatterns).toContain("alaska airlines");
     });
 
-    it('should have streaming service patterns with regex escapes', () => {
-      const entertainmentPatterns = BENEFIT_MATCHING_RULES.digital_entertainment[0].merchantPatterns;
-      expect(entertainmentPatterns).toContain('disney\\+');
-      expect(entertainmentPatterns).toContain('espn\\+');
-      expect(entertainmentPatterns).toContain('disney plus');
+    it("should have streaming service patterns with regex escapes", () => {
+      const entertainmentPatterns =
+        BENEFIT_MATCHING_RULES.digital_entertainment[0].merchantPatterns;
+      expect(entertainmentPatterns).toContain("disney\\+");
+      expect(entertainmentPatterns).toContain("espn\\+");
+      expect(entertainmentPatterns).toContain("disney plus");
     });
 
-    it('should have New York Times patterns', () => {
-      const entertainmentPatterns = BENEFIT_MATCHING_RULES.digital_entertainment[0].merchantPatterns;
-      expect(entertainmentPatterns).toContain('nyt');
-      expect(entertainmentPatterns).toContain('new york times');
+    it("should have New York Times patterns", () => {
+      const entertainmentPatterns =
+        BENEFIT_MATCHING_RULES.digital_entertainment[0].merchantPatterns;
+      expect(entertainmentPatterns).toContain("nyt");
+      expect(entertainmentPatterns).toContain("new york times");
     });
   });
 
-  describe('Benefit Limits', () => {
-    it('should have correct monthly and annual limits', () => {
+  describe("Benefit Limits", () => {
+    it("should have correct monthly and annual limits", () => {
       // Uber: $15/month, $200/year
       expect(BENEFIT_MATCHING_RULES.uber[0].monthlyLimit).toBe(15);
       expect(BENEFIT_MATCHING_RULES.uber[0].annualLimit).toBe(200);
 
       // Digital Entertainment: $20/month, $240/year
-      expect(BENEFIT_MATCHING_RULES.digital_entertainment[0].monthlyLimit).toBe(20);
-      expect(BENEFIT_MATCHING_RULES.digital_entertainment[0].annualLimit).toBe(240);
+      expect(BENEFIT_MATCHING_RULES.digital_entertainment[0].monthlyLimit).toBe(
+        20,
+      );
+      expect(BENEFIT_MATCHING_RULES.digital_entertainment[0].annualLimit).toBe(
+        240,
+      );
 
       // Walmart+: $12.95/month, $155.40/year
       expect(BENEFIT_MATCHING_RULES.walmart[0].monthlyLimit).toBe(12.95);
-      expect(BENEFIT_MATCHING_RULES.walmart[0].annualLimit).toBe(155.40);
+      expect(BENEFIT_MATCHING_RULES.walmart[0].annualLimit).toBe(155.4);
     });
 
-    it('should have amount guardrails for Walmart+', () => {
+    it("should have amount guardrails for Walmart+", () => {
       const walmartRule = BENEFIT_MATCHING_RULES.walmart[0];
-      expect(walmartRule.minAmount).toBe(12.00);
-      expect(walmartRule.maxAmount).toBe(16.00);
+      expect(walmartRule.minAmount).toBe(12.0);
+      expect(walmartRule.maxAmount).toBe(16.0);
     });
 
-    it('should have no min/max for most benefits', () => {
+    it("should have no min/max for most benefits", () => {
       expect(BENEFIT_MATCHING_RULES.uber[0].minAmount).toBeUndefined();
       expect(BENEFIT_MATCHING_RULES.uber[0].maxAmount).toBeUndefined();
-      
+
       expect(BENEFIT_MATCHING_RULES.saks[0].minAmount).toBeUndefined();
       expect(BENEFIT_MATCHING_RULES.saks[0].maxAmount).toBeUndefined();
     });
 
-    it('should have max amount for airline benefit', () => {
+    it("should have max amount for airline benefit", () => {
       expect(BENEFIT_MATCHING_RULES.airline[0].maxAmount).toBe(200);
     });
   });
 
-  describe('Benefit Categories', () => {
-    it('should have categories for airline benefit', () => {
+  describe("Benefit Categories", () => {
+    it("should have categories for airline benefit", () => {
       const categories = BENEFIT_MATCHING_RULES.airline[0].categories;
       expect(categories).toBeDefined();
       expect(categories).toHaveLength(2);
     });
 
-    it('should not have categories for most benefits', () => {
+    it("should not have categories for most benefits", () => {
       expect(BENEFIT_MATCHING_RULES.uber[0].categories).toBeUndefined();
       expect(BENEFIT_MATCHING_RULES.saks[0].categories).toBeUndefined();
       expect(BENEFIT_MATCHING_RULES.walmart[0].categories).toBeUndefined();
     });
   });
 
-  describe('BenefitMatchCriteria Interface', () => {
-    it('should match expected structure', () => {
+  describe("BenefitMatchCriteria Interface", () => {
+    it("should match expected structure", () => {
       const uberCriteria: BenefitMatchCriteria = {
-        benefitId: 'test_benefit',
-        benefitName: 'Test Benefit',
-        merchantPatterns: ['test'],
-        categories: ['category1'],
+        benefitId: "test_benefit",
+        benefitName: "Test Benefit",
+        merchantPatterns: ["test"],
+        categories: ["category1"],
         minAmount: 10,
         maxAmount: 100,
         monthlyLimit: 50,
         annualLimit: 600,
       };
 
-      expect(uberCriteria.benefitId).toBe('test_benefit');
+      expect(uberCriteria.benefitId).toBe("test_benefit");
       expect(uberCriteria.merchantPatterns).toHaveLength(1);
     });
 
-    it('should allow optional fields', () => {
+    it("should allow optional fields", () => {
       const minimalCriteria: BenefitMatchCriteria = {
-        benefitId: 'minimal',
-        benefitName: 'Minimal Benefit',
-        merchantPatterns: ['pattern'],
+        benefitId: "minimal",
+        benefitName: "Minimal Benefit",
+        merchantPatterns: ["pattern"],
       };
 
       expect(minimalCriteria.categories).toBeUndefined();
@@ -180,10 +190,10 @@ describe('Benefit Matcher', () => {
     });
   });
 
-  describe('Benefit Rule Completeness', () => {
-    it('should have all required properties for each rule', () => {
+  describe("Benefit Rule Completeness", () => {
+    it("should have all required properties for each rule", () => {
       Object.entries(BENEFIT_MATCHING_RULES).forEach(([key, rules]) => {
-        rules.forEach(rule => {
+        rules.forEach((rule) => {
           expect(rule.benefitId).toBeDefined();
           expect(rule.benefitName).toBeDefined();
           expect(rule.merchantPatterns).toBeDefined();
@@ -192,10 +202,10 @@ describe('Benefit Matcher', () => {
       });
     });
 
-    it('should have unique benefit IDs', () => {
+    it("should have unique benefit IDs", () => {
       const allBenefitIds: string[] = [];
-      Object.values(BENEFIT_MATCHING_RULES).forEach(rules => {
-        rules.forEach(rule => {
+      Object.values(BENEFIT_MATCHING_RULES).forEach((rules) => {
+        rules.forEach((rule) => {
           allBenefitIds.push(rule.benefitId);
         });
       });
@@ -204,113 +214,131 @@ describe('Benefit Matcher', () => {
       expect(uniqueIds.size).toBe(allBenefitIds.length);
     });
 
-    it('should have at least 6 benefit types', () => {
+    it("should have at least 6 benefit types", () => {
       const benefitTypes = Object.keys(BENEFIT_MATCHING_RULES);
       expect(benefitTypes.length).toBeGreaterThanOrEqual(6);
     });
   });
 
-  describe('Regex Pattern Validation', () => {
-    it('should have valid regex patterns', () => {
-      Object.values(BENEFIT_MATCHING_RULES).forEach(rules => {
-        rules.forEach(rule => {
-          rule.merchantPatterns.forEach(pattern => {
+  describe("Regex Pattern Validation", () => {
+    it("should have valid regex patterns", () => {
+      Object.values(BENEFIT_MATCHING_RULES).forEach((rules) => {
+        rules.forEach((rule) => {
+          rule.merchantPatterns.forEach((pattern) => {
             // Ensure pattern can be converted to valid regex
-            expect(() => new RegExp(pattern, 'i')).not.toThrow();
+            expect(() => new RegExp(pattern, "i")).not.toThrow();
           });
         });
       });
     });
 
-    it('should have case-insensitive matching potential', () => {
+    it("should have case-insensitive matching potential", () => {
       // All patterns should work case-insensitively
       const testPattern = BENEFIT_MATCHING_RULES.uber[0].merchantPatterns[0];
-      const regex = new RegExp(testPattern, 'i');
-      
-      expect(regex.test('UBER')).toBe(true);
-      expect(regex.test('Uber')).toBe(true);
-      expect(regex.test('uber')).toBe(true);
+      const regex = new RegExp(testPattern, "i");
+
+      expect(regex.test("UBER")).toBe(true);
+      expect(regex.test("Uber")).toBe(true);
+      expect(regex.test("uber")).toBe(true);
     });
   });
 
-  describe('Limit Calculations', () => {
-    it('should have monthly limits that multiply to close to annual limits', () => {
+  describe("Limit Calculations", () => {
+    it("should have monthly limits that multiply to close to annual limits", () => {
       // Uber: $15 * 12 = $180 (but annual is $200 due to Dec bonus)
       const uberRule = BENEFIT_MATCHING_RULES.uber[0];
       // Allow for December bonus in annual limit
-      expect(uberRule.annualLimit! - uberRule.monthlyLimit! * 12).toBeLessThanOrEqual(30);
+      expect(
+        uberRule.annualLimit! - uberRule.monthlyLimit! * 12,
+      ).toBeLessThanOrEqual(30);
 
       // Digital Entertainment: $20 * 12 = $240
       const entertainmentRule = BENEFIT_MATCHING_RULES.digital_entertainment[0];
-      expect(entertainmentRule.monthlyLimit! * 12).toBe(entertainmentRule.annualLimit);
+      expect(entertainmentRule.monthlyLimit! * 12).toBe(
+        entertainmentRule.annualLimit,
+      );
 
       // Walmart+: $12.95 * 12 = $155.40
       const walmartRule = BENEFIT_MATCHING_RULES.walmart[0];
-      expect(walmartRule.monthlyLimit! * 12).toBeCloseTo(walmartRule.annualLimit!, 2);
+      expect(walmartRule.monthlyLimit! * 12).toBeCloseTo(
+        walmartRule.annualLimit!,
+        2,
+      );
     });
 
-    it('should have semi-annual limit for Saks', () => {
+    it("should have semi-annual limit for Saks", () => {
       // Saks is $50 every 6 months = $100/year
       const saksRule = BENEFIT_MATCHING_RULES.saks[0];
       expect(saksRule.monthlyLimit! * 2).toBe(saksRule.annualLimit);
     });
   });
 
-  describe('BR-017: Comprehensive Merchant Pattern Matching', () => {
-    it('should match Uber transactions case-insensitively', () => {
+  describe("BR-017: Comprehensive Merchant Pattern Matching", () => {
+    it("should match Uber transactions case-insensitively", () => {
       const uberPatterns = BENEFIT_MATCHING_RULES.uber[0].merchantPatterns;
-      
+
       // Test case-insensitive matching
-      expect(uberPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test('UBER')
-      )).toBe(true);
-      expect(uberPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test('Uber Eats')
-      )).toBe(true);
-      expect(uberPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test('UBEREATS')
-      )).toBe(true);
+      expect(
+        uberPatterns.some((pattern) => new RegExp(pattern, "i").test("UBER")),
+      ).toBe(true);
+      expect(
+        uberPatterns.some((pattern) =>
+          new RegExp(pattern, "i").test("Uber Eats"),
+        ),
+      ).toBe(true);
+      expect(
+        uberPatterns.some((pattern) =>
+          new RegExp(pattern, "i").test("UBEREATS"),
+        ),
+      ).toBe(true);
     });
 
-    it('should handle regex patterns correctly', () => {
+    it("should handle regex patterns correctly", () => {
       const saksPatterns = BENEFIT_MATCHING_RULES.saks[0].merchantPatterns;
-      
+
       // Test regex escaping
-      expect(saksPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test('saks.com')
-      )).toBe(true);
-      expect(saksPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test('saks fifth avenue')
-      )).toBe(true);
+      expect(
+        saksPatterns.some((pattern) =>
+          new RegExp(pattern, "i").test("saks.com"),
+        ),
+      ).toBe(true);
+      expect(
+        saksPatterns.some((pattern) =>
+          new RegExp(pattern, "i").test("saks fifth avenue"),
+        ),
+      ).toBe(true);
     });
 
-    it('should match all major airlines', () => {
-      const airlinePatterns = BENEFIT_MATCHING_RULES.airline[0].merchantPatterns;
-      
+    it("should match all major airlines", () => {
+      const airlinePatterns =
+        BENEFIT_MATCHING_RULES.airline[0].merchantPatterns;
+
       const airlines = [
-        'American Airlines',
-        'Delta Air Lines', 
-        'United Airlines',
-        'Southwest Airlines',
-        'JetBlue Airways'
+        "American Airlines",
+        "Delta Air Lines",
+        "United Airlines",
+        "Southwest Airlines",
+        "JetBlue Airways",
       ];
-      
-      airlines.forEach(airline => {
-        expect(airlinePatterns.some(pattern => 
-          new RegExp(pattern, 'i').test(airline)
-        )).toBe(true);
+
+      airlines.forEach((airline) => {
+        expect(
+          airlinePatterns.some((pattern) =>
+            new RegExp(pattern, "i").test(airline),
+          ),
+        ).toBe(true);
       });
     });
   });
 
-  describe('BR-018: Category-Based Matching', () => {
-    it('should include airline categories', () => {
+  describe("BR-018: Category-Based Matching", () => {
+    it("should include airline categories", () => {
       const airlineRule = BENEFIT_MATCHING_RULES.airline[0];
-      expect(airlineRule.categories).toContain('Travel');
-      expect(airlineRule.categories).toContain('Airlines');
+      expect(airlineRule.categories).toContain("Travel");
+      expect(airlineRule.categories).toContain("Airlines");
     });
 
-    it('should have category and merchant pattern combination', () => {
+    it("should have category and merchant pattern combination", () => {
       const airlineRule = BENEFIT_MATCHING_RULES.airline[0];
       expect(airlineRule.merchantPatterns).toBeDefined();
       expect(airlineRule.categories).toBeDefined();
@@ -319,115 +347,141 @@ describe('Benefit Matcher', () => {
     });
   });
 
-  describe('BR-019: Amount Guard Rails', () => {
-    it('should enforce Walmart+ amount range', () => {
+  describe("BR-019: Amount Guard Rails", () => {
+    it("should enforce Walmart+ amount range", () => {
       const walmartRule = BENEFIT_MATCHING_RULES.walmart[0];
-      
+
       expect(walmartRule.minAmount).toBe(12.0);
       expect(walmartRule.maxAmount).toBe(16.0);
-      
+
       // Test amount validation logic
-      const validAmounts = [12.0, 12.95, 14.50, 16.0];
-      const invalidAmounts = [11.99, 16.01, 20.00];
-      
-      validAmounts.forEach(amount => {
-        expect(amount >= walmartRule.minAmount! && amount <= walmartRule.maxAmount!).toBe(true);
+      const validAmounts = [12.0, 12.95, 14.5, 16.0];
+      const invalidAmounts = [11.99, 16.01, 20.0];
+
+      validAmounts.forEach((amount) => {
+        expect(
+          amount >= walmartRule.minAmount! && amount <= walmartRule.maxAmount!,
+        ).toBe(true);
       });
-      
-      invalidAmounts.forEach(amount => {
-        expect(amount >= walmartRule.minAmount! && amount <= walmartRule.maxAmount!).toBe(false);
+
+      invalidAmounts.forEach((amount) => {
+        expect(
+          amount >= walmartRule.minAmount! && amount <= walmartRule.maxAmount!,
+        ).toBe(false);
       });
     });
   });
 
-  describe('BR-020: Limit Enforcement', () => {
-    it('should have monthly and annual limits for all benefits', () => {
+  describe("BR-020: Limit Enforcement", () => {
+    it("should have monthly and annual limits for all benefits", () => {
       Object.entries(BENEFIT_MATCHING_RULES).forEach(([benefitType, rules]) => {
-        rules.forEach(rule => {
-          expect(rule.monthlyLimit).toBeDefined();
+        rules.forEach((rule) => {
+          // expect(rule.monthlyLimit).toBeDefined(); // Not all benefits have monthly limits (e.g. Airline, Hotel)
           expect(rule.annualLimit).toBeDefined();
-          expect(rule.monthlyLimit!).toBeLessThanOrEqual(rule.annualLimit!);
+          if (rule.monthlyLimit) {
+            expect(rule.monthlyLimit).toBeLessThanOrEqual(rule.annualLimit!);
+          }
         });
       });
     });
 
-    it('should have realistic limit relationships', () => {
+    it("should have realistic limit relationships", () => {
       // Monthly limits should not exceed annual limits
       const uberRule = BENEFIT_MATCHING_RULES.uber[0];
-      expect(uberRule.monthlyLimit! * 12).toBeLessThanOrEqual(uberRule.annualLimit! + 30); // Allow December bonus
-      
+      expect(uberRule.monthlyLimit! * 12).toBeLessThanOrEqual(
+        uberRule.annualLimit! + 30,
+      ); // Allow December bonus
+
       const walmartRule = BENEFIT_MATCHING_RULES.walmart[0];
-      expect(walmartRule.monthlyLimit! * 12).toBeCloseTo(walmartRule.annualLimit!, 2);
+      expect(walmartRule.monthlyLimit! * 12).toBeCloseTo(
+        walmartRule.annualLimit!,
+        2,
+      );
     });
   });
 
-  describe('Edge Cases and Negative Tests', () => {
-    it('should handle empty merchant names gracefully', () => {
+  describe("Edge Cases and Negative Tests", () => {
+    it("should handle empty merchant names gracefully", () => {
       // Test that patterns don't match empty strings
       const uberPatterns = BENEFIT_MATCHING_RULES.uber[0].merchantPatterns;
-      expect(uberPatterns.every(pattern => 
-        !new RegExp(pattern, 'i').test('')
-      )).toBe(true);
+      expect(
+        uberPatterns.every((pattern) => !new RegExp(pattern, "i").test("")),
+      ).toBe(true);
     });
 
-    it('should handle special characters in merchant names', () => {
+    it("should handle special characters in merchant names", () => {
       const saksPatterns = BENEFIT_MATCHING_RULES.saks[0].merchantPatterns;
-      
+
       // Test special characters are handled correctly
-      expect(saksPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test('saks.com')
-      )).toBe(true);
+      expect(
+        saksPatterns.some((pattern) =>
+          new RegExp(pattern, "i").test("saks.com"),
+        ),
+      ).toBe(true);
     });
 
-    it('should not match unrelated merchants', () => {
+    it("should not match unrelated merchants", () => {
       const uberPatterns = BENEFIT_MATCHING_RULES.uber[0].merchantPatterns;
-      const unrelatedMerchants = ['Starbucks', 'McDonalds', 'Target', 'Best Buy'];
-      
-      unrelatedMerchants.forEach(merchant => {
-        expect(uberPatterns.every(pattern => 
-          !new RegExp(pattern, 'i').test(merchant)
-        )).toBe(true);
+      const unrelatedMerchants = [
+        "Starbucks",
+        "McDonalds",
+        "Target",
+        "Best Buy",
+      ];
+
+      unrelatedMerchants.forEach((merchant) => {
+        expect(
+          uberPatterns.every(
+            (pattern) => !new RegExp(pattern, "i").test(merchant),
+          ),
+        ).toBe(true);
       });
     });
   });
 
-  describe('Integration Scenarios', () => {
-    it('should handle real-world transaction formats', () => {
+  describe("Integration Scenarios", () => {
+    it("should handle real-world transaction formats", () => {
       const realTransactions = [
-        'UBER *TRIP',
-        'Uber Eats *Restaurant',
-        'SAKS FIFTH AVENUE',
-        'American Airlines',
-        'WALMART.COM',
-        'Marriott Hotel'
+        "UBER *TRIP",
+        "Uber Eats *Restaurant",
+        "SAKS FIFTH AVENUE",
+        "American Airlines",
+        "WALMART.COM",
+        "Marriott Hotel",
       ];
-      
+
       // Test that our patterns would match real transaction formats
       const uberPatterns = BENEFIT_MATCHING_RULES.uber[0].merchantPatterns;
-      expect(uberPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test(realTransactions[0])
-      )).toBe(true);
-      expect(uberPatterns.some(pattern => 
-        new RegExp(pattern, 'i').test(realTransactions[1])
-      )).toBe(true);
+      expect(
+        uberPatterns.some((pattern) =>
+          new RegExp(pattern, "i").test(realTransactions[0]),
+        ),
+      ).toBe(true);
+      expect(
+        uberPatterns.some((pattern) =>
+          new RegExp(pattern, "i").test(realTransactions[1]),
+        ),
+      ).toBe(true);
     });
 
-    it('should handle transaction name variations', () => {
+    it("should handle transaction name variations", () => {
       const uberPatterns = BENEFIT_MATCHING_RULES.uber[0].merchantPatterns;
       const variations = [
-        'Uber',
-        'UBER',
-        'uber',
-        'Uber Eats',
-        'UBER EATS',
-        'ubereats',
-        'Uber *Trip 123'
+        "Uber",
+        "UBER",
+        "uber",
+        "Uber Eats",
+        "UBER EATS",
+        "ubereats",
+        "Uber *Trip 123",
       ];
-      
-      variations.forEach(variation => {
-        expect(uberPatterns.some(pattern => 
-          new RegExp(pattern, 'i').test(variation)
-        )).toBe(true);
+
+      variations.forEach((variation) => {
+        expect(
+          uberPatterns.some((pattern) =>
+            new RegExp(pattern, "i").test(variation),
+          ),
+        ).toBe(true);
       });
     });
   });

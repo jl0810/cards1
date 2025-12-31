@@ -1,10 +1,10 @@
+import type { LucideProps } from "lucide-react";
 import {
   AlertTriangle,
   ArrowRight,
   Check,
   ChevronLeft,
   ChevronRight,
-  Command,
   CreditCard,
   File,
   FileText,
@@ -12,7 +12,6 @@ import {
   Image,
   Laptop,
   Loader2,
-  LucideProps,
   Moon,
   MoreVertical,
   Pizza,
@@ -24,9 +23,9 @@ import {
   User,
   X,
   type LucideIcon,
-} from "lucide-react"
+} from "lucide-react";
 
-export type Icon = LucideIcon
+export type Icon = LucideIcon;
 
 export const Icons = {
   logo: ({ ...props }: LucideProps) => (
@@ -37,14 +36,47 @@ export const Icons = {
       {...props}
     >
       {/* Back Cards (Stacked) */}
-      <rect x="7" y="2" width="14" height="18" rx="3" fill="#E2E8F0" className="opacity-40" />
-      <rect x="5" y="4" width="14" height="18" rx="3" fill="#94A3B8" className="opacity-60" />
+      <rect
+        x="7"
+        y="2"
+        width="14"
+        height="18"
+        rx="3"
+        fill="#E2E8F0"
+        className="opacity-40"
+      />
+      <rect
+        x="5"
+        y="4"
+        width="14"
+        height="18"
+        rx="3"
+        fill="#94A3B8"
+        className="opacity-60"
+      />
 
       {/* Primary Front Card */}
-      <rect x="3" y="6" width="14" height="18" rx="3" fill="currentColor" stroke="white" strokeWidth="0.5" />
+      <rect
+        x="3"
+        y="6"
+        width="14"
+        height="18"
+        rx="3"
+        fill="currentColor"
+        stroke="white"
+        strokeWidth="0.5"
+      />
 
       {/* Card Chip */}
-      <rect x="5" y="9" width="3" height="2.5" rx="0.5" fill="white" className="opacity-80" />
+      <rect
+        x="5"
+        y="9"
+        width="3"
+        height="2.5"
+        rx="0.5"
+        fill="white"
+        className="opacity-80"
+      />
 
       {/* Card Details (Dots) */}
       <circle cx="5.5" cy="14" r="0.4" fill="white" className="opacity-60" />
@@ -58,7 +90,13 @@ export const Icons = {
       <circle cx="10" cy="16" r="0.4" fill="white" className="opacity-60" />
 
       {/* Card Number 5678 tail */}
-      <path d="M11 20h3" stroke="white" strokeWidth="0.5" strokeLinecap="round" className="opacity-40" />
+      <path
+        d="M11 20h3"
+        stroke="white"
+        strokeWidth="0.5"
+        strokeLinecap="round"
+        className="opacity-40"
+      />
     </svg>
   ),
   close: X,
@@ -134,4 +172,4 @@ export const Icons = {
   ),
   twitter: Twitter,
   check: Check,
-}
+};

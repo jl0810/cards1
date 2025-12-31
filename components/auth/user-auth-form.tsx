@@ -1,51 +1,56 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { signIn } from "next-auth/react"
+import * as React from "react";
+import { signIn } from "next-auth/react";
 
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
-import { Icons } from "@/components/icons"
-import { CSSLogo } from "@/components/shared/css-logo"
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+import { Icons } from "@/components/shared/icons";
+import { CSSLogo } from "@/components/shared/css-logo";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
-  isSignUp?: boolean
+  isSignUp?: boolean;
 }
 
-
-export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProps) {
-  const [isLoading, setIsLoading] = React.useState<boolean>(false)
-  const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false)
-  const [isAppleLoading, setIsAppleLoading] = React.useState<boolean>(false)
-  const [emailSent, setEmailSent] = React.useState<string | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
+export function UserAuthForm({
+  className,
+  isSignUp,
+  ...props
+}: UserAuthFormProps) {
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
+  const [isAppleLoading, setIsAppleLoading] = React.useState<boolean>(false);
+  const [emailSent, setEmailSent] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
   async function onSubmit(event: React.SyntheticEvent) {
-    event.preventDefault()
-    setIsLoading(true)
-    setError(null)
+    event.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
-    const formData = new FormData(event.currentTarget as HTMLFormElement)
-    const email = formData.get("email") as string
+    const formData = new FormData(event.currentTarget as HTMLFormElement);
+    const email = formData.get("email") as string;
 
     try {
       const signInResult = await signIn("email", {
         email: email.toLowerCase(),
         redirect: false,
         callbackUrl: "/dashboard",
-      })
+      });
 
-      setIsLoading(false)
+      setIsLoading(false);
 
       if (!signInResult?.ok) {
-        setError(signInResult?.error || "Failed to send email. Please try again.")
-        return
+        setError(
+          signInResult?.error || "Failed to send email. Please try again.",
+        );
+        return;
       }
 
-      setEmailSent(email)
-    } catch (err) {
-      setIsLoading(false)
-      setError("An unexpected error occurred. Please try again.")
+      setEmailSent(email);
+    } catch (_err) {
+      setIsLoading(false);
+      setError("An unexpected error occurred. Please try again.");
     }
   }
 
@@ -72,7 +77,9 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/20 mb-4">
             <Icons.check className="h-6 w-6 text-cyan-400" />
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">Check your inbox!</h3>
+          <h3 className="text-lg font-semibold text-white mb-2">
+            Check your inbox!
+          </h3>
           <p className="text-sm text-cyan-100/70">
             We sent a secure magic link to:
           </p>
@@ -80,7 +87,9 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
             <span className="text-sm font-mono text-cyan-300">{emailSent}</span>
           </div>
           <p className="text-xs text-cyan-100/50 mt-4 leading-relaxed">
-            Click the link in the email to verify your identity<br />and complete your {isSignUp ? "registration" : "sign in"}.
+            Click the link in the email to verify your identity
+            <br />
+            and complete your {isSignUp ? "registration" : "sign in"}.
           </p>
           <button
             onClick={() => setEmailSent(null)}
@@ -101,7 +110,10 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
             <div className="grid gap-2">
               {isSignUp && (
                 <div className="grid gap-1 mb-2">
-                  <label className="text-xs font-medium text-slate-400 ml-1" htmlFor="name">
+                  <label
+                    className="text-xs font-medium text-slate-400 ml-1"
+                    htmlFor="name"
+                  >
                     Full Name
                   </label>
                   <input
@@ -119,7 +131,10 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
               )}
 
               <div className="grid gap-1">
-                <label className="text-xs font-medium text-slate-400 ml-1" htmlFor="email">
+                <label
+                  className="text-xs font-medium text-slate-400 ml-1"
+                  htmlFor="email"
+                >
                   Email Address
                 </label>
                 <input
@@ -140,7 +155,7 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
             <button
               className={cn(
                 buttonVariants(),
-                "h-11 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors shadow-lg shadow-cyan-900/20"
+                "h-11 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors shadow-lg shadow-cyan-900/20",
               )}
               disabled={isLoading}
             >
@@ -170,8 +185,8 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
           type="button"
           className={cn(buttonVariants({ variant: "outline" }))}
           onClick={() => {
-            setIsGoogleLoading(true)
-            signIn("google")
+            setIsGoogleLoading(true);
+            void signIn("google");
           }}
           disabled={isLoading || isGoogleLoading || isAppleLoading}
         >
@@ -186,8 +201,8 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
           type="button"
           className={cn(buttonVariants({ variant: "outline" }))}
           onClick={() => {
-            setIsAppleLoading(true)
-            signIn("apple")
+            setIsAppleLoading(true);
+            void signIn("apple");
           }}
           disabled={isLoading || isGoogleLoading || isAppleLoading}
         >
@@ -200,5 +215,5 @@ export function UserAuthForm({ className, isSignUp, ...props }: UserAuthFormProp
         </button>
       </div>
     </div>
-  )
+  );
 }
