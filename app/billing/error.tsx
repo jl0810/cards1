@@ -5,7 +5,6 @@
  * @module app/billing/error
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
@@ -18,7 +17,8 @@ export default function BillingError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error, { tags: { area: 'billing' } });
+    // Log error to console or other service
+    console.error(error);
   }, [error]);
 
   return (

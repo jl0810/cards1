@@ -10,8 +10,8 @@
  * @tested None (needs E2E test)
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Wrench } from 'lucide-react';
 
@@ -23,8 +23,8 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to Sentry
-    Sentry.captureException(error);
+    // Log error to console
+    console.error("Root Error Boundary caught error:", error);
   }, [error]);
 
   return (
@@ -66,6 +66,7 @@ export default function Error({
             <pre className="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded overflow-auto max-h-32">
               {error.message}
               {error.digest && `\n\nDigest: ${error.digest}`}
+              {error.stack && `\n\nStack:\n${error.stack}`}
             </pre>
           </details>
         )}

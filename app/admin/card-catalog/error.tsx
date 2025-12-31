@@ -5,7 +5,6 @@
  * @module app/admin/card-catalog/error
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
@@ -18,7 +17,7 @@ export default function CardCatalogError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error, { tags: { area: 'admin-card-catalog' } });
+    console.error(error, { tags: { area: 'admin-card-catalog' } });
   }, [error]);
 
   return (

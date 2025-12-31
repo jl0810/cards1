@@ -20,7 +20,6 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, schema, eq, and, sql } from "@/db";
 import { logger } from "@/lib/logger";
-import * as Sentry from "@sentry/nextjs";
 import {
   getFamilyMembers,
   createFamilyMember,
@@ -116,7 +115,7 @@ export async function addFamilyMember(
     if (error instanceof UserNotFoundError) {
       return { success: false, error: "User profile not found" };
     }
-    Sentry.captureException(error, {
+    console.error(error, {
       user: { id: user.id },
       extra: { action: "addFamilyMember", name },
     });
@@ -196,7 +195,7 @@ export async function updateFamilyMember(
       data: { id: updatedMember.id, name: updatedMember.name },
     };
   } catch (error) {
-    Sentry.captureException(error, {
+    console.error(error, {
       user: { id: user.id },
       extra: { action: "updateFamilyMember", memberId },
     });
@@ -287,7 +286,7 @@ export async function deleteFamilyMember(
       data: { deleted: true },
     };
   } catch (error) {
-    Sentry.captureException(error, {
+    console.error(error, {
       user: { id: user.id },
       extra: { action: "deleteFamilyMember", memberId },
     });

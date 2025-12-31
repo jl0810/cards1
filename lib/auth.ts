@@ -1,4 +1,5 @@
-/* eslint-disable */
+/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
@@ -40,12 +41,10 @@ export const authConfig: NextAuthConfig = {
         const isDevelopment = process.env.NODE_ENV === "development";
 
         if (isDevelopment) {
-          /* eslint-disable no-console */
-          console.log("\n--- DEVELOPMENT MAGIC LINK ---");
-          console.log(`To: ${email}`);
-          console.log(`Link: ${url}`);
-          console.log("------------------------------\n");
-          /* eslint-enable no-console */
+          // console.log("\n--- DEVELOPMENT MAGIC LINK ---");
+          // console.log(`To: ${email}`);
+          // console.log(`Link: ${url}`);
+          // console.log("------------------------------\n");
         }
 
         try {
@@ -65,8 +64,7 @@ export const authConfig: NextAuthConfig = {
             apiKey: process.env.USESEND_API_KEY!,
           });
 
-          // eslint-disable-next-line no-console
-          console.log("✅ useSend API Success:", result);
+          // console.log("✅ useSend API Success:", result);
         } catch (error) {
           console.error("❌ sendVerificationRequest Error:", error);
           throw error;

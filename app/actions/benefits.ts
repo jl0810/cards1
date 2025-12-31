@@ -13,7 +13,6 @@ import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { scanAndMatchBenefits } from "@/lib/benefit-matcher";
 import { logger } from "@/lib/logger";
-import * as Sentry from "@sentry/nextjs";
 
 // ============================================================================
 // Types
@@ -70,7 +69,7 @@ export async function matchBenefits(): Promise<ActionResult<MatchResult>> {
       },
     };
   } catch (error) {
-    Sentry.captureException(error, {
+    console.error(error, {
       user: { id: user.id },
       extra: { action: "matchBenefits" },
     });

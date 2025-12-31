@@ -9,7 +9,6 @@
  * @satisfies US-021 - Graceful Error Recovery
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
@@ -22,7 +21,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error, {
+    console.error(error, {
       tags: { area: 'dashboard' },
     });
   }, [error]);

@@ -6,7 +6,6 @@ import { auth } from "@/lib/auth";
 import { db, schema, eq, and } from "@/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
 
 const UpdateAccountNicknameSchema = z.object({
@@ -115,10 +114,6 @@ export async function updateAccountNickname(
       data: { nickname: extended.nickname },
     };
   } catch (error) {
-    Sentry.captureException(error, {
-      user: { id: user.id },
-      extra: { action: "updateAccountNickname", accountId },
-    });
     logger.error("Error updating account nickname", error, {
       userId: user.id,
       accountId,

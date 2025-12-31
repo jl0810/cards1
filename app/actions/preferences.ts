@@ -16,7 +16,6 @@ import { db, schema, eq } from "@/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
-import * as Sentry from "@sentry/nextjs";
 
 // ============================================================================
 // Schemas
@@ -149,7 +148,7 @@ export async function updatePreferences(
       },
     };
   } catch (error) {
-    Sentry.captureException(error, {
+    console.error(error, {
       user: { id: user.id },
       extra: { action: "updatePreferences" },
     });

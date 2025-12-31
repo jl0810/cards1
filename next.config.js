@@ -11,7 +11,7 @@ const nextConfig = {
   },
 
   // Production optimizations
-  productionBrowserSourceMaps: false,
+  productionBrowserSourceMaps: true, // Enable for source map upload
   compress: true,
   poweredByHeader: false,
 
@@ -50,8 +50,13 @@ const sentryWebpackPluginOptions = {
 
   // Suppresses source map uploading logs during build
   silent: true,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+  org: process.env.SENTRY_ORG || "default",
+  project: process.env.SENTRY_PROJECT || "cards",
+  sentryUrl: process.env.GLITCHTIP_URL || "https://errors.raydoug.com",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  
+  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  widenClientFileUpload: true,
 };
 
 export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

@@ -5,7 +5,6 @@
  * @module app/settings/error
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
@@ -18,7 +17,7 @@ export default function SettingsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error, { tags: { area: 'settings' } });
+    console.error(error, { tags: { area: 'settings' } });
   }, [error]);
 
   return (

@@ -5,7 +5,6 @@
  * @module app/(authenticated)/benefits/error
  */
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
@@ -18,7 +17,7 @@ export default function BenefitsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error, { tags: { area: 'benefits' } });
+    console.error(error, { tags: { area: 'benefits' } });
   }, [error]);
 
   return (

@@ -12,11 +12,8 @@ import { BorderBeam } from "@/components/ui/border-beam";
 import {
   CreditCard,
   Send,
-  ShieldCheck,
   Zap,
-  Layout,
   Globe,
-  ChevronDown,
 } from "lucide-react";
 import NextLink from "next/link";
 import * as React from "react";
