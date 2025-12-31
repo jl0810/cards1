@@ -1,4 +1,4 @@
-// Test component to verify Sentry + GlitchTip integration
+// components/test-sentry-error.tsx
 'use client';
 
 import React from 'react';
@@ -10,7 +10,6 @@ export default function TestSentryError() {
 
   const handleAsyncError = async () => {
     try {
-      // Simulate an async operation that fails
       await fetch('https://api.example.com/nonexistent');
     } catch (error) {
       throw new Error("Async Error from Cards");
@@ -54,30 +53,6 @@ export default function TestSentryError() {
         }}
       >
         Async Error
-      </button>
-      
-      <button
-        onClick={() => {
-          // Test a warning level error
-          console.warn('This is a warning from Cards');
-          // You can also use Sentry directly if needed
-          if (typeof window !== 'undefined' && (window as any).Sentry) {
-            (window as any).Sentry.captureMessage('Test message from Cards', 'info');
-          }
-        }}
-        style={{
-          display: 'block',
-          width: '100%',
-          padding: '12px',
-          margin: '10px 0',
-          backgroundColor: '#2196F3',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer'
-        }}
-      >
-        Test Message
       </button>
       
       <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
