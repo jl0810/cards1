@@ -31,9 +31,8 @@ export const authConfig: NextAuthConfig = {
       from: process.env.EMAIL_FROM || "noreply@cardsgonecrazy.com",
       sendVerificationRequest: async ({ identifier: email, url }) => {
         // Import email templates
-        const { renderMagicLinkEmail, getBranding, sendEmail } = await import(
-          "@raydoug/email-templates"
-        );
+        const { renderMagicLinkEmail, getBranding, sendEmail } =
+          await import("@jl0810/email-templates");
 
         const branding = getBranding("cards");
         const isDevelopment = process.env.NODE_ENV === "development";
@@ -142,9 +141,8 @@ export const authConfig: NextAuthConfig = {
                 /**
                  * @implements BR-002
                  */
-                const { sendWelcomeEmail, getBranding } = await import(
-                  "@raydoug/email-templates"
-                );
+                const { sendWelcomeEmail, getBranding } =
+                  await import("@jl0810/email-templates");
                 await sendWelcomeEmail({
                   to: email,
                   userName: name || undefined,
