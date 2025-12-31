@@ -25,6 +25,7 @@ This document defines all business rules for the CardsGoneCrazy application.
 **User Stories:** [US-001], [US-002]  
 **Code:** `lib/supabase/server.ts`, `app/actions/family.ts`
 **Tests:**
+
 - Integration tests (Jest): `__tests__/lib/test-user-helper.ts`
 - E2E tests (Playwright): `e2e/auth-and-plaid.spec.ts`
 
@@ -50,6 +51,7 @@ This document defines all business rules for the CardsGoneCrazy application.
 
 **User Stories:** [US-003], [US-004], [US-005]  
 **Code:**
+
 - `app/api/user/family/route.ts`
 - `app/api/user/family/[memberId]/route.ts`
 - `app/actions/family.ts`
@@ -75,6 +77,7 @@ This document defines all business rules for the CardsGoneCrazy application.
 
 **User Stories:** [US-004]  
 **Code:**
+
 - `lib/validations.ts::UpdateFamilyMemberSchema`
 - `app/api/user/family/[memberId]/route.ts`
 - `app/actions/family.ts`
@@ -88,6 +91,7 @@ This document defines all business rules for the CardsGoneCrazy application.
 **Description:** The primary family member (marked with `isPrimary: true`) represents the account owner and cannot be deleted by the user. This member is automatically created during user registration and is tied to the UserProfile. Only account deletion can remove the primary member.
 
 **Rationale:**
+
 - Primary member = account owner
 - Deleting would orphan the account
 - User must delete entire account to remove themselves
@@ -104,10 +108,12 @@ This document defines all business rules for the CardsGoneCrazy application.
 
 **Category:** Data Integrity  
 **Description:** Family members with active bank connections (PlaidItems) cannot be deleted. User must first either:
+
 1. Reassign the bank connections to another family member, OR
 2. Disconnect/remove the bank connections entirely
 
 **Rationale:**
+
 - Prevents orphaned bank accounts
 - Forces explicit decision about bank data
 - Maintains data integrity
@@ -141,6 +147,7 @@ This document defines all business rules for the CardsGoneCrazy application.
 **CRITICAL COMPLIANCE REQUIREMENT:** Per Plaid's Terms of Service, access tokens MUST be handled securely. While some tokens are retained for audit and compliance, the application ensures proper lifecycle management.
 
 **Technical Implementation:**
+
 - Supabase Vault used for secret management
 - Encrypted storage at rest
 
@@ -417,6 +424,7 @@ This document defines all business rules for the CardsGoneCrazy application.
 **Description:** System must continuously monitor Plaid connection health and provide real-time visual feedback to users. Status checks detect ITEM_LOGIN_REQUIRED errors (needs re-authentication), token expiration warnings, connection errors, and active/healthy connections.
 
 **Visual Indicators:**
+
 - 🟢 Green "Active": Connection healthy
 - 🟡 Yellow "Needs Re-auth": Re-login required
 - 🔴 Red "Error": Connection error
@@ -480,3 +488,113 @@ This document defines all business rules for the CardsGoneCrazy application.
 **User Stories:** [US-022]  
 **Code:** `app/api/plaid/items/[itemId]/reload-transactions/route.ts`
 **Tests:** `__tests__/api/plaid/items/reload-transactions.test.ts`
+
+---
+
+### **[BR-039]** Placeholder Rule 39
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-039.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-040]** Placeholder Rule 40
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-040.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-041]** Placeholder Rule 41
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-041.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-042]** Placeholder Rule 42
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-042.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-045]** Placeholder Rule 45
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-045.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-046]** Placeholder Rule 46
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-046.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-047]** Placeholder Rule 47
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-047.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-048]** Placeholder Rule 48
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-048.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-100]** Placeholder Rule 100
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-100.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-101]** Placeholder Rule 101
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-101.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A
+
+---
+
+### **[BR-102]** Placeholder Rule 102
+
+**Category:** Miscellaneous
+**Description:** Placeholder for BR-102.
+**User Stories:** []
+**Code:** N/A
+**Tests:** N/A

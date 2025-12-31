@@ -1,5 +1,3 @@
-/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
@@ -8,7 +6,7 @@ import EmailProvider from "next-auth/providers/email";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export const authConfig: NextAuthConfig = {
   adapter: DrizzleAdapter(db, {
@@ -56,7 +54,7 @@ export const authConfig: NextAuthConfig = {
           });
 
           // Send via useSend
-          const result = await sendEmail({
+          await sendEmail({
             to: email,
             from: process.env.EMAIL_FROM || "noreply@cardsgonecrazy.com",
             subject: `Sign in to ${branding.appName}`,
@@ -80,18 +78,20 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     async signIn({ user }) {
       // Sync user to user_profiles table
-      if (user.email && user.id) {
+      const { email, id, name, image } = user;
+
+      if (email && id) {
         try {
           // 1. Try to find by supabaseId (NextAuth ID)
           let profile = await db.query.userProfiles.findFirst({
-            where: (profiles, { eq }) => eq(profiles.supabaseId, user.id!),
+            where: (profiles, { eq }) => eq(profiles.supabaseId, id),
           });
 
           // 2. If not found, try to find by email in primary family member
           if (!profile) {
             const familyMember = await db.query.familyMembers.findFirst({
               where: (fm, { eq, and }) =>
-                and(eq(fm.email, user.email!), eq(fm.isPrimary, true)),
+                and(eq(fm.email, email), eq(fm.isPrimary, true)),
               with: {
                 user: true,
               },
@@ -103,9 +103,9 @@ export const authConfig: NextAuthConfig = {
               await db
                 .update(schema.userProfiles)
                 .set({
-                  supabaseId: user.id,
-                  name: user.name || profile.name,
-                  avatar: user.image || profile.avatar,
+                  supabaseId: id,
+                  name: name || profile.name,
+                  avatar: image || profile.avatar,
                   lastLoginAt: new Date(),
                   updatedAt: new Date(),
                 })
@@ -118,9 +118,9 @@ export const authConfig: NextAuthConfig = {
             const [newProfile] = await db
               .insert(schema.userProfiles)
               .values({
-                supabaseId: user.id,
-                name: user.name || "New User",
-                avatar: user.image || null,
+                supabaseId: id,
+                name: name || "New User",
+                avatar: image || null,
                 lastLoginAt: new Date(),
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -130,8 +130,8 @@ export const authConfig: NextAuthConfig = {
             if (newProfile) {
               await db.insert(schema.familyMembers).values({
                 userId: newProfile.id,
-                name: user.name || "New User",
-                email: user.email,
+                name: name || "New User",
+                email: email,
                 isPrimary: true,
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -139,12 +139,15 @@ export const authConfig: NextAuthConfig = {
 
               // Send welcome email
               try {
+                /**
+                 * @implements BR-002
+                 */
                 const { sendWelcomeEmail, getBranding } = await import(
                   "@raydoug/email-templates"
                 );
                 await sendWelcomeEmail({
-                  to: user.email!,
-                  userName: user.name || undefined,
+                  to: email,
+                  userName: name || undefined,
                   branding: getBranding("cards"),
                   apiKey: process.env.USESEND_API_KEY!,
                 });
