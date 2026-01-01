@@ -55,7 +55,7 @@
     "@capacitor/status-bar": "^7.0.3",
     "@hookform/resolvers": "^5.2.2",
     "@jl0810/db-client": "^1.0.3",
-    "@jl0810/email-templates": "^1.0.0",
+    "@jl0810/email-templates": "^1.0.2",
     "@paralleldrive/cuid2": "^3.0.4",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
