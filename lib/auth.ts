@@ -12,9 +12,9 @@ import { eq } from "drizzle-orm";
 export const authConfig: NextAuthConfig = {
   adapter: DrizzleAdapter(db, {
     usersTable: publicSchema.users,
-    accountsTable: publicSchema.oauthAccounts,
-    sessionsTable: publicSchema.sessions,
-    verificationTokensTable: publicSchema.verificationTokens,
+    accountsTable: publicSchema.oauthAccounts as any,
+    sessionsTable: publicSchema.sessions as any,
+    verificationTokensTable: publicSchema.verificationTokens as any,
   }),
   providers: [
     GoogleProvider({
