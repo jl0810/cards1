@@ -312,7 +312,7 @@ export async function listFamilyMembers(): Promise<
     const members = await getFamilyMembers(user.id);
     return {
       success: true,
-      data: members.map((m) => ({
+      data: members.map((m: any) => ({
         id: m.id,
         name: m.name,
         isPrimary: m.isPrimary,

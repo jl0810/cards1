@@ -47,7 +47,7 @@ export async function getFamilyMembers(supabaseId: string) {
 
   const familyMembersList = await db.query.familyMembers.findMany({
     where: eq(schema.familyMembers.userId, userProfile.id),
-    orderBy: (familyMembers, { asc }) => [asc(familyMembers.createdAt)],
+    orderBy: (familyMembers: any, { asc }: any) => [asc(familyMembers.createdAt)],
   });
 
   return familyMembersList;
