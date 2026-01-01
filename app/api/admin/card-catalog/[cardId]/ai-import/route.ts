@@ -45,7 +45,12 @@ export async function POST(
 
     // Get the card details first
     const card = await db.query.cardProducts.findFirst({
-      where: (table, { eq }) => eq(table.id, cardId),
+      where: (table: any, { eq }: any) => eq(table.id, cardId),
+      with: {
+        benefits: {
+          orderBy: (benefits: any, { asc }: any) => [asc(benefits.benefitName)]
+        }
+      }
     });
 
     if (!card) {
@@ -111,8 +116,8 @@ export async function POST(
 
       // Get existing benefits for this card
       const existingBenefits = await db.query.cardBenefits.findMany({
-        where: (table, { eq }) => eq(table.cardProductId, cardId),
-        orderBy: (table, { asc }) => [asc(table.benefitName)],
+        where: (table: any, { eq }: any) => eq(table.cardProductId, cardId),
+        orderBy: (table: any, { asc }: any) => [asc(table.benefitName)],
       });
 
       logger.info("[AI Import] Found existing benefits", {
@@ -128,7 +133,7 @@ export async function POST(
             Focus ONLY on this specific card. Do not include benefits from other cards.
             
             Here are the CURRENT benefits we have on file for this card:
-            ${existingBenefits.map((b) => `- ${b.benefitName}: ${b.description || "No description"} (${b.type}, ${b.timing}, $${b.maxAmount || "unlimited"})`).join("\n")}
+            ${existingBenefits.map((b: any) => `- ${b.benefitName}: ${b.description || "No description"} (${b.type}, ${b.timing}, $${b.maxAmount || "unlimited"})`).join("\n")}
             
             Please analyze the source text and:
             1. CONFIRM which existing benefits are still accurate and current
@@ -245,8 +250,8 @@ export async function POST(
       const errors: ImportError[] = [];
 
       // Get all existing benefits for comparison
-      const existingBenefitsMap = new Map(
-        existingBenefits.map((b) => [b.benefitName.toLowerCase(), b]),
+      const existingBenefitsMap = new Map<string, any>(
+        existingBenefits.map((b: any) => [b.benefitName.toLowerCase(), b]),
       );
 
       // Process AI results

@@ -41,10 +41,10 @@ export async function GET(
         const { cardId } = await params;
 
         const card = await db.query.cardProducts.findFirst({
-            where: (table, { eq }) => eq(table.id, cardId),
+            where: (table: any, { eq }: any) => eq(table.id, cardId),
             with: {
                 benefits: {
-                    orderBy: (benefits, { asc }) => [asc(benefits.benefitName)]
+                    orderBy: (benefits: any, { asc }: any) => [asc(benefits.benefitName)]
                 }
             }
         });

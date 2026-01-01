@@ -41,7 +41,7 @@ export async function POST(
 
     // Verify account exists
     const account = await db.query.plaidAccounts.findFirst({
-      where: (table, { eq }) => eq(table.id, accountId),
+      where: (table: any, { eq }: any) => eq(table.id, accountId),
     });
 
     if (!account) {

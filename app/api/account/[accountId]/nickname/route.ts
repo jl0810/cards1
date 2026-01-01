@@ -62,7 +62,7 @@ export async function PATCH(
     // Find the PlaidAccount first to ensure it belongs to this user
     // We need to join with plaidItems to check userId
     const account = await db.query.plaidAccounts.findFirst({
-      where: (table, { eq }) => eq(table.accountId, accountId),
+      where: (table: any, { eq }: any) => eq(table.accountId, accountId),
       with: {
         plaidItem: {
           columns: {
