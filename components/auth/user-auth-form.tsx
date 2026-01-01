@@ -19,6 +19,7 @@ export function UserAuthForm({
 }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
+  const [isGitHubLoading, setIsGitHubLoading] = React.useState<boolean>(false);
   const [isAppleLoading, setIsAppleLoading] = React.useState<boolean>(false);
   const [emailSent, setEmailSent] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -201,10 +202,26 @@ export function UserAuthForm({
           type="button"
           className={cn(buttonVariants({ variant: "outline" }))}
           onClick={() => {
+            setIsGitHubLoading(true);
+            void signIn("github");
+          }}
+          disabled={isLoading || isGoogleLoading || isGitHubLoading || isAppleLoading}
+        >
+          {isGitHubLoading ? (
+            <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Icons.gitHub className="mr-2 h-4 w-4" />
+          )}{" "}
+          GitHub
+        </button>
+        <button
+          type="button"
+          className={cn(buttonVariants({ variant: "outline" }))}
+          onClick={() => {
             setIsAppleLoading(true);
             void signIn("apple");
           }}
-          disabled={isLoading || isGoogleLoading || isAppleLoading}
+          disabled={isLoading || isGoogleLoading || isGitHubLoading || isAppleLoading}
         >
           {isAppleLoading ? (
             <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />

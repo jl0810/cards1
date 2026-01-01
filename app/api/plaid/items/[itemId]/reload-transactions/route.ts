@@ -122,7 +122,7 @@ export async function POST(
             SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${item.accessTokenId}::uuid;
         `);
 
-        const accessToken = (vaultResult as any)[0]?.decrypted_secret;
+        const accessToken = (vaultResult as unknown as { decrypted_secret: string }[])[0]?.decrypted_secret;
 
         if (!accessToken) {
             return NextResponse.json(
@@ -166,7 +166,7 @@ export async function POST(
                 });
 
                 const data = response.data;
-                allTransactions = allTransactions.concat(data.added as any);
+                allTransactions = allTransactions.concat(data.added as unknown as PlaidTransaction[]);
                 hasMore = data.has_more;
                 nextCursor = data.next_cursor;
                 iterations++;
@@ -195,7 +195,7 @@ export async function POST(
                 columns: { accountId: true },
             });
 
-            const accountIds = new Set(accounts.map((a: any) => a.accountId));
+            const accountIds = new Set(accounts.map((a) => a.accountId));
 
             // Filter transactions that belong to this item's accounts
             const relevantTransactions = allTransactions.filter((t) =>
@@ -256,7 +256,7 @@ export async function POST(
             where: eq(schema.plaidAccounts.plaidItemId, item.id),
             columns: { accountId: true },
         });
-        const accountIds = new Set(accounts.map((a: any) => a.accountId));
+        const accountIds = new Set(accounts.map((a) => a.accountId));
         const newTransactionCount = allTransactions.filter((t) =>
             accountIds.has(t.account_id)
         ).length;

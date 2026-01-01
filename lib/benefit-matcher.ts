@@ -313,7 +313,7 @@ export async function linkTransactionToBenefit(
   benefit: { id: string; timing: string; maxAmount: number | null },
   matchReason: string,
 ) {
-  return await db.transaction(async (tx) => {
+  return await db.transaction(async (tx: any) => {
     // 1. Link Transaction
     const [txExtended] = await tx.insert(schema.transactionExtended)
       .values({
@@ -468,7 +468,7 @@ export async function scanAndMatchBenefits(
 
     // We need to fetch the relations for these accounts.
     // It's easier to just use the IDs we found.
-    const accountIds = results.map(r => r.plaid_accounts.id);
+    const accountIds = results.map((r: any) => r.plaid_accounts.id);
     if (accountIds.length === 0) return { matched: 0, checked: 0 };
 
     linkedAccounts = await db.query.plaidAccounts.findMany({

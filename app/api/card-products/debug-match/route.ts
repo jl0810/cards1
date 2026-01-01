@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const normalizedAccountName = normalize(accountName as string);
     const normalizedInstitution = institutionName ? normalize(institutionName as string) : "";
 
-    const results = products.map(product => {
+    const results = products.map((product: any) => {
         const normalizedProductName = normalize(product.productName);
         const normalizedIssuer = normalize(product.issuer);
 
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
                 issuer: normalizedIssuer
             }
         };
-    }).sort((a, b) => b.score - a.score);
+    }).sort((a: any, b: any) => b.score - a.score);
 
     return NextResponse.json({
         input: {

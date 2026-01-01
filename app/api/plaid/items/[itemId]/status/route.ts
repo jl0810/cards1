@@ -58,7 +58,7 @@ export async function GET(
             SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
         `);
 
-    const accessToken = (vaultResult as any)[0]?.decrypted_secret;
+    const accessToken = (vaultResult as unknown as { decrypted_secret: string }[])[0]?.decrypted_secret;
     if (!accessToken) {
       return new NextResponse("Access token not found", { status: 404 });
     }

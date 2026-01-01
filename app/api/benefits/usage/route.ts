@@ -90,16 +90,16 @@ export async function GET(req: Request) {
         });
 
         // Filter accounts that have card products
-        const validAccounts = accounts.filter(a => a.extended?.cardProduct);
+        const validAccounts = accounts.filter((a: any) => a.extended?.cardProduct);
 
         // Collect all unique benefits from linked cards
         const benefitDataMap = new Map();
 
-        validAccounts.forEach(account => {
+        validAccounts.forEach((account: any) => {
             const cardProduct = account.extended?.cardProduct;
             if (!cardProduct) return;
 
-            cardProduct.benefits.forEach(benefit => {
+            cardProduct.benefits.forEach((benefit: any) => {
                 if (!benefitDataMap.has(benefit.id)) {
                     benefitDataMap.set(benefit.id, {
                         ...benefit,
@@ -111,7 +111,7 @@ export async function GET(req: Request) {
             });
         });
 
-        const accountIds = validAccounts.map(a => a.id);
+        const accountIds = validAccounts.map((a: any) => a.id);
         const benefitIds = Array.from(benefitDataMap.keys());
 
         if (benefitIds.length === 0) {
@@ -139,15 +139,15 @@ export async function GET(req: Request) {
             }
         });
 
-        const benefitProgress = Array.from(benefitDataMap.values()).map((benefit) => {
-            const relevantUsages = usages.filter(u => u.cardBenefitId === benefit.id);
-            const usedAmount = relevantUsages.reduce((sum, u) => sum + u.usedAmount, 0);
+        const benefitProgress = Array.from(benefitDataMap.values()).map((benefit: any) => {
+            const relevantUsages = usages.filter((u: any) => u.cardBenefitId === benefit.id);
+            const usedAmount = relevantUsages.reduce((sum: number, u: any) => sum + u.usedAmount, 0);
             const maxAmount = benefit.maxAmount || 0;
             const remainingAmount = Math.max(0, maxAmount - usedAmount);
             const percentage = maxAmount > 0 ? (usedAmount / maxAmount) * 100 : 0;
 
-            const allTransactions = relevantUsages.flatMap(u => u.matchedTransactions || []);
-            allTransactions.sort((a, b) => {
+            const allTransactions = relevantUsages.flatMap((u: any) => u.matchedTransactions || []);
+            allTransactions.sort((a: any, b: any) => {
                 return new Date(b.plaidTransaction.date).getTime() - new Date(a.plaidTransaction.date).getTime();
             });
 

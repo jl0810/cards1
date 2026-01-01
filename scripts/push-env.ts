@@ -15,6 +15,10 @@ if (!TOKEN) {
     process.exit(1);
 }
 
+// Cloudflare Access (Zero Trust)
+const CF_ID = process.env.CF_ACCESS_CLIENT_ID;
+const CF_SECRET = process.env.CF_ACCESS_CLIENT_SECRET;
+
 async function pushEnvVars() {
     console.log(`🚀 Pushing environment variables from .env.local to Coolify (${APP_UUID})...`);
 
@@ -30,7 +34,13 @@ async function pushEnvVars() {
 
     // Fetch current list once to optimize
     const listResponse = await fetch(`${COOLIFY_API_URL}/applications/${APP_UUID}/envs`, {
-        headers: { 'Authorization': `Bearer ${TOKEN}` }
+        headers: {
+            'Authorization': `Bearer ${TOKEN}`,
+            ...(CF_ID && CF_SECRET ? {
+                'CF-Access-Client-Id': CF_ID,
+                'CF-Access-Client-Secret': CF_SECRET
+            } : {})
+        }
     });
 
     if (!listResponse.ok) {
@@ -58,7 +68,11 @@ async function pushEnvVars() {
                     method: 'PATCH',
                     headers: {
                         'Authorization': `Bearer ${TOKEN}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        ...(CF_ID && CF_SECRET ? {
+                            'CF-Access-Client-Id': CF_ID,
+                            'CF-Access-Client-Secret': CF_SECRET
+                        } : {})
                     },
                     body: JSON.stringify({
                         uuid: existing.uuid,
@@ -70,7 +84,11 @@ async function pushEnvVars() {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${TOKEN}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        ...(CF_ID && CF_SECRET ? {
+                            'CF-Access-Client-Id': CF_ID,
+                            'CF-Access-Client-Secret': CF_SECRET
+                        } : {})
                     },
                     body: JSON.stringify({
                         key: key,

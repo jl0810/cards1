@@ -33,11 +33,11 @@ export async function GET(_req: Request) {
                     }
                 }
             },
-            orderBy: (products, { asc }) => [asc(products.issuer), asc(products.productName)]
+            orderBy: (products: any, { asc }: any) => [asc(products.issuer), asc(products.productName)]
         });
 
         // Map Drizzle result to match expected API structure (adding _count)
-        const products = rawProducts.map(p => ({
+        const products = rawProducts.map((p: any) => ({
             ...p,
             _count: {
                 accountExtensions: p.linkedAccounts?.length || 0

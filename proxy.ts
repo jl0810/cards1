@@ -2,10 +2,15 @@ import { auth } from "@/lib/auth";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Next.js 16 Proxy Boundary
- *
- * This file replaces middleware.js as the runtime network boundary.
- * It ensures unified protection for all routes in the CGC system.
+ * Next.js Middleware - Unified Security Boundary
+ * 
+ * This middleware acts as the "bouncer" for the application.
+ * It strictly enforces access control for protected routes.
+ * 
+ * Behavior:
+ * 1. If user is NOT logged in and tries to access /dashboard, /settings, etc. -> Redirect to /login
+ * 2. If user IS logged in and tries to access /login or /signup -> Redirect to /dashboard
+ * 3. Otherwise -> Allow request to proceed
  */
 export default auth((req: NextRequest & { auth?: unknown }) => {
   const { nextUrl } = req;
@@ -21,9 +26,10 @@ export default auth((req: NextRequest & { auth?: unknown }) => {
     nextUrl.pathname.startsWith("/settings") ||
     nextUrl.pathname.startsWith("/projects") ||
     nextUrl.pathname.startsWith("/profile") ||
-    nextUrl.pathname.startsWith("/retirement");
+    nextUrl.pathname.startsWith("/retirement") ||
+    nextUrl.pathname.startsWith("/admin");
 
-  // 2. Logic: Redirect Logged-In users away from Auth Pages
+  // 2. Logic: Redirect Logged-In users away from Auth Pages (prevent login while logged in)
   if (isLoggedIn && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
@@ -35,14 +41,20 @@ export default auth((req: NextRequest & { auth?: unknown }) => {
     return NextResponse.redirect(loginUrl);
   }
 
+  // 4. Default: Allow
   return NextResponse.next();
 });
 
 export const config = {
   matcher: [
     /*
-     * Catch-all matcher excluding system assets and static media
+     * Match all request paths except for:
+     * - api routes (they have their own protection logic)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (images, etc)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

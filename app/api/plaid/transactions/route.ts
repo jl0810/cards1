@@ -25,7 +25,7 @@ export async function GET(req: Request) {
             .from(schema.plaidItems)
             .where(eq(schema.plaidItems.userId, userProfile.id));
 
-        const itemIds = items.map(i => i.id);
+        const itemIds = items.map((i: any) => i.id);
 
         if (itemIds.length === 0) {
             return NextResponse.json([]);

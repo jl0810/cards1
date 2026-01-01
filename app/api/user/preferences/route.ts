@@ -44,7 +44,7 @@ export async function GET() {
       return Errors.notFound("User profile not found");
     }
 
-    const prefs = userProfile.preferences || {} as any;
+    const prefs = userProfile.preferences || {};
 
     return NextResponse.json({
       theme: prefs.theme || "system",
@@ -110,7 +110,7 @@ export async function PUT(request: NextRequest) {
       updatedAt: new Date(),
     };
 
-    let updatedPrefs: any;
+    let updatedPrefs;
 
     if (existingPrefs) {
       [updatedPrefs] = await db

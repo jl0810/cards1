@@ -1,5 +1,4 @@
 import {
-    pgTable,
     pgSchema,
     text,
     timestamp,
@@ -8,12 +7,10 @@ import {
     doublePrecision,
     json,
     integer,
-    pgEnum,
     uniqueIndex,
     primaryKey,
-    foreignKey,
 } from "drizzle-orm/pg-core";
-import { sql, relations } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { publicSchema } from "@jl0810/db-client";
 
 export const cardsSchema = pgSchema("cardsgonecrazy");
@@ -53,6 +50,21 @@ export const userProfiles = cardsSchema.table("user_profiles", {
     bio: text("bio"),
     website: text("website"),
     location: text("location"),
+    theme: text("theme").default("system").notNull(),
+    language: text("language").default("en").notNull(),
+    timezone: text("timezone").default("UTC").notNull(),
+    emailNotifications: boolean("email_notifications").default(true).notNull(),
+    pushNotifications: boolean("push_notifications").default(false).notNull(),
+    analyticsSharing: boolean("analytics_sharing").default(true).notNull(),
+    autoSave: boolean("auto_save").default(true).notNull(),
+    betaFeatures: boolean("beta_features").default(false).notNull(),
+    compactMode: boolean("compact_mode").default(false).notNull(),
+    crashReporting: boolean("crash_reporting").default(true).notNull(),
+    defaultDashboard: text("default_dashboard").default("main").notNull(),
+    keyboardShortcuts: boolean("keyboard_shortcuts").default(true).notNull(),
+    marketingEmails: boolean("marketing_emails").default(false).notNull(),
+    sidebarCollapsed: boolean("sidebar_collapsed").default(false).notNull(),
+    soundEffects: boolean("sound_effects").default(false).notNull(),
     onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
     lastLoginAt: timestamp("last_login_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -388,3 +400,55 @@ export const userAlertsRelations = relations(userAlerts, ({ one }) => ({
         references: [userProfiles.id],
     }),
 }));
+// Authentication Tables (NextAuth.js)
+export const users = cardsSchema.table("user", {
+    id: text("id").notNull().primaryKey(),
+    name: text("name"),
+    email: text("email").notNull(),
+    emailVerified: timestamp("emailVerified", { mode: "date" }),
+    image: text("image"),
+});
+
+export const oauthAccounts = cardsSchema.table(
+    "account",
+    {
+        userId: text("userId")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        type: text("type").notNull(),
+        provider: text("provider").notNull(),
+        providerAccountId: text("providerAccountId").notNull(),
+        refresh_token: text("refresh_token"),
+        access_token: text("access_token"),
+        expires_at: integer("expires_at"),
+        token_type: text("token_type"),
+        scope: text("scope"),
+        id_token: text("id_token"),
+        session_state: text("session_state"),
+    },
+    (account) => ({
+        compoundKey: primaryKey({
+            columns: [account.provider, account.providerAccountId],
+        }),
+    })
+);
+
+export const sessions = cardsSchema.table("session", {
+    sessionToken: text("sessionToken").notNull().primaryKey(),
+    userId: text("userId")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+});
+
+export const verificationTokens = cardsSchema.table(
+    "verificationToken",
+    {
+        identifier: text("identifier").notNull(),
+        token: text("token").notNull(),
+        expires: timestamp("expires", { mode: "date" }).notNull(),
+    },
+    (vt) => ({
+        compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
+    })
+);

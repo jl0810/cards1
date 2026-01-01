@@ -1,3 +1,3 @@
-import { db, schema, createDb, getDb } from "@/db";
-export { db, schema, createDb, getDb };
+import { db, schema } from "@/db";
+export { db, schema };
 export * from "drizzle-orm";

@@ -42,7 +42,7 @@ export async function GET(req: Request) {
         // Joining is better for performance if there are many transactions.
 
         const transactions = matchedTransactions
-            .map(ext => ({
+            .map((ext: any) => ({
                 id: ext.plaidTransaction.id,
                 name: ext.plaidTransaction.name,
                 amount: ext.plaidTransaction.amount,
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
                 merchantName: ext.plaidTransaction.merchantName,
                 originalDescription: ext.plaidTransaction.originalDescription
             }))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         return NextResponse.json({
             success: true,

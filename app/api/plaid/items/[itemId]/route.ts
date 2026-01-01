@@ -75,7 +75,7 @@ export async function PATCH(
 
         // Update the item and all its accounts
         // We use a transaction to ensure consistency
-        const updatedItem = await db.transaction(async (tx) => {
+        const updatedItem = await db.transaction(async (tx: any) => {
             // Update item
             const [updated] = await tx.update(schema.plaidItems)
                 .set({ familyMemberId })

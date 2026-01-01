@@ -49,7 +49,7 @@ export async function requireAdmin(): Promise<AdminUser> {
 
     // For now, we'll assume the role is stored in the database or hardcoded for testing.
     // In a real app, you might add 'role' to the session or query the db here.
-    const role = (session.user as any).role || 'user';
+    const role = session.user.role || 'user';
     const isAdmin = role === 'admin' || session.user.email === 'jefflawson@gmail.com';
 
     // Update cache

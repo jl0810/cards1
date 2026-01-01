@@ -47,7 +47,7 @@ export async function getFamilyMembers(supabaseId: string) {
 
   const familyMembersList = await db.query.familyMembers.findMany({
     where: eq(schema.familyMembers.userId, userProfile.id),
-    orderBy: (familyMembers: any, { asc }: any) => [asc(familyMembers.createdAt)],
+    orderBy: (familyMembers, { asc }) => [asc(familyMembers.createdAt)],
   });
 
   return familyMembersList;
@@ -178,7 +178,7 @@ export async function cleanupCorruptedAvatars() {
       await db
         .update(schema.userProfiles)
         .set({
-          ...updates as any,
+          ...updates,
           updatedAt: new Date(),
         })
         .where(eq(schema.userProfiles.id, profile.id));
@@ -212,7 +212,7 @@ export async function cleanupCorruptedAvatars() {
       await db
         .update(schema.familyMembers)
         .set({
-          ...updates as any,
+          ...updates,
           updatedAt: new Date(),
         })
         .where(eq(schema.familyMembers.id, member.id));

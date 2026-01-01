@@ -10,7 +10,7 @@ import * as schema from "./schema";
 const fullSchema = { ...schema, ...publicSchema };
 
 // Create singleton DB instance
-export const db = createDb(undefined, fullSchema) as any;
+export const db = createDb(undefined, fullSchema);
 
 // Re-export schema for convenience
 export { schema };

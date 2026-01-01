@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     // 1. Check for Duplicate Accounts BEFORE exchange
     // Check if any of the new accounts already exist for this family member
     // Unique constraint: familyMemberId + mask + officialName
-    let duplicateAccounts: any[] = [];
+    let duplicateAccounts: (typeof schema.plaidAccounts.$inferSelect & { plaidItem: typeof schema.plaidItems.$inferSelect })[] = [];
 
     if (newAccounts.length > 0) {
       const masks = newAccounts
@@ -183,17 +183,17 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          const trulyZombies = zombies.filter((z: any) => z.accounts.length === 0);
+          const trulyZombies = zombies.filter((z) => z.accounts.length === 0);
 
           if (trulyZombies.length > 0) {
             logger.info("Cleaning up zombie items", {
               count: trulyZombies.length,
-              ids: trulyZombies.map((z: any) => z.id),
+              ids: trulyZombies.map((z) => z.id),
             });
             await db
               .update(schema.plaidItems)
               .set({ status: "inactive", updatedAt: new Date() })
-              .where(inArray(schema.plaidItems.id, trulyZombies.map((z: any) => z.id)));
+              .where(inArray(schema.plaidItems.id, trulyZombies.map((z) => z.id)));
           }
         }
 
@@ -296,7 +296,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Save to Vault and DB atomically with rollback
     let secretId: string | null = null;
-    let plaidItem: any;
+    let plaidItem: typeof schema.plaidItems.$inferSelect;
 
     try {
       // Step 1: Create Vault secret using raw SQL
@@ -304,7 +304,7 @@ export async function POST(req: NextRequest) {
         SELECT vault.create_secret(${accessToken}, ${itemId}, 'Plaid Access Token') as id;
       `);
 
-      secretId = (vaultResult as any)[0]?.id;
+      secretId = (vaultResult as unknown as { id: string }[])[0]?.id;
 
       if (!secretId) {
         throw new Error("Failed to store access token in vault");
@@ -347,7 +347,7 @@ export async function POST(req: NextRequest) {
           .returning();
 
         // Step 2b: Create accounts (since Drizzle doesn't do nested create)
-        const accountsToInsert = accounts.map((acc: any) => {
+        const accountsToInsert = accounts.map((acc) => {
           const creditLiability = liabilitiesData[acc.account_id] as
             | z.infer<typeof PlaidCreditLiabilitySchema>
             | undefined;
@@ -458,7 +458,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Find the existing account that was created by the other request
-        const masks = accounts.map((a: any) => a.mask).filter((m: any) => m != null && m !== "");
+        const masks = accounts.map((a) => a.mask).filter((m): m is string => m != null && m !== "");
         const existingAccount = await db.query.plaidAccounts.findFirst({
           where: and(
             eq(schema.plaidAccounts.familyMemberId, familyMember.id),

@@ -57,9 +57,9 @@ export async function POST(
           .values({
             cardProductId: cardId,
             benefitName: benefit.benefitName,
-            type: benefit.type as any,
+            type: benefit.type,
             description: benefit.description,
-            timing: benefit.timing as any,
+            timing: benefit.timing,
             maxAmount: benefit.maxAmount,
             keywords: benefit.keywords,
             isApproved: benefit.isApproved,

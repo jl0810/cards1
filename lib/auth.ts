@@ -1,20 +1,20 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import GitHubProvider from "next-auth/providers/github";
 import AppleProvider from "next-auth/providers/apple";
 import EmailProvider from "next-auth/providers/email";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { publicSchema } from "@jl0810/db-client";
 import { eq } from "drizzle-orm";
 
 export const authConfig: NextAuthConfig = {
   adapter: DrizzleAdapter(db, {
-    usersTable: publicSchema.users,
-    accountsTable: publicSchema.oauthAccounts as any,
-    sessionsTable: publicSchema.sessions as any,
-    verificationTokensTable: publicSchema.verificationTokens as any,
+    usersTable: schema.users,
+    accountsTable: schema.oauthAccounts,
+    sessionsTable: schema.sessions,
+    verificationTokensTable: schema.verificationTokens,
   }),
   providers: [
     GoogleProvider({
@@ -22,9 +22,14 @@ export const authConfig: NextAuthConfig = {
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
       allowDangerousEmailAccountLinking: true,
     }),
+    GitHubProvider({
+      clientId: process.env.AUTH_GITHUB_ID!,
+      clientSecret: process.env.AUTH_GITHUB_SECRET!,
+      allowDangerousEmailAccountLinking: true,
+    }),
     AppleProvider({
       clientId: process.env.AUTH_APPLE_ID!,
-      clientSecret: process.env.AUTH_APPLE_SECRET!,
+      clientSecret: process.env.AUTH_APPLE_SECRET!, // This should be a pre-generated token or JWT
       allowDangerousEmailAccountLinking: true,
     }),
     EmailProvider({

@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       SELECT decrypted_secret FROM vault.decrypted_secrets WHERE id = ${secretId}::uuid;
     `);
 
-    const accessToken = (vaultResult as any)[0]?.decrypted_secret;
+    const accessToken = (vaultResult as unknown as { decrypted_secret: string }[])[0]?.decrypted_secret;
 
     if (!accessToken) {
       return new NextResponse("Failed to retrieve access token", {
@@ -144,8 +144,8 @@ export async function POST(req: NextRequest) {
         });
 
         const data = response.data;
-        added = added.concat(data.added as any);
-        modified = modified.concat(data.modified as any);
+        added = added.concat(data.added as unknown as PlaidTransaction[]);
+        modified = modified.concat(data.modified as unknown as PlaidTransaction[]);
         removed = removed.concat(data.removed.map((r) => r.transaction_id));
         hasMore = data.has_more;
         nextCursor = data.next_cursor;
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
             officialName: account.official_name || account.name,
             mask: account.mask || null,
             type: account.type,
-            subtype: (account.subtype as any) || null,
+            subtype: account.subtype || null,
             currentBalance: account.balances.current || 0,
             availableBalance: account.balances.available || 0,
             limit: account.balances.limit || null,
@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
               officialName: account.official_name || account.name,
               mask: account.mask || null,
               type: account.type,
-              subtype: (account.subtype as any) || null,
+              subtype: account.subtype || null,
               isoCurrencyCode: account.balances.iso_currency_code || "USD",
               lastStatementBalance: liability?.last_statement_balance || null,
               lastStatementIssueDate: liability?.last_statement_issue_date
