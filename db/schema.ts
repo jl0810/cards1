@@ -13,7 +13,8 @@ import {
     primaryKey,
     foreignKey,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { sql, relations } from "drizzle-orm";
+import { publicSchema } from "@jl0810/db-client";
 
 export const cardsSchema = pgSchema("cardsgonecrazy");
 
@@ -52,26 +53,11 @@ export const userProfiles = cardsSchema.table("user_profiles", {
     bio: text("bio"),
     website: text("website"),
     location: text("location"),
-    theme: text("theme").default("system").notNull(),
-    language: text("language").default("en").notNull(),
-    timezone: text("timezone").default("UTC").notNull(),
-    emailNotifications: boolean("email_notifications").default(true).notNull(),
-    pushNotifications: boolean("push_notifications").default(false).notNull(),
     onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
     lastLoginAt: timestamp("last_login_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     deletedAt: timestamp("deleted_at"),
-    analyticsSharing: boolean("analytics_sharing").default(true).notNull(),
-    autoSave: boolean("auto_save").default(true).notNull(),
-    betaFeatures: boolean("beta_features").default(false).notNull(),
-    compactMode: boolean("compact_mode").default(false).notNull(),
-    crashReporting: boolean("crash_reporting").default(true).notNull(),
-    defaultDashboard: text("default_dashboard").default("main").notNull(),
-    keyboardShortcuts: boolean("keyboard_shortcuts").default(true).notNull(),
-    marketingEmails: boolean("marketing_emails").default(false).notNull(),
-    sidebarCollapsed: boolean("sidebar_collapsed").default(false).notNull(),
-    soundEffects: boolean("sound_effects").default(false).notNull(),
 });
 
 export const familyMembers = cardsSchema.table("family_members", {
@@ -264,54 +250,17 @@ export const userAlerts = cardsSchema.table("user_alerts", {
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// NextAuth.js Tables
-export const users = cardsSchema.table("users", {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    name: text("name"),
-    email: text("email").notNull().unique(),
-    emailVerified: timestamp("email_verified", { mode: "date" }),
-    image: text("image"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const accounts = cardsSchema.table("accounts", {
-    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    type: text("type").notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("provider_account_id").notNull(),
-    refresh_token: text("refresh_token"),
-    access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: text("token_type"),
-    scope: text("scope"),
-    id_token: text("id_token"),
-    session_state: text("session_state"),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.provider, table.providerAccountId] }),
-}));
-
-export const sessions = cardsSchema.table("sessions", {
-    sessionToken: text("session_token").primaryKey(),
-    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    expires: timestamp("expires", { mode: "date" }).notNull(),
-});
-
-export const verificationTokens = cardsSchema.table("verification_tokens", {
-    identifier: text("identifier").notNull(),
-    token: text("token").notNull(),
-    expires: timestamp("expires", { mode: "date" }).notNull(),
-}, (table) => ({
-    pk: primaryKey({ columns: [table.identifier, table.token] }),
-}));
+// Authentication tables have been moved to public schema
 
 // Relations
-import { relations } from "drizzle-orm";
-
-export const userProfilesRelations = relations(userProfiles, ({ many }) => ({
+export const userProfilesRelations = relations(userProfiles, ({ many, one }) => ({
     familyMembers: many(familyMembers),
     plaidItems: many(plaidItems),
     alerts: many(userAlerts),
+    preferences: one(publicSchema.userPreferences, {
+        fields: [userProfiles.supabaseId],
+        references: [publicSchema.userPreferences.userId],
+    }),
 }));
 
 export const familyMembersRelations = relations(familyMembers, ({ one, many }) => ({

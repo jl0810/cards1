@@ -6,14 +6,15 @@ import EmailProvider from "next-auth/providers/email";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { publicSchema } from "@jl0810/db-client";
 import { eq } from "drizzle-orm";
 
 export const authConfig: NextAuthConfig = {
   adapter: DrizzleAdapter(db, {
-    usersTable: schema.users,
-    accountsTable: schema.accounts,
-    sessionsTable: schema.sessions,
-    verificationTokensTable: schema.verificationTokens,
+    usersTable: publicSchema.users,
+    accountsTable: publicSchema.oauthAccounts,
+    sessionsTable: publicSchema.sessions,
+    verificationTokensTable: publicSchema.verificationTokens,
   }),
   providers: [
     GoogleProvider({

@@ -11,6 +11,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db, schema, eq } from "@/db";
+import { publicSchema } from "@jl0810/db-client";
 import { UpdateUserPreferencesSchema, safeValidateSchema } from "@/lib/validations";
 import { Errors } from "@/lib/api-errors";
 import { logger } from "@/lib/logger";
@@ -31,39 +32,36 @@ export async function GET() {
       return Errors.unauthorized();
     }
 
-    // Get user preferences from DB using Drizzle
-    let userProfile = await db.query.userProfiles.findFirst({
+    // Get user profile with preferences (joined from public schema)
+    const userProfile = await db.query.userProfiles.findFirst({
       where: eq(schema.userProfiles.supabaseId, user.id),
+      with: {
+        preferences: true,
+      },
     });
 
     if (!userProfile) {
-      // Create default profile for new user
-      const [newProfile] = await db.insert(schema.userProfiles)
-        .values({
-          supabaseId: user.id,
-          name: user.email?.split("@")[0] || "User",
-        })
-        .returning();
-
-      userProfile = newProfile;
+      return Errors.notFound("User profile not found");
     }
 
+    const prefs = userProfile.preferences || {} as any;
+
     return NextResponse.json({
-      theme: userProfile.theme,
-      language: userProfile.language,
-      timezone: userProfile.timezone,
-      emailNotifications: userProfile.emailNotifications,
-      pushNotifications: userProfile.pushNotifications,
-      marketingEmails: userProfile.marketingEmails,
-      defaultDashboard: userProfile.defaultDashboard,
-      sidebarCollapsed: userProfile.sidebarCollapsed,
-      compactMode: userProfile.compactMode,
-      betaFeatures: userProfile.betaFeatures,
-      analyticsSharing: userProfile.analyticsSharing,
-      crashReporting: userProfile.crashReporting,
-      autoSave: userProfile.autoSave,
-      keyboardShortcuts: userProfile.keyboardShortcuts,
-      soundEffects: userProfile.soundEffects,
+      theme: prefs.theme || "system",
+      language: prefs.language || "en",
+      timezone: prefs.timezone || "UTC",
+      emailNotifications: prefs.emailNotifications ?? true,
+      pushNotifications: prefs.pushNotifications ?? false,
+      marketingEmails: prefs.marketingEmails ?? false,
+      defaultDashboard: prefs.defaultDashboard || "main",
+      sidebarCollapsed: prefs.sidebarCollapsed ?? false,
+      compactMode: prefs.compactMode ?? false,
+      betaFeatures: prefs.betaFeatures ?? false,
+      analyticsSharing: prefs.analyticsSharing ?? true,
+      crashReporting: prefs.crashReporting ?? true,
+      autoSave: prefs.autoSave ?? true,
+      keyboardShortcuts: prefs.keyboardShortcuts ?? true,
+      soundEffects: prefs.soundEffects ?? false,
     });
 
   } catch (error) {
@@ -98,48 +96,56 @@ export async function PUT(request: NextRequest) {
 
     const preferences = validation.data;
 
-    // Update user preferences using Drizzle upsert (onConflictDoUpdate)
-    const [updatedProfile] = await db.insert(schema.userProfiles)
-      .values({
-        supabaseId: user.id,
-        theme: preferences.theme,
-        language: preferences.language,
-        timezone: preferences.timezone,
-        emailNotifications: preferences.emailNotifications,
-        pushNotifications: preferences.pushNotifications,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: schema.userProfiles.supabaseId,
-        set: {
-          theme: preferences.theme,
-          language: preferences.language,
-          timezone: preferences.timezone,
-          emailNotifications: preferences.emailNotifications,
-          pushNotifications: preferences.pushNotifications,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
+    // Check if preferences exist
+    const existingPrefs = await db.query.userPreferences.findFirst({
+      where: eq(publicSchema.userPreferences.userId, user.id),
+    });
+
+    const prefsData = {
+      theme: preferences.theme,
+      language: preferences.language,
+      timezone: preferences.timezone,
+      emailNotifications: preferences.emailNotifications,
+      pushNotifications: preferences.pushNotifications,
+      updatedAt: new Date(),
+    };
+
+    let updatedPrefs: any;
+
+    if (existingPrefs) {
+      [updatedPrefs] = await db
+        .update(publicSchema.userPreferences)
+        .set(prefsData)
+        .where(eq(publicSchema.userPreferences.userId, user.id))
+        .returning();
+    } else {
+      [updatedPrefs] = await db
+        .insert(publicSchema.userPreferences)
+        .values({
+          userId: user.id,
+          ...prefsData,
+        })
+        .returning();
+    }
 
     return NextResponse.json({
       message: "Preferences updated successfully",
       preferences: {
-        theme: updatedProfile.theme,
-        language: updatedProfile.language,
-        timezone: updatedProfile.timezone,
-        emailNotifications: updatedProfile.emailNotifications,
-        pushNotifications: updatedProfile.pushNotifications,
-        marketingEmails: updatedProfile.marketingEmails,
-        defaultDashboard: updatedProfile.defaultDashboard,
-        sidebarCollapsed: updatedProfile.sidebarCollapsed,
-        compactMode: updatedProfile.compactMode,
-        betaFeatures: updatedProfile.betaFeatures,
-        analyticsSharing: updatedProfile.analyticsSharing,
-        crashReporting: updatedProfile.crashReporting,
-        autoSave: updatedProfile.autoSave,
-        keyboardShortcuts: updatedProfile.keyboardShortcuts,
-        soundEffects: updatedProfile.soundEffects,
+        theme: updatedPrefs.theme,
+        language: updatedPrefs.language,
+        timezone: updatedPrefs.timezone,
+        emailNotifications: updatedPrefs.emailNotifications,
+        pushNotifications: updatedPrefs.pushNotifications,
+        marketingEmails: updatedPrefs.marketingEmails,
+        defaultDashboard: updatedPrefs.defaultDashboard,
+        sidebarCollapsed: updatedPrefs.sidebarCollapsed,
+        compactMode: updatedPrefs.compactMode,
+        betaFeatures: updatedPrefs.betaFeatures,
+        analyticsSharing: updatedPrefs.analyticsSharing,
+        crashReporting: updatedPrefs.crashReporting,
+        autoSave: updatedPrefs.autoSave,
+        keyboardShortcuts: updatedPrefs.keyboardShortcuts,
+        soundEffects: updatedPrefs.soundEffects,
       }
     });
 

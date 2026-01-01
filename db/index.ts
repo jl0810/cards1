@@ -1,52 +1,19 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { getConnectionConfig } from "./config";
+/**
+ * Drizzle Database Client for Cards
+ * Uses centralized @jl0810/db-client for connection management
+ * Schema: cards1 (multi-tenant isolation)
+ */
+
+import { createDb, publicSchema } from "@jl0810/db-client";
 import * as schema from "./schema";
 
-export type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+const fullSchema = { ...schema, ...publicSchema };
 
-/**
- * Creates a Drizzle database client with automatic SSL/localhost detection.
- */
-export function createDb(connectionString?: string) {
-    const url =
-        connectionString ||
-        process.env.DATABASE_URL ||
-        process.env.POSTGRES_URL_NON_POOLING; // Next.js often uses this for direct connection
+// Create singleton DB instance
+export const db = createDb(undefined, fullSchema);
 
-    if (!url) {
-        throw new Error(
-            "DATABASE_URL is required. Set it in your environment or pass it to createDb().",
-        );
-    }
-
-    const config = getConnectionConfig(url);
-
-    const client = postgres(url, {
-        ssl: config.ssl,
-        max: config.maxConnections,
-        idle_timeout: 30,
-        connect_timeout: 10,
-    });
-
-    return drizzle(client, { schema });
-}
-
-/**
- * Singleton pattern for the app.
- */
-let _db: ReturnType<typeof createDb> | null = null;
-
-export function getDb() {
-    if (!_db) {
-        _db = createDb();
-    }
-    return _db;
-}
-
-// Export the db singleton directly for convenience
-export const db = getDb();
-
-// Re-export useful Drizzle utilities
-export * from "drizzle-orm";
+// Re-export schema for convenience
 export { schema };
+
+// Re-export Drizzle utilities
+export * from "drizzle-orm";
