@@ -4,8 +4,8 @@
  * Schema: cards1 (multi-tenant isolation)
  */
 
-import * as publicSchema from "../lib/db-client-local/public-schema";
-import { createDb } from "../lib/db-client-local/client";
+import { publicSchema } from "@jl0810/db-client";
+import { createDb } from "@jl0810/db-client/client";
 import * as schema from "./schema";
 
 const fullSchema = { ...schema, ...publicSchema };
