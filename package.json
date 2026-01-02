@@ -112,9 +112,6 @@
     "valibot": "^1.2.0",
     "zod": "^4.1.13"
   },
-  "overrides": {
-    "nodemailer": "6.10.1"
-  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.1",
