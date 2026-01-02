@@ -18,7 +18,7 @@
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { db, schema, eq, and, sql } from "@/db";
+import { db, schema, eq, and } from "@/db";
 import { logger } from "@/lib/logger";
 import {
   getFamilyMembers,
@@ -119,7 +119,10 @@ export async function addFamilyMember(
       user: { id: user.id },
       extra: { action: "addFamilyMember", name },
     });
-    logger.error("Error creating family member", error, { userId: user.id, name });
+    logger.error("Error creating family member", error, {
+      userId: user.id,
+      name,
+    });
     return { success: false, error: "Failed to create family member" };
   }
 }
@@ -165,7 +168,7 @@ export async function updateFamilyMember(
     const member = await db.query.familyMembers.findFirst({
       where: and(
         eq(schema.familyMembers.id, memberId),
-        eq(schema.familyMembers.userId, userProfile.id)
+        eq(schema.familyMembers.userId, userProfile.id),
       ),
     });
 
@@ -174,7 +177,8 @@ export async function updateFamilyMember(
     }
 
     // 4. Update
-    const [updatedMember] = await db.update(schema.familyMembers)
+    const [updatedMember] = await db
+      .update(schema.familyMembers)
       .set({
         ...(name && { name }),
         ...(email !== undefined && { email }),
@@ -199,7 +203,10 @@ export async function updateFamilyMember(
       user: { id: user.id },
       extra: { action: "updateFamilyMember", memberId },
     });
-    logger.error("Error updating family member", error, { userId: user.id, memberId });
+    logger.error("Error updating family member", error, {
+      userId: user.id,
+      memberId,
+    });
     return { success: false, error: "Failed to update family member" };
   }
 }
@@ -246,7 +253,7 @@ export async function deleteFamilyMember(
     const member = await db.query.familyMembers.findFirst({
       where: and(
         eq(schema.familyMembers.id, memberId),
-        eq(schema.familyMembers.userId, userProfile.id)
+        eq(schema.familyMembers.userId, userProfile.id),
       ),
       with: {
         plaidItems: true,
@@ -273,7 +280,9 @@ export async function deleteFamilyMember(
     }
 
     // 5. Delete
-    await db.delete(schema.familyMembers).where(eq(schema.familyMembers.id, memberId));
+    await db
+      .delete(schema.familyMembers)
+      .where(eq(schema.familyMembers.id, memberId));
 
     // 6. Revalidate
     revalidatePath("/dashboard");
@@ -290,7 +299,10 @@ export async function deleteFamilyMember(
       user: { id: user.id },
       extra: { action: "deleteFamilyMember", memberId },
     });
-    logger.error("Error deleting family member", error, { userId: user.id, memberId });
+    logger.error("Error deleting family member", error, {
+      userId: user.id,
+      memberId,
+    });
     return { success: false, error: "Failed to delete family member" };
   }
 }
@@ -312,7 +324,7 @@ export async function listFamilyMembers(): Promise<
     const members = await getFamilyMembers(user.id);
     return {
       success: true,
-      data: members.map((m: any) => ({
+      data: members.map((m) => ({
         id: m.id,
         name: m.name,
         isPrimary: m.isPrimary,

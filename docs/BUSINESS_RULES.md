@@ -598,3 +598,11 @@ This document defines all business rules for the CardsGoneCrazy application.
 **User Stories:** []
 **Code:** N/A
 **Tests:** N/A
+
+### **[BR-301]** NextAuth API Route
+
+**Category:** Authentication
+**Description:** This catch-all route handles all NextAuth.js authentication flows and provides standard GET/POST handlers for OAuth and Email sign-ins.
+**User Stories:** [US-001]
+**Code:** `app/api/auth/[...nextauth]/route.ts`
+**Tests:** None
