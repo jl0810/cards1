@@ -138,5 +138,13 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@sentry/cli",
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
