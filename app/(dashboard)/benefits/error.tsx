@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
 /**
  * Benefits Error Boundary
  * @module app/(authenticated)/benefits/error
  */
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw, ArrowLeft } from "lucide-react";
 
 export default function BenefitsError({
   error,
@@ -17,7 +17,7 @@ export default function BenefitsError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error, { tags: { area: 'benefits' } });
+    console.error(error, { tags: { area: "benefits" } });
   }, [error]);
 
   return (
@@ -39,7 +39,7 @@ export default function BenefitsError({
           </Button>
           <Button
             variant="outline"
-            onClick={() => (window.location.href = '/dashboard')}
+            onClick={() => (window.location.href = "/dashboard")}
             className="w-full gap-2"
           >
             <ArrowLeft className="h-4 w-4" />

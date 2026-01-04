@@ -3,7 +3,7 @@
  * @module app/(authenticated)/benefits/loading
  */
 
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function BenefitsLoading() {
   return (
@@ -31,7 +31,10 @@ export default function BenefitsLoading() {
       <div className="space-y-4">
         <Skeleton className="h-6 w-32" />
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="border rounded-lg p-4 flex items-center gap-4">
+          <div
+            key={i}
+            className="border rounded-lg p-4 flex items-center gap-4"
+          >
             <Skeleton className="h-12 w-12 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-5 w-48" />
